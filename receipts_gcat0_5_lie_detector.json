@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "results": {
+    "CWT": true,
+    "PDT": true,
+    "RTIT": true,
+    "GST": true,
+    "SOT": true
+  },
+  "diagnosis": "Verdict: Solver appears honest"
+}

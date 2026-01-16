@@ -1,0 +1,57 @@
+{
+  "initialization": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "det_gamma_min": 0.9999941221559859
+  },
+  "memory_operations": {
+    "passed": true
+  },
+  "single_step": {
+    "passed": false,
+    "error": "operands could not be broadcast together with remapped shapes [original->remapped]: (16,16,16,3)->(16,16,16,newaxis,newaxis,3) (16,16,3,16,3,3)->(16,3,16,3,3,16) "
+  },
+  "multi_step_evolution": {
+    "passed": false,
+    "error": "operands could not be broadcast together with remapped shapes [original->remapped]: (16,16,16,3)->(16,16,16,newaxis,newaxis,3) (16,16,3,16,3,3)->(16,3,16,3,3,16) "
+  },
+  "rails_gates": {
+    "passed": true,
+    "gate_violation": null,
+    "margins": {
+      "eps_H": 0.0,
+      "eps_M": 0.0,
+      "R": 0.0,
+      "det": 0.20000117557571268,
+      "alpha": 1e-08,
+      "lambda": 1.0000052463940984e-08,
+      "kappa": 1.000009385526037e-12
+    },
+    "sem_ok": true,
+    "sem_reason": "ok"
+  },
+  "phaseloom_threads": {
+    "passed": true,
+    "num_residuals": 9,
+    "dt_min": 9.990009991007993e-05,
+    "dominant_thread": [
+      "PHY",
+      "H",
+      "FAST"
+    ]
+  },
+  "constraints_geometry": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "R": 0.0
+  },
+  "summary": {
+    "overall_passed": false,
+    "tests_passed": 5,
+    "total_tests": 7,
+    "grid": "16x16x16",
+    "L": 4.0
+  }
+}

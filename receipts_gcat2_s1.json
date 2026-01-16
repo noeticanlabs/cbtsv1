@@ -1,0 +1,318 @@
+[
+  {
+    "step": 0,
+    "t": 0.0,
+    "dt": 0.04000000000000001,
+    "dominant_clock": "phys",
+    "threads": {
+      "phys": {
+        "dt": 0.05,
+        "ratio": 0.8000000000000002,
+        "margin": 0.19999999999999984,
+        "dominant_metric": "v_char_max",
+        "metrics": {
+          "v_char_max": 1.7320526370316884
+        },
+        "active": true,
+        "risk": 0.19999999999999984
+      },
+      "diff": {
+        "dt": 0.10000000000000002,
+        "ratio": 0.4,
+        "margin": 0.6,
+        "dominant_metric": "mu_max",
+        "metrics": {
+          "mu_max": 0.01
+        },
+        "active": true,
+        "risk": 0.6
+      },
+      "gauge": {
+        "dt": 1944.2086735834496,
+        "ratio": 2.0573923233391603e-05,
+        "margin": 0.9999794260767666,
+        "dominant_metric": "dt_gauge",
+        "metrics": {
+          "dt_gauge": 1944.2086735834496
+        },
+        "active": true,
+        "risk": 0.9999794260767666
+      },
+      "curv": {
+        "dt": 100000000000000.0,
+        "ratio": 4.000000000000001e-16,
+        "margin": 0.9999999999999996,
+        "dominant_metric": "sqrt(|R|)",
+        "metrics": {
+          "sqrt(|R|)": 0.0
+        },
+        "active": true,
+        "risk": 0.9999999999999996
+      },
+      "cons": {
+        "dt": null,
+        "ratio": 0.0,
+        "margin": 1.0,
+        "dominant_metric": "constraint_risk",
+        "metrics": {
+          "dot_eps_H": 0.0,
+          "dot_eps_M": 0.0
+        },
+        "active": false,
+        "risk": 1.0
+      },
+      "det": {
+        "dt": null,
+        "ratio": 0.0,
+        "margin": 1.0,
+        "dominant_metric": "det_min",
+        "metrics": {
+          "det_min": 0.99999357846217,
+          "dot_det": 0.0
+        },
+        "active": false,
+        "risk": 1.0
+      },
+      "io": {
+        "dt": 10.0,
+        "ratio": 0.004000000000000001,
+        "margin": 0.996,
+        "dominant_metric": "io",
+        "metrics": {},
+        "active": true,
+        "risk": 0.996
+      }
+    },
+    "constraints": {
+      "eps_pre_H": 1.4615324910500907e-08,
+      "eps_pre_M": 0.0,
+      "eps_post_H": 5.813638043740474e-07,
+      "eps_post_M": 0.0,
+      "d_eps_H": 0.0,
+      "d_eps_M": 0.0
+    },
+    "geometry": {
+      "det_gamma_min": 0.99999357846217,
+      "R_max": 1.0591005304383882e-06,
+      "lambda_min": 0.9999944927197669,
+      "lambda_max": 1.0000052781864768,
+      "cond_gamma": 1.0000107855261087
+    },
+    "damping": {
+      "mu_H": 0.01,
+      "mu_M": 0.01
+    },
+    "rails": {
+      "rollback": true,
+      "reason": "Tainted by honesty check: Residual increased: 1.46e-08 -> 5.81e-07",
+      "margins": {
+        "eps_H": 0.005813638043740473,
+        "eps_M": 0.0,
+        "R": 1.0591005304383883e-12,
+        "det": 0.2000012843158133,
+        "alpha": 1.0000000113972422e-08,
+        "lambda": 1.0000055058678023e-08,
+        "kappa": 1.0000088585844728e-12
+      },
+      "repair_applied": false,
+      "repair_type": null,
+      "lambda_min_pre": null,
+      "lambda_min_post": null
+    },
+    "time_audit": {
+      "t_expected": 0.0,
+      "t_err": 0.0
+    },
+    "loom": {},
+    "risk_gauge": 0.19999999999999984,
+    "tight_threads": [
+      [
+        "phys",
+        0.8000000000000002,
+        0.19999999999999984
+      ],
+      [
+        "diff",
+        0.4,
+        0.6
+      ],
+      [
+        "io",
+        0.004000000000000001,
+        0.996
+      ]
+    ],
+    "commitment": {
+      "t_prev": 0.0,
+      "t_next": 0.0,
+      "dt_selected": 0.04000000000000001,
+      "dt_applied": 0.04000000000000001,
+      "substeps": 0,
+      "commit_ok": true
+    },
+    "consistency_ok": false,
+    "timestamp": "2026-01-14T01:15:06.004764",
+    "lexicon": "canon_v1_2",
+    "modules": [
+      "gr_solver"
+    ]
+  },
+  {
+    "step": 1,
+    "t": 0.04000000000000001,
+    "dt": 0.04000000000000001,
+    "dominant_clock": "phys",
+    "threads": {
+      "phys": {
+        "dt": 0.05,
+        "ratio": 0.8000000000000002,
+        "margin": 0.19999999999999984,
+        "dominant_metric": "v_char_max",
+        "metrics": {
+          "v_char_max": 1.732124373548957
+        },
+        "active": true,
+        "risk": 0.19999999999999984
+      },
+      "diff": {
+        "dt": 0.10000000000000002,
+        "ratio": 0.4,
+        "margin": 0.6,
+        "dominant_metric": "mu_max",
+        "metrics": {
+          "mu_max": 0.01
+        },
+        "active": true,
+        "risk": 0.6
+      },
+      "gauge": {
+        "dt": 1499.1673245244904,
+        "ratio": 2.6681478008258556e-05,
+        "margin": 0.9999733185219918,
+        "dominant_metric": "dt_gauge",
+        "metrics": {
+          "dt_gauge": 1499.1673245244904
+        },
+        "active": true,
+        "risk": 0.9999733185219918
+      },
+      "curv": {
+        "dt": 97.16982201219146,
+        "ratio": 0.000411650440143663,
+        "margin": 0.9995883495598563,
+        "dominant_metric": "sqrt(|R|)",
+        "metrics": {
+          "sqrt(|R|)": 0.0010291261003581573
+        },
+        "active": true,
+        "risk": 0.9995883495598563
+      },
+      "cons": {
+        "dt": null,
+        "ratio": 0.0,
+        "margin": 1.0,
+        "dominant_metric": "constraint_risk",
+        "metrics": {
+          "dot_eps_H": 0.0,
+          "dot_eps_M": 0.0
+        },
+        "active": false,
+        "risk": 1.0
+      },
+      "det": {
+        "dt": null,
+        "ratio": 0.0,
+        "margin": 1.0,
+        "dominant_metric": "det_min",
+        "metrics": {
+          "det_min": 0.9999935829553855,
+          "dot_det": 1.1233038943458667e-07
+        },
+        "active": false,
+        "risk": 1.0
+      },
+      "io": {
+        "dt": 10.0,
+        "ratio": 0.004000000000000001,
+        "margin": 0.996,
+        "dominant_metric": "io",
+        "metrics": {},
+        "active": true,
+        "risk": 0.996
+      }
+    },
+    "constraints": {
+      "eps_pre_H": 5.813638043740474e-07,
+      "eps_pre_M": 0.0,
+      "eps_post_H": 0.0025801424129610452,
+      "eps_post_M": 0.0,
+      "d_eps_H": 0.06448902622891677,
+      "d_eps_M": 0.0
+    },
+    "geometry": {
+      "det_gamma_min": 0.9999935829553855,
+      "R_max": 0.006177172481730563,
+      "lambda_min": 0.9999400286784484,
+      "lambda_max": 1.0000765943832282,
+      "cond_gamma": 1.0001365738952968
+    },
+    "damping": {
+      "mu_H": 0.01,
+      "mu_M": 0.01
+    },
+    "rails": {
+      "rollback": true,
+      "reason": "Tainted by honesty check: Residual increased: 5.81e-07 -> 2.58e-03",
+      "margins": {
+        "eps_H": 25.801424129610453,
+        "eps_M": 0.0,
+        "R": 6.177172481730563e-09,
+        "det": 0.20001768155348684,
+        "alpha": 1.0000118977973893e-08,
+        "lambda": 1.0000599749183267e-08,
+        "kappa": 1.0000776714566709e-12
+      },
+      "repair_applied": false,
+      "repair_type": null,
+      "lambda_min_pre": null,
+      "lambda_min_post": null
+    },
+    "time_audit": {
+      "t_expected": 0.04000000000000001,
+      "t_err": 0.0
+    },
+    "loom": {},
+    "risk_gauge": 0.19999999999999984,
+    "tight_threads": [
+      [
+        "phys",
+        0.8000000000000002,
+        0.19999999999999984
+      ],
+      [
+        "diff",
+        0.4,
+        0.6
+      ],
+      [
+        "io",
+        0.004000000000000001,
+        0.996
+      ]
+    ],
+    "commitment": {
+      "t_prev": 0.04000000000000001,
+      "t_next": 0.04000000000000001,
+      "dt_selected": 0.04000000000000001,
+      "dt_applied": 0.04000000000000001,
+      "substeps": 0,
+      "commit_ok": true
+    },
+    "consistency_ok": false,
+    "timestamp": "2026-01-14T01:15:22.384732",
+    "lexicon": "canon_v1_2",
+    "modules": [
+      "gr_solver"
+    ]
+  }
+]

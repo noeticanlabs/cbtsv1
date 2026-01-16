@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-01-14T04:15:00.000000",
+  "status": "HEALTHY",
+  "summary": {
+    "GCAT-0.5 (Lie Detector)": "PASS",
+    "GCAT-1 (Convergence)": "PASS",
+    "GCAT-2 (Scenarios)": "PASS"
+  },
+  "details": {
+    "GCAT-0.5": {
+      "diagnosis": "Verdict: Solver appears honest",
+      "results": {
+        "CWT": true,
+        "PDT": true,
+        "RTIT": true,
+        "GST": true,
+        "SOT": true
+      }
+    },
+    "GCAT-1": {
+      "diagnosis": "Observed order p_obs = 2.01, passed convergence check (>1.5)",
+      "p_obs": 2.0089
+    },
+    "GCAT-2": {
+      "Scenario 2": "Scenario 2 passed: Damping observed (1.50e-04 -> 4.00e-05)",
+      "Scenario 3": "Scenario 3 Passed: Max D_max=9.54e-01 (Expected > 0.1), Constraints 1.20e-03 -> 1.58e-02"
+    }
+  }
+}

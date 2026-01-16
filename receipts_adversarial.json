@@ -1,0 +1,58 @@
+{
+  "step": 10,
+  "t": 0.10,
+  "dt": 0.008,
+  "dominant_clock": "loom",
+  "threads": {
+    "phys": {
+      "dt": 0.05,
+      "ratio": 0.16,
+      "margin": 0.84,
+      "dominant_metric": "v_char_max",
+      "metrics": {
+        "v_char_max": 1.0
+      },
+      "active": true,
+      "risk": 0.84
+    },
+    "diff": {
+      "dt": 1.0,
+      "ratio": 0.008,
+      "margin": 0.992,
+      "dominant_metric": "mu_max",
+      "metrics": {
+        "mu_max": 0.01
+      },
+      "active": true,
+      "risk": 0.992
+    },
+    "cons": {
+      "dt": null,
+      "ratio": 0.0,
+      "margin": 1.0,
+      "dominant_metric": "constraint_risk",
+      "metrics": {
+        "dot_eps_H": -0.005,
+        "dot_eps_M": 0.0
+      },
+      "active": false,
+      "risk": 1.0
+    }
+  },
+  "dt_loom": 0.01,
+  "risk_gauge": 0.2,
+  "tight_threads": [
+    [
+      "loom",
+      0.8,
+      0.2
+    ],
+    [
+      "phys",
+      0.16,
+      0.84
+    ]
+  ],
+  "consistency_ok": true,
+  "timestamp": "2026-01-14T04:20:00.000000"
+}

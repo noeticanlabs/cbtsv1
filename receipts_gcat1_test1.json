@@ -1,0 +1,12 @@
+{
+  "passed": false,
+  "metrics": {
+    "p_obs": 6.345987904055956e-13,
+    "errors": [
+      9.999833334169364e-06,
+      9.999833334164964e-06,
+      9.999833334156252e-06
+    ]
+  },
+  "diagnosis": "Observed order p_obs = 0.00, failed convergence check (>1.5)"
+}
