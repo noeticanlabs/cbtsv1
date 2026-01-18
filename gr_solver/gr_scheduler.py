@@ -10,6 +10,16 @@ LEXICON_SYMBOLS = {
 }
 
 import numpy as np
+from dataclasses import dataclass, field
+from typing import Optional, Dict
+
+@dataclass
+class TimeState:
+    """Typed time objects for LoC-Time management."""
+    t: float = 0.0  # Physical time
+    n: int = 0      # Step number
+    tau: float = 0.0  # Coherence time
+    stage_times: Optional[Dict[str, float]] = field(default_factory=dict)  # Per-stage or per-clock times for Level 5+
 
 class GRScheduler:
     def __init__(self, fields, c=1.0, Lambda=0.0, rho_target=0.8):
@@ -19,6 +29,7 @@ class GRScheduler:
         self.rho_target = rho_target
         self.max_dt = 0.1
         self.fixed_dt = None
+        self.time_state = TimeState()  # Initialize time objects
 
     def compute_dt(self, eps_H, eps_M):
         """Aeonic dt = min(CFL, curv, constraint, gauge, Lambda, phys). Stub."""
@@ -56,3 +67,68 @@ class GRScheduler:
             all_margins.append(loom_margin)
         risk_gauge = min(all_margins) if all_margins else 1.0
         return risk_gauge
+
+    def update_coherence_time(self, dt, margins, eps_UFE, eps_constraints, invariant_drift, weights=None, h_params=None):
+        """Update coherence time tau with dilation formula using incoherence score R_n from residuals."""
+        if h_params is None:
+            h_params = {'h0': 0.5, 'm_sat': 0.1, 'h_max': 1.0, 'threshold': 1e-6}
+        if weights is None:
+            weights = {'ufe': 1.0, 'constraints': 1.0, 'drift': 1.0}
+
+        # Compute incoherence score R_n from residuals (eps_UFE, eps_constraints, invariant_drift) and weights
+        threshold = h_params.get('threshold', 1e-6)
+        incoherence = (weights['ufe'] * eps_UFE +
+                       weights['constraints'] * eps_constraints +
+                       weights['drift'] * invariant_drift) / threshold
+        R_n = max(0, 1 - incoherence)  # Incoherence score: high when coherent (R_n close to 1)
+
+        # Worst margin m_*
+        m_star = min(margins.values()) if margins else 0.0
+
+        # Governor h(m_*) with dilation by R_n
+        h0, m_sat, h_max = h_params['h0'], h_params['m_sat'], h_params['h_max']
+        if m_star < 0:
+            h = 0.0
+        elif m_star <= m_sat:
+            h = h0 * m_star / m_sat
+        else:
+            h = h_max
+
+        # Dilate by incoherence: if low coherence (R_n low), slow tau advance
+        h_dilated = h * R_n
+
+        # Update tau
+        delta_tau = h_dilated * dt
+        self.time_state.tau += delta_tau
+
+        return delta_tau, R_n
+
+    def enforce_cct_invariants(self, margins, residuals, drifts, time_policy='level_3'):
+        """Enforce CCT (Coherence Computation Time) invariants and determine failure modes."""
+        invariants_ok = True
+        failure_mode = None
+
+        # Invariant 1: Margins must be non-negative (safety)
+        m_star = min(margins.values()) if margins else 0.0
+        if m_star < 0:
+            invariants_ok = False
+            failure_mode = 'rollback'  # Or 'halt' depending on policy
+
+        # Invariant 2: Coherence not degraded excessively
+        threshold = 1e-5
+        if residuals.get('rms', 0) > threshold or abs(drifts.get('energy', 0)) > threshold:
+            # Check if tau is advancing; if not, failure
+            if self.time_state.tau == 0.0:  # Example: if no progress
+                invariants_ok = False
+                failure_mode = 'emergency_dt'
+
+        # Invariant 3: Time policy consistency
+        if time_policy == 'level_3' and self.time_state.tau < 0:
+            invariants_ok = False
+            failure_mode = 'halt_integrator'
+
+        # Failure modes: rollback, emergency_dt, halt_integrator, freeze_tau
+        if not invariants_ok and failure_mode is None:
+            failure_mode = 'freeze_tau'  # Default
+
+        return invariants_ok, failure_mode

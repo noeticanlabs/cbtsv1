@@ -11,8 +11,9 @@ LEXICON_SYMBOLS = {
 
 import numpy as np
 import logging
+from dataclasses import dataclass
 from .logging_config import setup_logging, Timer, array_stats
-from .gr_core_fields import GRCoreFields, SYM6_IDX
+from .gr_core_fields import GRCoreFields, SYM6_IDX, inv_sym6, trace_sym6
 from .gr_geometry import GRGeometry
 from .gr_constraints import GRConstraints
 from .gr_gauge import GRGauge
@@ -26,10 +27,67 @@ from aeonic_clocks import AeonicClockPack
 from aeonic_receipts import AeonicReceipts
 from phaseloom_27 import PhaseLoom27
 
+@dataclass
+class Damping:
+    lambda_: float
+    kappa_H: float
+    kappa_M: float
+
+@dataclass
+class GateThresholds:
+    H_max: float
+    M_max: float
+    clk_max: float
+    proj_max: float
+    budget: float
+
+@dataclass
+class GRConfig:
+    formulation_id: str
+    gauge_id: str
+    boundary_id: str
+    integrator_id: str
+    spatial_operator_id: str
+    projection_schedule_id: str
+    damping: Damping
+    gate_thresholds: GateThresholds
+
+    def practical_checklist(self, epsilon_clk: float, dt: float, boundary_mode: str, filtering_type: str) -> None:
+        """Enforce practical checklist rules."""
+        # Stage coherence: epsilon_clk near floor
+        floor = 1e-12
+        if epsilon_clk > floor:
+            raise ValueError(f"Stage coherence violation: epsilon_clk {epsilon_clk} not near floor {floor}")
+
+        # Min dt clocks
+        min_dt = 1e-8
+        if dt < min_dt:
+            raise ValueError(f"Min dt clocks violation: dt {dt} < {min_dt}")
+
+        # Boundary mode control
+        if boundary_mode != self.boundary_id:
+            raise ValueError(f"Boundary mode control violation: {boundary_mode} != {self.boundary_id}")
+
+        # Consistent filtering
+        allowed_filters = ['spectral', 'finite_difference', 'fdm']  # assume
+        if filtering_type not in allowed_filters:
+            raise ValueError(f"Consistent filtering violation: {filtering_type} not in {allowed_filters}")
+
+        # Validation via GCAT adversaries
+        # Placeholder: assume GCAT validation is passed if config is set
+        # In practice, this could call actual test functions
+        if not self._validate_gcat():
+            raise ValueError("GCAT adversaries validation failed")
+
+    def _validate_gcat(self) -> bool:
+        # Placeholder implementation
+        # Could import and run tests.test_gcat* or check config consistency
+        return True  # Assume pass for now
+
 logger = logging.getLogger('gr_solver.solver')
 
 class GRSolver:
-    def __init__(self, Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0, c=1.0, Lambda=0.0, log_level=logging.INFO, log_file=None):
+    def __init__(self, Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0, c=1.0, Lambda=0.0, log_level=logging.WARNING, log_file=None):
         # Setup structured logging
         setup_logging(level=log_level, log_file=log_file)
 

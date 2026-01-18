@@ -41,6 +41,12 @@ class AeonicClockPack:
     def tick_maintenance(self):
         self.tau_m += 1
 
+    def tick_all(self):
+        """Advance all clocks by 1 unit for testing."""
+        self.tau_s += 1
+        self.tau_l += 1
+        self.tau_m += 1
+
     def update_stepper_regime(self, residual_current, residual_prev, rollback_rate):
         # Residual slope (if prev available)
         if residual_prev is not None:

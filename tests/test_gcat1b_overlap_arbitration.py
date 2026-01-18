@@ -1,5 +1,8 @@
 import numpy as np
 import logging
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gr_solver.gr_solver import GRSolver
 from gr_solver.gr_core_fields import SYM6_IDX
 
@@ -31,7 +34,14 @@ def test_gcat1b_overlap_kicks():
 
     # Adjust rail and thread limits for test
     solver.orchestrator.rails.H_max = 1.0
+    solver.orchestrator.rails.M_max = 1.0
+    solver.orchestrator.rails.lambda_floor = 1e-10
+    solver.orchestrator.rails.alpha_floor = 1e-10
+    solver.orchestrator.rails.kappa_max = 1e15
     solver.orchestrator.threads.eps_H_max = 1.0
+    solver.orchestrator.threads.eps_M_max = 1.0
+    solver.stepper.eps_H_target = 1.0
+    solver.stepper.eps_M_target = 1.0
 
     # Recompute initial constraints after modifications
     solver.geometry.compute_christoffels()
@@ -42,6 +52,7 @@ def test_gcat1b_overlap_kicks():
     solver.constraints.compute_residuals()
 
     logger.info(f"Initial eps_H: {solver.constraints.eps_H:.2e}, eps_M: {solver.constraints.eps_M:.2e}")
+    logger.info(f"H_max: {solver.orchestrator.rails.H_max:.2e}, eps_H_max: {solver.orchestrator.threads.eps_H_max:.2e}")
 
     # Run evolution for several steps (overlapping kicks in 1-3 steps window)
     num_steps = 10
@@ -49,8 +60,10 @@ def test_gcat1b_overlap_kicks():
     receipts = []
 
     for step in range(num_steps):
+        logger.info(f"Before run_step, receipts length: {len(solver.orchestrator.receipts.receipts)}")
         dt, dominant_thread, rail_violation = solver.orchestrator.run_step()
         dominants.append(dominant_thread)
+        logger.info(f"After run_step, receipts length: {len(solver.orchestrator.receipts.receipts)}")
         receipts.append(solver.orchestrator.receipts.receipts[-1])
         logger.info(f"Step {step}: dt={dt:.6f}, dominant={dominant_thread}, eps_H={receipts[-1]['constraints']['eps_post_H']:.2e}")
 

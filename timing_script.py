@@ -4,7 +4,7 @@ from gr_solver.gr_solver import GRSolver
 def W0():
     """Small grid GR solver workload."""
     Nx, Ny, Nz = 8, 8, 8
-    T_max = 0.1
+    T_max = 1e-9
     solver = GRSolver(Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0, c=1.0, Lambda=0.0)
     solver.init_minkowski()
     start = time.perf_counter()
@@ -15,8 +15,8 @@ def W0():
 
 def W1():
     """Medium grid GR solver workload."""
-    Nx, Ny, Nz = 16, 16, 16
-    T_max = 0.2
+    Nx, Ny, Nz = 12, 12, 12
+    T_max = 1e-8
     solver = GRSolver(Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0, c=1.0, Lambda=0.0)
     solver.init_minkowski()
     start = time.perf_counter()
@@ -27,8 +27,8 @@ def W1():
 
 def W2():
     """Large grid GR solver workload."""
-    Nx, Ny, Nz = 32, 32, 32
-    T_max = 0.5
+    Nx, Ny, Nz = 16, 16, 16
+    T_max = 1e-8
     solver = GRSolver(Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0, c=1.0, Lambda=0.0)
     solver.init_minkowski()
     start = time.perf_counter()

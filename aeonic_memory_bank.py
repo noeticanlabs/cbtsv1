@@ -227,19 +227,21 @@ class AeonicMemoryBank:
                         "tau_l": self.clock.tau_l
                     })
 
-        # Evict by lowest V score
-        all_records = []
-        for tier in self.tiers:
-            for record in self.tiers[tier].values():
-                all_records.append((tier, record))
-        all_records.sort(key=lambda t_r: self._compute_v_score(t_r[1]))
-        to_evict = all_records[:5]  # evict up to 5 lowest V score
-        for tier, record in to_evict:
-            if self.receipts:
-                self.receipts.emit_event("EVICT", {
-                    "key": record.key,
-                    "tier": tier,
-                    "tau_s": self.clock.tau_s,
-                    "tau_l": self.clock.tau_l
-                })
-            self.remove_record(tier, record.key)
+        # Evict by lowest V score (only if many records)
+        total_records = sum(len(tier_dict) for tier_dict in self.tiers.values())
+        if total_records > 10:  # Don't evict if few records
+            all_records = []
+            for tier in self.tiers:
+                for record in self.tiers[tier].values():
+                    all_records.append((tier, record))
+            all_records.sort(key=lambda t_r: self._compute_v_score(t_r[1]))
+            to_evict = all_records[:5]  # evict up to 5 lowest V score
+            for tier, record in to_evict:
+                if self.receipts:
+                    self.receipts.emit_event("EVICT", {
+                        "key": record.key,
+                        "tier": tier,
+                        "tau_s": self.clock.tau_s,
+                        "tau_l": self.clock.tau_l
+                    })
+                self.remove_record(tier, record.key)

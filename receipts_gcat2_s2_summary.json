@@ -1,10 +1,10 @@
 {
   "passed": true,
   "metrics": {
-    "damping_ratio": 0.7333333333333333,
-    "eps_H_initial": 0.00015,
-    "eps_H_final_20": 0.00004,
+    "damping_ratio": 0.9551969181309952,
+    "eps_H_initial": 9.780416672246076e-09,
+    "eps_H_final_20": 4.381918536827021e-10,
     "bounded": true
   },
-  "diagnosis": "Scenario 2 passed: Damping observed (1.50e-04 -> 4.00e-05)"
+  "diagnosis": "Scenario 2 passed: Damping observed (9.78e-09 -> 4.38e-10)"
 }

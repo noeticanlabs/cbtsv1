@@ -1,0 +1,47 @@
+// Example NLLC script for GR/NR solver integration
+// Simulates the canonical per-step sequence
+
+fn main() {
+  // Initialize
+  let dt_min = 1e-8;
+  let dt_max = 1e-4;
+  let H_max = 1e-8;
+  let M_max = 1e-8;
+  let dt = 1e-6;
+
+  // Loop 10 steps
+  let step = 0;
+  while step < 10 {
+    // 1. Snapshot
+    let snapshot = call gr_snapshot();
+
+    // 2. Step
+    call gr_step(dt, 0);  // UFE
+    call gr_apply_gauge(dt);
+
+    // 3. Audit
+    let constraints = call gr_compute_constraints();
+    let eps_H = constraints["eps_H"];
+    let eps_M = constraints["eps_M"];
+
+    // 4. Check gates
+    if eps_H <= H_max and eps_M <= M_max {
+      call gr_accept_step();
+      call print("Step", step, "accepted");
+    } else {
+      call gr_restore(snapshot);
+      call gr_reject_step();
+      dt = dt * 0.5;  // Shrink dt
+      if dt < dt_min {
+        call print("Abort: dt too small");
+        break;
+      }
+      call print("Step", step, "rejected, retrying with dt", dt);
+      // In full loop, would retry
+    }
+
+    step = step + 1;
+  }
+
+  call print("GR solver loop completed");
+}

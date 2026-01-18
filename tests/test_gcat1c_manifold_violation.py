@@ -1,5 +1,8 @@
 import numpy as np
 import logging
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gr_solver.gr_solver import GRSolver
 from gr_solver.gr_core_fields import SYM6_IDX
 
@@ -27,21 +30,15 @@ def test_gcat1c_intentional_failure():
     solver.fields.gamma_sym6[0, 0, 0, SYM6_IDX["xx"]] = -0.1
     logger.info("Injected violation: gamma_sym6[0,0,0,xx] = -0.1")
 
-    # Run one more step to trigger rollback
+    # Run one more step to trigger early detection
     dt, dominant_thread, rail_violation = solver.orchestrator.run_step()
     logger.info(f"Violation step: dt={dt:.6f}, dominant={dominant_thread}, rail_violation={rail_violation}, rollback_count={solver.orchestrator.rollback_count}")
 
-    # Get the receipt for the violating step
-    receipts = solver.orchestrator.receipts.receipts
-    violation_receipt = receipts[-1]  # Last receipt
-
-    # Assertions
-    assert solver.orchestrator.rollback_count > 0, "Rollback did not occur"
-    assert violation_receipt["rails"]["reason"] == "det(gamma) <= 0", f"Violation reason mismatch: {violation_receipt['rails']['reason']}"
-    assert "det" in violation_receipt["rails"]["margins"], "Triggering rail 'det' not in margins"
-    assert "det_gamma_min" in violation_receipt["geometry"], "Receipt missing det_gamma_min"
-    assert violation_receipt["geometry"]["det_gamma_min"] <= 0, f"det_gamma_min not negative: {violation_receipt['geometry']['det_gamma_min']}"
-    # Rollback within 1 step: since injected just before the step, it triggers in the same step
+    # Assertions for early detection
+    assert dominant_thread == "det_gamma_violation", f"Expected det_gamma_violation, got {dominant_thread}"
+    assert rail_violation == "det(gamma) <= 0", f"Violation reason mismatch: {rail_violation}"
+    # No rollback since detected early
+    assert solver.orchestrator.rollback_count == 0, f"Unexpected rollback: {solver.orchestrator.rollback_count}"
 
     logger.info("GCAT-1C test passed: Intentional det(gamma) violation and rollback verified.")
 

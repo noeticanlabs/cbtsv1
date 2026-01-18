@@ -22,14 +22,31 @@ LEXICON_SYMBOLS = {
 import json
 from datetime import datetime
 import numpy as np
+import hashlib
+from .logging_config import ReceiptLevels
 
 class GRPhaseLoomReceipts:
     def __init__(self):
         self.receipts = []
         self.events = []
+        self.config = ReceiptLevels()
+        self.macro_aggregates = {
+            'eps_post_H': [],
+            'eps_post_M': [],
+            'd_eps_H': [],
+            'd_eps_M': [],
+            'det_gamma_min': [],
+            'R_max': [],
+            'lambda_min': [],
+            'lambda_max': [],
+            'cond_gamma': [],
+            'mu_H': [],
+            'mu_M': [],
+            'rollback_count': []
+        }
 
-    def emit_receipt(self, step, t, dt, dominant_thread, threads, eps_pre_H, eps_pre_M, eps_post_H, eps_post_M, d_eps_H, d_eps_M, max_R, det_gamma_min, mu_H, mu_M, rollback_count, rollback_reason=None, loom_data=None, t_expected=0.0, t_err=0.0, dt_loom=None, risk_gauge=None, tight_threads=None, consistency_ok=None, rail_margins=None, lambda_min=None, lambda_max=None, cond_gamma=None, repair_applied=False, repair_type=None, lambda_min_pre=None, lambda_min_post=None, t_prev=None, t_next=None, dt_selected=None, dt_applied=None, substeps=None, commit_ok=None):
-        """Emit Ω-receipt for audit"""
+    def emit_m_solve(self, step, t, dt, dominant_thread, threads, eps_pre_H, eps_pre_M, eps_post_H, eps_post_M, d_eps_H, d_eps_M, max_R, det_gamma_min, mu_H, mu_M, rollback_count, rollback_reason=None, loom_data=None, t_expected=0.0, t_err=0.0, dt_loom=None, risk_gauge=None, tight_threads=None, consistency_ok=None, rail_margins=None, lambda_min=None, lambda_max=None, cond_gamma=None, repair_applied=False, repair_type=None, lambda_min_pre=None, lambda_min_post=None, t_prev=None, t_next=None, dt_selected=None, dt_applied=None, substeps=None, commit_ok=None, policy_hash=None):
+        """Emit M_solve receipt for high-frequency diagnostics"""
         loom_dict = {}
         if loom_data:
             loom_dict = {
@@ -46,6 +63,7 @@ class GRPhaseLoomReceipts:
                 sorted_indices = np.argsort(D_band)[::-1][:3]
                 loom_dict["top3_bands"] = sorted_indices.tolist()
         receipt = {
+            "level": "M_solve",
             "step": step,
             "t": t,
             "dt": dt,
@@ -95,6 +113,7 @@ class GRPhaseLoomReceipts:
                 "commit_ok": commit_ok
             },
             "consistency_ok": consistency_ok,
+            "policy_hash": policy_hash,
             "timestamp": datetime.utcnow().isoformat(),
             "lexicon": "canon_v1_2",
             "modules": ["gr_solver"]
@@ -110,6 +129,19 @@ class GRPhaseLoomReceipts:
         receipt["threads"] = cleaned_threads
 
         self.receipts.append(receipt)
+        # Aggregate for macro receipts
+        self.macro_aggregates['eps_post_H'].append(eps_post_H)
+        self.macro_aggregates['eps_post_M'].append(eps_post_M)
+        self.macro_aggregates['d_eps_H'].append(d_eps_H)
+        self.macro_aggregates['d_eps_M'].append(d_eps_M)
+        self.macro_aggregates['det_gamma_min'].append(det_gamma_min)
+        self.macro_aggregates['R_max'].append(max_R)
+        self.macro_aggregates['lambda_min'].append(lambda_min)
+        self.macro_aggregates['lambda_max'].append(lambda_max)
+        self.macro_aggregates['cond_gamma'].append(cond_gamma)
+        self.macro_aggregates['mu_H'].append(mu_H)
+        self.macro_aggregates['mu_M'].append(mu_M)
+        self.macro_aggregates['rollback_count'].append(rollback_count)
         # In real impl, write to file or DB
         # print(f"Ω-Receipt: {json.dumps(receipt, indent=2)}")  # Commented out to reduce output
 
@@ -122,6 +154,93 @@ class GRPhaseLoomReceipts:
         }
         self.events.append(event)
         print(f"PhaseLoom Event: {event_type} - {data}")
+
+    def emit_m_step(self, step, t, dt, dominant_thread, threads, eps_pre_H, eps_pre_M, eps_post_H, eps_post_M, d_eps_H, d_eps_M, max_R, det_gamma_min, mu_H, mu_M, rollback_count, rollback_reason=None, loom_data=None, t_expected=0.0, t_err=0.0, dt_loom=None, risk_gauge=None, tight_threads=None, consistency_ok=None, rail_margins=None, lambda_min=None, lambda_max=None, cond_gamma=None, repair_applied=False, repair_type=None, lambda_min_pre=None, lambda_min_post=None, t_prev=None, t_next=None, dt_selected=None, dt_applied=None, substeps=None, commit_ok=None, policy_hash=None):
+        """Emit M_step receipt for sparse canonical data"""
+        if not self.config.enable_M_step:
+            return
+        # Minimal threads summary
+        minimal_threads = {k: {'dt': v.get('dt'), 'active': v.get('active', False)} for k, v in threads.items()}
+        receipt = {
+            "level": "M_step",
+            "step": step,
+            "t": t,
+            "dt": dt,
+            "dominant_clock": dominant_thread,
+            "threads": minimal_threads,
+            "constraints": {
+                "eps_pre_H": eps_pre_H,
+                "eps_pre_M": eps_pre_M,
+                "eps_post_H": eps_post_H,
+                "eps_post_M": eps_post_M,
+                "d_eps_H": d_eps_H,
+                "d_eps_M": d_eps_M
+            },
+            "geometry": {
+                "det_gamma_min": det_gamma_min,
+                "R_max": max_R,
+                "lambda_min": lambda_min,
+                "lambda_max": lambda_max,
+                "cond_gamma": cond_gamma
+            },
+            "damping": {
+                "mu_H": mu_H,
+                "mu_M": mu_M
+            },
+            "rails": {
+                "rollback": rollback_count > 0,
+                "reason": rollback_reason
+            },
+            "time_audit": {
+                "t_expected": t_expected,
+                "t_err": t_err
+            },
+            "commitment": {
+                "t_prev": t_prev,
+                "t_next": t_next,
+                "dt_selected": dt_selected,
+                "dt_applied": dt_applied,
+                "substeps": substeps,
+                "commit_ok": commit_ok
+            },
+            "consistency_ok": consistency_ok,
+            "policy_hash": policy_hash,
+            "timestamp": datetime.utcnow().isoformat(),
+            "lexicon": "canon_v1_2",
+            "modules": ["gr_solver"]
+        }
+        self.receipts.append(receipt)
+
+    def emit_macro(self, step):
+        """Emit macro receipt with aggregates every K steps"""
+        if not self.config.enable_macro:
+            return
+        aggregates = {}
+        for k, v in self.macro_aggregates.items():
+            if v:
+                aggregates[k] = {
+                    'min': min(v),
+                    'max': max(v),
+                    'mean': sum(v) / len(v),
+                    'count': len(v)
+                }
+        # Hash of recent receipts
+        recent = self.receipts[-self.config.K:] if len(self.receipts) >= self.config.K else self.receipts
+        receipt_str = json.dumps(recent, sort_keys=True)
+        hash_val = hashlib.sha256(receipt_str.encode()).hexdigest()
+        aggregates['receipt_chain_hash'] = hash_val
+        macro_receipt = {
+            "level": "macro",
+            "step": step,
+            "aggregates": aggregates,
+            "timestamp": datetime.utcnow().isoformat(),
+            "lexicon": "canon_v1_2",
+            "modules": ["gr_solver"]
+        }
+        self.receipts.append(macro_receipt)
+        # Reset aggregates
+        for k in self.macro_aggregates:
+            self.macro_aggregates[k] = []
 
     def emit_clock_dominance(self, dominant_thread):
         self.emit_event("CLOCK_DOMINANCE", {"dominant": dominant_thread})

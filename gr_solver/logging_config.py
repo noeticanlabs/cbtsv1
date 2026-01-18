@@ -80,10 +80,12 @@ class Timer:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.elapsed = time.perf_counter() - self.start_time
+        pass
 
     def elapsed_ms(self):
-        return self.elapsed * 1000
+        if self.start_time is None:
+            return 0.0
+        return (time.perf_counter() - self.start_time) * 1000
 
 # Utility function to compute array statistics
 def array_stats(arr, name=""):
@@ -101,3 +103,11 @@ def array_stats(arr, name=""):
     }
 
 import numpy as np  # Import here to avoid circular imports
+
+class ReceiptLevels:
+    """Configuration for receipt emission levels."""
+    def __init__(self):
+        self.K = 100  # macro every K steps
+        self.enable_M_step = True
+        self.enable_M_solve = True
+        self.enable_macro = True

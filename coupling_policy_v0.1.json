@@ -1,0 +1,94 @@
+{
+  "version": "0.1",
+  "description": "Coupling policy defining compartments, coupling matrix, gate thresholds, retry schedules, and operations allowed to touch S_PHY. This policy turns 'it runs' into 'it refuses to lie' by enforcing strict audit gates and permissions.",
+  "compartments": [
+    "SOLVE",
+    "STEP",
+    "ORCH",
+    "S_PHY",
+    "SEM",
+    "PHY"
+  ],
+  "coupling_matrix": {
+    "SOLVE": ["STEP"],
+    "STEP": ["ORCH", "S_PHY"],
+    "ORCH": ["S_PHY"],
+    "S_PHY": [],
+    "SEM": ["PHY"],
+    "PHY": []
+  },
+  "audit_gates": {
+    "CONS.step.audit": [
+      "nan_inf_scan",
+      "eps_H_threshold",
+      "eps_M_threshold",
+      "R_min_threshold",
+      "energy_drift_bound",
+      "cfl_proxy"
+    ]
+  },
+  "gate_thresholds": {
+    "eps_H_max": 1e-4,
+    "eps_M_max": 1e-4,
+    "eps_SEM_hard": 0.0,
+    "R_min": 1e-6,
+    "dH_max": 1e-8,
+    "cfl_max": 0.5
+  },
+  "retry_schedules": {
+    "max_attempts": 10,
+    "dt_reduction": "dt *= 0.5",
+    "dissipation_levels": ["L2"],
+    "dt_floor": 1e-6,
+    "backoff_factor": 0.5
+  },
+  "permissions": {
+    "writers_to_S_PHY": ["STEP", "ORCH"],
+    "sem_phy_restrictions": {
+      "allowed_operations": ["read"],
+      "forbidden_operations": ["write", "modify"]
+    }
+  },
+  "lane_permissions": [
+    {"lane": 1, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 2, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 3, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 4, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 5, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 6, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 7, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 8, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 9, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 10, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 11, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 12, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 13, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 14, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 15, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 16, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 17, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 18, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 19, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 20, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 21, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 22, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 23, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 24, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 25, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 26, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3},
+    {"lane": 27, "read": ["SOLVE", "STEP"], "write": ["STEP"], "receipts_required": 3}
+  ],
+  "error_codes": {
+    "ERR_NAN_INF": "abort_simulation",
+    "ERR_EPS_H_VIOLATION": "retry_with_dt_reduction",
+    "ERR_EPS_M_VIOLATION": "retry_with_dt_reduction",
+    "ERR_R_MIN_VIOLATION": "abort_simulation",
+    "ERR_ENERGY_DRIFT": "apply_dissipation",
+    "ERR_CFL_VIOLATION": "retry_with_dt_reduction"
+  },
+  "ops_allowed_to_touch_S_PHY": [
+    "projection",
+    "enforcement",
+    "clamp"
+  ]
+}

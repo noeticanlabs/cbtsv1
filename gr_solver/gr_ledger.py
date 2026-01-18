@@ -21,7 +21,7 @@ class GRLedger:
     def __init__(self):
         self.receipts = []
 
-    def emit_receipt(self, step, dt, eps_H, eps_M, eps_UFE, max_R, alpha_min, alpha_max, stability_class, dt_caps=None, eps=None, dominant_clock=None, argmin_margin=None, risk_gauge=None, margins=None):
+    def emit_receipt(self, step, dt, eps_H, eps_M, eps_UFE, max_R, alpha_min, alpha_max, stability_class, dt_caps=None, eps=None, dominant_clock=None, argmin_margin=None, risk_gauge=None, margins=None, p_obs=None):
         """Emit Ω-receipt."""
         # Compute invariant stamps
         dt_consistent = None
@@ -48,6 +48,7 @@ class GRLedger:
             "Q_mass": 0.0,  # Placeholder
             "Q_angular_momentum": 0.0,  # Placeholder
             "stability_class": stability_class,
+            "p_obs": p_obs,  # Scaling law convergence order
             "invariants": {
                 "dt_consistent": dt_consistent,
                 "dominance_consistent": dominance_consistent,

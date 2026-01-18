@@ -1,0 +1,6 @@
+fn main() {
+  let constraints = call gr_compute_constraints();
+  let eps_H = constraints["eps_H"];
+  let eps_M = constraints["eps_M"];
+  return (eps_H <= 10.0) and (eps_M <= 0.001);
+}

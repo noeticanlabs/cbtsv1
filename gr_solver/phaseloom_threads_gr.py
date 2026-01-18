@@ -17,6 +17,11 @@ LEXICON_SYMBOLS = {
     "T_io": "PhaseLoom.thread_io"
 }
 
+# PhaseLoom 27-thread lattice constants
+DOMAINS = ['PHY', 'CONS', 'REP']  # PHY: baseline evolution, CONS: constraints + propagation monitors, REP: representation coherence
+SCALES = ['macro', 'step', 'micro']  # macro: window/epoch trends, step: integrator-level, micro: kernel-level
+RESPONSES = ['observe', 'correct', 'rollback']  # observe: compute residuals, correct: apply corrections, rollback: revert
+
 import numpy as np
 
 def dt_thread_phys(alpha, beta, gamma_inv_sym6, dx, C_cfl, rho_target=0.8, dt_selected=0.1):
@@ -132,26 +137,72 @@ class GRPhaseLoomThreads:
         self.C_det = 0.8
         self.eps_H_max = 10 * eps_H_target
         self.eps_M_max = 10 * eps_M_target
+        self.dt_min = 1e-12
+        self.dt_max = 10.0
 
-    def propose_dts(self, eps_H, eps_M, m_det, eps_H_prev, eps_M_prev, m_det_prev, dt_prev, geometry, gauge, dt_selected):
-        """Propose dt limits from each thread"""
-
+    def dt_thread_gr(self, domain, scale, response, eps_H, eps_M, m_det, eps_H_prev, eps_M_prev, m_det_prev, dt_prev, geometry, gauge, dt_selected):
+        """Compute dt proposal for a specific thread in the 27-thread lattice."""
         from .gr_core_fields import inv_sym6, trace_sym6, norm2_sym6
         dx = self.fields.dx
         gamma_inv_sym6 = inv_sym6(self.fields.gamma_sym6)
         K_trace = trace_sym6(self.fields.K_sym6, gamma_inv_sym6)
 
-        proposals = {
-            'phys': dt_thread_phys(self.fields.alpha, self.fields.beta, gamma_inv_sym6, dx, self.C_CFL, self.rho_target, dt_selected),
-            'diff': dt_thread_diffusion(self.mu_H, self.mu_M, dx, self.C_diff, dt_selected),
-            'gauge': dt_thread_gauge(gauge, dt_selected),
-            'curv': dt_thread_curvature(geometry.R if hasattr(geometry, 'R') and geometry.R is not None else None, norm2_sym6(self.fields.K_sym6, gamma_inv_sym6), self.C_curv, dt_selected),
-            'cons': dt_thread_constraints(eps_H, eps_M, eps_H_prev, eps_M_prev, dt_prev, self.eps_H_max, self.eps_M_max, self.C_cons, dt_selected),
-            'det': dt_thread_determinant(m_det, m_det_prev, dt_prev, self.m_det_min, self.C_det, dt_selected),
-            'io': {'dt': 10.0, 'ratio': 0.0, 'margin': 1.0, 'dominant_metric': 'io', 'metrics': {}}
+        # Base proposal per domain
+        if domain == 'PHY':
+            base_proposal = dt_thread_phys(self.fields.alpha, self.fields.beta, gamma_inv_sym6, dx, self.C_CFL, self.rho_target, dt_selected)
+        elif domain == 'CONS':
+            base_proposal = dt_thread_constraints(eps_H, eps_M, eps_H_prev, eps_M_prev, dt_prev, self.eps_H_max, self.eps_M_max, self.C_cons, dt_selected)
+        elif domain == 'REP':
+            base_proposal = dt_thread_diffusion(self.mu_H, self.mu_M, dx, self.C_diff, dt_selected)
+
+        # Adjust for scale and response
+        scale_factors = {'macro': 2.0, 'step': 1.0, 'micro': 0.5}
+        response_factors = {'observe': 1.0, 'correct': 0.8, 'rollback': 0.1}
+        adjusted_dt = base_proposal['dt'] * scale_factors[scale] * response_factors[response]
+
+        # Recompute ratio and margin
+        ratio = dt_selected / adjusted_dt if adjusted_dt > 0 and np.isfinite(adjusted_dt) else 0.0
+        margin = 1.0 - ratio
+
+        return {
+            'dt': adjusted_dt,
+            'ratio': ratio,
+            'margin': margin,
+            'dominant_metric': f"{domain}_{scale}_{response}",
+            'metrics': base_proposal['metrics'],
+            'active': True
         }
 
+    def propose_dts(self, eps_H, eps_M, m_det, eps_H_prev, eps_M_prev, m_det_prev, dt_prev, geometry, gauge, dt_selected):
+        """Propose dt limits from each of the 27 threads in the PhaseLoom lattice"""
+
+        proposals = {}
+        for domain in DOMAINS:
+            for scale in SCALES:
+                for response in RESPONSES:
+                    key = f"{domain}_{scale}_{response}"
+                    proposals[key] = self.dt_thread_gr(domain, scale, response, eps_H, eps_M, m_det, eps_H_prev, eps_M_prev, m_det_prev, dt_prev, geometry, gauge, dt_selected)
+
         return proposals
+
+    def arbitrate_dt(self, proposals):
+        """Arbitrate dt following dominant clock law with tie-break on thread_id."""
+        valid_candidates = {k: v for k, v in proposals.items() if v.get('active', False) and np.isfinite(v['dt']) and v['dt'] > 0}
+        if not valid_candidates:
+            return np.inf, None, []
+
+        min_dt = min(v['dt'] for v in valid_candidates.values())
+        dominant_clocks = [k for k, v in valid_candidates.items() if v['dt'] == min_dt]
+
+        # Tie-break lexicographic on thread_id
+        dominant_thread = sorted(dominant_clocks)[0]
+
+        dt_arbitrated = valid_candidates[dominant_thread]['dt']
+
+        # Enforce dt bounds
+        dt_arbitrated = np.clip(dt_arbitrated, self.dt_min, self.dt_max)
+
+        return dt_arbitrated, dominant_thread, dominant_clocks
 
 def compute_omega_current(fields, prev_K=None, prev_gamma=None, spectral_cache=None):
     """Compute spectral activity omega_current from combined field changes using FFT, binned into 3x3x3 k-space bins."""

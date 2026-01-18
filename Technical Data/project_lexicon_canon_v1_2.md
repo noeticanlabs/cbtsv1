@@ -210,4 +210,85 @@ v2.0 — Only if axioms change
 
 ---
 
-**End of Project Lexicon Canon v1.2 — Full Formalization**
+## GR Solver System Extensions (v1.2.1)
+
+### PhaseLoom
+
+**Name:** PhaseLoom  
+**Namespace:** GR_solver.phaseloom  
+**Layer:** L4 (Runtime & Infrastructure)  
+**Type:** Control system  
+**Formal definition:** A multi-threaded control system for monitoring PDE residuals, arbitrating time steps, and enforcing stability constraints in relativistic simulations.  
+**Operational meaning:** PhaseLoom computes residual threads (physical, gauge, constraint), arbitrates dt based on dominant thread, and applies corrective rails/gates to prevent divergence.  
+**Failure mode:** Divergent evolution, unphysical states, constraint violations.  
+**Artifacts generated:** Residual logs, gate classifications, coherence receipts.
+
+### Coherence
+
+**Name:** Coherence  
+**Namespace:** GR_solver.coherence  
+**Layer:** L2 (Control & Time Geometry)  
+**Type:** Invariant metric  
+**Formal definition:** Measure of spectral stability in PDE evolution, defined as C_o = <ω_o> / σ(ω_o) where ω_o are spectral rates at octave o.  
+**Operational meaning:** Coherence drops indicate loss of IR stability; monitored via PhaseLoom threads to trigger corrective actions.  
+**Failure mode:** Coherence drop below threshold leads to rollback or rail enforcement.  
+**Artifacts generated:** Coherence band reports, tail danger spikes.
+
+### Aeonic Memory
+
+**Name:** Aeonic Memory  
+**Namespace:** GR_solver.aeonic_memory  
+**Layer:** L4 (Runtime & Infrastructure)  
+**Type:** Persistent state contract  
+**Formal definition:** Contract-based memory system enforcing audit trails and policy consistency across simulation epochs.  
+**Operational meaning:** Maintains receipts for solver steps, enforces honesty checks, and provides rollback capability for failed attempts.  
+**Failure mode:** Memory corruption, audit loss, irreversible state divergence.  
+**Artifacts generated:** Aeonic receipts, policy hashes, rollback logs.
+
+### Rails/Gates
+
+**Name:** Rails/Gates  
+**Namespace:** GR_solver.rails_gates  
+**Layer:** L4 (Runtime & Infrastructure)  
+**Type:** Constraint enforcement  
+**Formal definition:** Hard boundaries on admissible field values (e.g., det(γ) > 0, eigenvalues bounded) applied post-step to enforce physicality.  
+**Operational meaning:** Gates check for violations; rails compute margins and apply repairs (e.g., SPD clamping) when gates fail.  
+**Failure mode:** Gate violation halts evolution; repeated failures indicate solver instability.  
+**Artifacts generated:** Rail margins, violation receipts, repair logs.
+
+### UFE Evolution
+
+**Name:** Universal Field Equation Evolution  
+**Namespace:** GR_solver.UFE  
+**Layer:** L1 (Mathematics / Field Theory)  
+**Type:** Evolution operator  
+**Formal definition:** Ψ̇ = B(Ψ) + λ K(Ψ), where B is baseline dynamics, K is coherence correction.  
+**Operational meaning:** All PDE evolutions embed in UFE form; λ controls damping/stability tradeoffs.  
+**Failure mode:** Non-embedding evolution, divergence under λ=0.  
+**Artifacts generated:** λ diagnostics, baseline/coherence residuals.
+
+### BSSN Decomposition
+
+**Name:** BSSN Decomposition  
+**Namespace:** GR_solver.BSSN  
+**Layer:** L1 (Mathematics / Field Theory)  
+**Type:** Variable transformation  
+**Formal definition:** γ_ij = e^{4φ} γ̃_ij, A_ij = K_ij - (1/3) γ_ij K, with evolved variables φ, γ̃_ij, A_ij, Γ̃^i.  
+**Operational meaning:** Improves numerical stability for long-term GR simulations by controlling metric determinant and curvature terms.  
+**Failure mode:** Determinant collapse, exponential blowup in φ.  
+**Artifacts generated:** Conformal factor logs, determinant monitors.
+
+### Constraint Damping
+
+**Name:** Constraint Damping  
+**Namespace:** GR_solver.damping  
+**Layer:** L2 (Control & Time Geometry)  
+**Type:** Stabilization technique  
+**Formal definition:** Evolution of auxiliary fields Z, Z_i to damp constraint violations: ∂t Z = -κ α H, ∂t Z_i = -κ α M_i.  
+**Operational meaning:** Adds damping terms to evolution equations to reduce H and M residuals over time.  
+**Failure mode:** Over-damping leads to frozen evolution; under-damping allows violation growth.  
+**Artifacts generated:** Damping rates, constraint residual histories.
+
+---
+
+**End of Project Lexicon Canon v1.2.1 — GR Solver Extensions**

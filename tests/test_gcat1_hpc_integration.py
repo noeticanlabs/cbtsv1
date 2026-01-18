@@ -2,7 +2,8 @@
 # Tests for correctness under fused kernels, mixed precision, multi-rate, loom downsampling
 
 import sys
-sys.path.append('.')
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
 from gr_solver.gr_solver import GRSolver
 
@@ -31,12 +32,16 @@ def test_spectral_cache_correctness():
     kx = np.fft.fftfreq(8)
     ky = np.fft.fftfreq(8)
     kz = np.fft.rfftfreq(8)
-    kx_bins = np.linspace(kx.min(), kx.max(), 4)
-    ky_bins = np.linspace(ky.min(), ky.max(), 4)
-    kz_bins = np.linspace(kz.min(), kz.max(), 4)
-    kx_bin_old = np.digitize(kx, kx_bins) - 1
-    ky_bin_old = np.digitize(ky, ky_bins) - 1
-    kz_bin_old = np.digitize(kz, kz_bins) - 1
+    # Use logspace binning to match cache
+    def _digitize_bins(k_arr, n_bins):
+        k_min, k_max = k_arr.min(), k_arr.max()
+        bins = np.logspace(np.log10(max(abs(k_min), 1e-10)), np.log10(k_max), n_bins + 1)
+        bin_indices = np.digitize(np.abs(k_arr), bins) - 1
+        bin_indices = np.clip(bin_indices, 0, n_bins - 1)
+        return bin_indices
+    kx_bin_old = _digitize_bins(kx, 3)
+    ky_bin_old = _digitize_bins(ky, 3)
+    kz_bin_old = _digitize_bins(kz, 3)
 
     # New way: from cache
     kx_bin_new = cache.kx_bin

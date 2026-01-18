@@ -1,4 +1,7 @@
 import numpy as np
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gr_solver.gr_core_fields import sym6_to_mat33, det_sym6, inv_sym6, SYM6_IDX
 
 def test_sym6_identity():

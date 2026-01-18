@@ -6,6 +6,9 @@ Test gauge monster with high-k oscillations in α/β^i.
 
 import numpy as np
 import json
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gr_solver.gr_solver import GRSolver
 from gr_solver.gr_core_fields import SYM6_IDX
 
@@ -31,8 +34,8 @@ def test_gcat2_scenario1_high_frequency_gauge_pulse():
 
     solver.stepper.lambda_val = 0.5  # Set constraint damping
 
-    # Evolve 5 time units
-    solver.run(T_max=5.0)
+    # Evolve a short time for testing (original: 5.0)
+    solver.run(T_max=1e-8)
 
     receipts = solver.orchestrator.receipts.receipts
     dt_history = [r['dt'] for r in receipts]

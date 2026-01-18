@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "metrics": {
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "inf_gamma": 1.000003345565797,
+    "inf_K": 0.0,
+    "inf_alpha": 1.0,
+    "inf_beta": 0.0,
+    "omega_state_sum": 2.0092443145615345e-12
+  },
+  "diagnosis": "Evolution detected: solver responded to perturbation."
+}

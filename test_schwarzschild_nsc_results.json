@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "N": 32,
+  "L": 10.0,
+  "M": 1.0,
+  "receipts": [
+    {
+      "type": "step",
+      "receipt": {
+        "step_id": "block_entry_inst_0",
+        "trace_digest": "9bfd0355abef68ddd01b4ce17e956ecd976061568b938d5fd61f3733b28b9e8f",
+        "prev": null,
+        "id": "26431449229860d963bcffb4095ccf513b1cd70d36909663008eed71f997be7f"
+      },
+      "module_id": "test_schwarzschild_nsc",
+      "dep_closure_hash": "dummy_hash"
+    },
+    {
+      "type": "step",
+      "receipt": {
+        "step_id": "block_entry_inst_1",
+        "trace_digest": "73872373e5818e56d36c5f553ca7b59f95688d376f2e72adaf0588d27beeb2f6",
+        "prev": "26431449229860d963bcffb4095ccf513b1cd70d36909663008eed71f997be7f",
+        "id": "c6d508fd96a9cd71af9fa5423b5c601b202903d21e3462fcba2013d997010a25"
+      },
+      "module_id": "test_schwarzschild_nsc",
+      "dep_closure_hash": "dummy_hash"
+    },
+    {
+      "type": "summary",
+      "receipt": {
+        "step_id": "summary",
+        "trace_digest": "89cc881ef25593ef84728028c139a9dd7f8365acd03ab7a90ea4f22c7f4f9ecf",
+        "prev": "c6d508fd96a9cd71af9fa5423b5c601b202903d21e3462fcba2013d997010a25",
+        "id": "5e135e3c8a41065239849b7f6b9f87c443c95ccae8825d6df229da77a486145a"
+      },
+      "module_id": "test_schwarzschild_nsc",
+      "dep_closure_hash": "dummy_hash",
+      "result": true
+    }
+  ]
+}

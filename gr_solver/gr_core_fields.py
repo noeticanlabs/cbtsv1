@@ -185,9 +185,11 @@ def symmetry_error(mat: np.ndarray) -> np.ndarray:
     return np.max(np.abs(mat - np.swapaxes(mat, -1, -2)))
 
 class GRCoreFields:
-    def __init__(self, Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0):
+    def __init__(self, Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0, Lambda=0.0):
         self.Nx, self.Ny, self.Nz = Nx, Ny, Nz
         self.dx, self.dy, self.dz = dx, dy, dz
+        # Cosmological constant
+        self.Lambda = Lambda
         # Spatial metric \gamma_{ij}, shape (Nx, Ny, Nz, 6) in sym6 form
         self.gamma_sym6 = np.zeros((Nx, Ny, Nz, 6))
         # Extrinsic curvature K_{ij}, shape (Nx, Ny, Nz, 6) in sym6 form

@@ -1,9 +1,13 @@
 import hashlib
+import numpy as np
+import logging
 from gr_solver.stepper_contract import StepperContract
 from aeonic_memory_contract import AeonicMemoryContract
 from phaseloom_27 import PhaseLoom27
 from receipt_schemas import Kappa, MStepReceipt
 from promotion_engine import PromotionEngine
+
+logger = logging.getLogger('gr_solver.stepper_contract')
 
 class StepperContractWithMemory(StepperContract):
     """Stepper contract integrated with Aeonic Memory and PhaseLoom."""
@@ -76,16 +80,39 @@ class StepperContractWithMemory(StepperContract):
         # Placeholder
         pass
 
-    def honesty_check(self, pre_resid, post_resid, rails, eps_H, eps_M, geometry, fields):
-        """Check for rail violations or residual increases. Return violation string or None."""
-        # Check residual increase
-        if post_resid > pre_resid:
-            return f"Residual increased: {pre_resid:.2e} -> {post_resid:.2e}"
+    def honesty_ok(self, pre_resid, post_resid, rails, eps_H, eps_M, geometry, fields):
+        """Check for rail violations or residual increases with noise-floor awareness. Return True if ok, False if not."""
+        # Noise-floor-aware honesty check
+        scale = 1.0  # Could be adjusted based on problem scale
+        rel_slack = 1e-4
+        ulp_slack = 256
+        abs_floor = 1e-7
+        eps = np.finfo(np.float64).eps
+        floor = max(abs_floor, ulp_slack * eps * max(1.0, scale))
+
+        # If in noise basement, allow
+        if pre_resid <= floor and post_resid <= floor:
+            return True
+        elif post_resid > pre_resid * (1.0 + rel_slack) + floor:
+            # Violation: compute delta and rel for logging
+            delta_residual = post_resid - pre_resid
+            rel_delta = delta_residual / max(pre_resid, floor) if max(pre_resid, floor) > 0 else float('inf')
+            logger.warning("Residual increased", extra={
+                "extra_data": {
+                    "pre_resid": pre_resid,
+                    "post_resid": post_resid,
+                    "delta_residual": delta_residual,
+                    "rel_delta": rel_delta
+                }
+            })
+            return False
+
         # Check rails
         violation = rails.check_gates(eps_H, eps_M, geometry, fields)
         if violation:
-            return violation
-        return None
+            logger.warning("Rail violation", extra={"extra_data": {"violation": violation}})
+            return False
+        return True
 
     def attempt_receipt(self, X_n, t_n, dt_attempted, attempt_number):
         """Placeholder implementation for abstract method."""

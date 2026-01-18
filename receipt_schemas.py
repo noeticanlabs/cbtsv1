@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 import numpy as np
+import hashlib
+import json
 
 class SEMFailure(Exception):
     """SEM hard failure - immediate abort."""
@@ -145,3 +147,70 @@ class MOrchReceipt:
             for scale, val in scales.items():
                 if scale is None or not np.isfinite(val):
                     raise SEMFailure(f"quantiles {domain}.{scale} must be finite, got {val}")
+
+@dataclass
+class GRStepReceipt:
+    """Receipt for GR/NR solver steps."""
+    module_id: str
+    dep_closure_hash: str
+    compiler: str
+    target: str  # "loc-gr-nr"
+    step_id: int
+    tau_n: int
+    dt: float
+    stage_count: int
+    retry_count: int
+    thread_id: str  # e.g., "PHY.step.act"
+    eps_H: float
+    eps_M: float
+    R: float
+    H: float
+    dH: float
+    state_hash_before: str
+    state_hash_after: str
+    policy_hash: str
+    prev: Optional[str]  # hash chain
+    id: str  # hash of this receipt
+
+    def __post_init__(self):
+        if not self.module_id:
+            raise ValueError("module_id cannot be empty")
+        if not self.dep_closure_hash:
+            raise ValueError("dep_closure_hash cannot be empty")
+        if not self.compiler:
+            raise ValueError("compiler cannot be empty")
+        if self.target != "loc-gr-nr":
+            raise ValueError(f"target must be 'loc-gr-nr', got {self.target}")
+        if self.step_id < 0:
+            raise ValueError(f"step_id must be non-negative, got {self.step_id}")
+        if self.tau_n < 0:
+            raise ValueError(f"tau_n must be non-negative, got {self.tau_n}")
+        if self.dt <= 0 or not np.isfinite(self.dt):
+            raise ValueError(f"dt must be positive finite, got {self.dt}")
+        if self.stage_count < 0:
+            raise ValueError(f"stage_count must be non-negative, got {self.stage_count}")
+        if self.retry_count < 0:
+            raise ValueError(f"retry_count must be non-negative, got {self.retry_count}")
+        if not self.thread_id:
+            raise ValueError("thread_id cannot be empty")
+        # Physics values must be finite
+        for name, val in [("eps_H", self.eps_H), ("eps_M", self.eps_M), ("R", self.R), ("H", self.H), ("dH", self.dH)]:
+            if not np.isfinite(val):
+                raise ValueError(f"{name} must be finite, got {val}")
+        if not self.state_hash_before:
+            raise ValueError("state_hash_before cannot be empty")
+        if not self.state_hash_after:
+            raise ValueError("state_hash_after cannot be empty")
+        if not self.policy_hash:
+            raise ValueError("policy_hash cannot be empty")
+        if not self.id:
+            raise ValueError("id cannot be empty")
+
+    @classmethod
+    def create(cls, **kwargs):
+        # Compute id if not provided
+        if 'id' not in kwargs:
+            receipt_data = {k: v for k, v in kwargs.items() if k != 'id'}
+            canonical = json.dumps(receipt_data, sort_keys=True, separators=(',', ':'))
+            kwargs['id'] = hashlib.sha256(canonical.encode()).hexdigest()
+        return cls(**kwargs)

@@ -1,5 +1,7 @@
 import numpy as np
+import time
 from typing import Dict, Any, Tuple, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from aeonic_memory_contract import SEMFailure
 
 class PhaseLoom27:
@@ -9,7 +11,8 @@ class PhaseLoom27:
     SCALES = ['L', 'M', 'H']
     RESPONSES = ['FAST', 'MID', 'SLOW']
 
-    def __init__(self):
+    def __init__(self, num_workers: int = None):
+        self.num_workers = num_workers or min(8, len(self.DOMAINS) * len(self.SCALES))  # Default to number of domains * scales, max 8
         # Thread storage: (domain, scale, response) -> thread state
         self.threads = {}
         for d in self.DOMAINS:
@@ -39,39 +42,61 @@ class PhaseLoom27:
         else:  # SLOW
             return [{'type': 'regime_change'}]
 
+    def _compute_phy_residual(self, scale: str, state: Any) -> float:
+        """Compute PHY residual for a given scale."""
+        if scale == 'L':
+            return np.abs(state.alpha).mean()
+        elif scale == 'M':
+            return np.abs(np.gradient(state.alpha)).mean()
+        else:  # H
+            return np.abs(state.alpha).max()
+
+    def _compute_cons_residual(self, scale: str, geometry: Any) -> float:
+        """Compute CONS residual for a given scale."""
+        if hasattr(geometry, 'compute_constraint_proxy'):
+            cons_val = geometry.compute_constraint_proxy(scale)
+            return abs(cons_val)
+        else:
+            return 0.0
+
+    def _compute_sem_residual(self, state: Any, geometry: Any) -> float:
+        """Compute SEM residual (same for all scales)."""
+        sem_ok = True
+        if hasattr(state, 'alpha') and np.any(state.alpha <= 0):
+            sem_ok = False
+        if hasattr(geometry, 'det_gamma') and np.any(geometry.det_gamma <= 0):
+            sem_ok = False
+        return 0.0 if sem_ok else float('inf')
+
     def compute_residuals(self, state: Any, geometry: Any, gauge: Any) -> Dict[Tuple[str, str], float]:
         """Compute proxy residuals at μ (solve clock). SEM checks prereqs."""
+        start_time = time.time()
         residuals = {}
 
-        # PHY residuals (proxy)
-        for scale in self.SCALES:
-            if scale == 'L':
-                # Large-scale: energy in low modes
-                residuals[('PHY', 'L')] = np.abs(state.alpha).mean()  # Placeholder using alpha
-            elif scale == 'M':
-                # Transfer band: gradients
-                residuals[('PHY', 'M')] = np.abs(np.gradient(state.alpha)).mean()
-            else:  # H
-                # High freq: dissipation proxy
-                residuals[('PHY', 'H')] = np.abs(state.alpha).max()
+        # Parallelize residual computations
+        with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            # Submit PHY tasks
+            phy_futures = {executor.submit(self._compute_phy_residual, scale, state): ('PHY', scale) for scale in self.SCALES}
+            # Submit CONS tasks
+            cons_futures = {executor.submit(self._compute_cons_residual, scale, geometry): ('CONS', scale) for scale in self.SCALES}
+            # Submit SEM task (only one, since same for all scales)
+            sem_future = executor.submit(self._compute_sem_residual, state, geometry)
 
-        # CONS residuals (proxy)
-        for scale in self.SCALES:
-            if hasattr(geometry, 'constraints'):
-                cons_val = geometry.compute_constraint_proxy(scale)
-                residuals[('CONS', scale)] = abs(cons_val)
-            else:
-                residuals[('CONS', scale)] = 0.0
+            # Collect results
+            for future in as_completed(phy_futures.keys()):
+                key = phy_futures[future]
+                residuals[key] = future.result()
 
-        # SEM residuals (hard barriers)
-        for scale in self.SCALES:
-            sem_ok = True
-            if hasattr(state, 'alpha') and np.any(state.alpha <= 0):
-                sem_ok = False
-            if hasattr(geometry, 'det_gamma') and np.any(geometry.det_gamma <= 0):
-                sem_ok = False
-            residuals[('SEM', scale)] = 0.0 if sem_ok else float('inf')
+            for future in as_completed(cons_futures.keys()):
+                key = cons_futures[future]
+                residuals[key] = future.result()
 
+            sem_val = sem_future.result()
+            for scale in self.SCALES:
+                residuals[('SEM', scale)] = sem_val
+
+        elapsed = time.time() - start_time
+        print(f"PhaseLoom27 residual computation time: {elapsed:.4f}s with {self.num_workers} workers")
         return residuals
 
     def arbitrate_dt(self, residuals: Dict[Tuple[str, str], float]) -> Tuple[float, Tuple[str, str, str]]:

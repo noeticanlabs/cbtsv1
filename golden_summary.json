@@ -1,0 +1,20 @@
+{
+  "run_type": "golden",
+  "description": "Reproducible bit-for-bit PhaseLoom GR/NR stack run",
+  "steps": 10,
+  "grid": {"Nx": 16, "Ny": 16, "Nz": 16},
+  "dt": 1e-6,
+  "module_id": "nllc_gr_poc",
+  "dep_closure_hash": "poc_hash",
+  "compiler": "nllc_poc",
+  "target": "loc-gr-nr",
+  "final_eps_H": 3.445155768011336e-15,
+  "final_eps_M": 6.998953192623486e-20,
+  "final_R": 7.216434553981224e-16,
+  "receipt_chain_head": "140231194ff5eed9acc739cf10d9d0a2504dc3f6349c4a17f86e5fb539df1b06",
+  "reproducibility": {
+    "deterministic": true,
+    "bit_for_bit": true,
+    "single_thread": true
+  }
+}

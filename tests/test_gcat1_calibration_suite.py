@@ -1,6 +1,9 @@
 import numpy as np
 import logging
 import copy
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gr_solver.gr_solver import GRSolver
 from dataclasses import dataclass
 from typing import Callable, Dict, Any, Tuple, List

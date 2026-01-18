@@ -1,0 +1,97 @@
+// GCAT 0.5 Lie Detector Tests in NLLC
+// Implements the 5 tests: CWT, PDT, RTIT, GST, SOT
+// Assumes GR backend provides necessary functions; if not, extensions needed.
+
+fn test_cwt() {
+  // Constraint Wake-Up Test
+  call gr_init_minkowski();
+  // Apply tiny spatially structured Hamiltonian violation to K_sym6
+  // Note: Hypothetical function; GR solver backend may need gr_apply_perturbation
+  call gr_apply_perturbation("hamiltonian_violation", {"amplitude": 1e-6, "pattern": "sinusoidal_xy"});
+  let constraints_init = call gr_compute_constraints();
+  let eps_H_init = constraints_init["eps_H"];
+  call gr_step(1e-3);
+  let constraints_final = call gr_compute_constraints();
+  let eps_H_final = constraints_final["eps_H"];
+  // Expect eps_H to increase
+  return eps_H_final > eps_H_init;
+}
+
+fn test_pdt() {
+  // Propagation Direction Test
+  call gr_init_minkowski();
+  // Inject compact constraint bump at center
+  call gr_apply_perturbation("compact_bump", {"amplitude": 1e-8, "location": "center", "component": "K_xx"});
+  let peak_init = call gr_get_peak_position_H();
+  let distance_init = call gr_distance_to_center(peak_init);
+  let step = 0;
+  while step < 3 {
+    call gr_step(1e-3);
+    step = step + 1;
+  }
+  let peak_final = call gr_get_peak_position_H();
+  let distance_final = call gr_distance_to_center(peak_final);
+  // Expect outward propagation (distance increases or stays ~same)
+  return distance_final >= distance_init - 1;  // Allow small numerical error
+}
+
+fn test_rtit() {
+  // Reverse Time Invariance Test
+  call gr_init_minkowski();
+  let state = call gr_save_state();
+  call gr_step(0.01);
+  let eps_H_forward = call gr_compute_constraints()["eps_H"];
+  call gr_restore_state(state);
+  call gr_set_time_direction(-1);
+  call gr_step(0.01);
+  call gr_set_time_direction(1);
+  let eps_H_backward = call gr_compute_constraints()["eps_H"];
+  // Expect residuals same order; ratio < 10
+  let ratio = if eps_H_forward > eps_H_backward { eps_H_forward / eps_H_backward } else { eps_H_backward / eps_H_forward };
+  return ratio < 10;
+}
+
+fn test_gst() {
+  // Gauge Scramble Test
+  call gr_init_minkowski();
+  let invariant_init = call gr_get_geometry_invariant();  // e.g., trace of gamma
+  // Apply gauge change: scale lapse, add to shift
+  call gr_apply_gauge_change({"lapse_scale": 1.1, "shift_add_x": 0.1});
+  call gr_step(1e-3);
+  let invariant_final = call gr_get_geometry_invariant();
+  let change = abs(invariant_final / invariant_init - 1);
+  // Expect invariant unchanged (<1%)
+  return change < 0.01;
+}
+
+fn test_sot() {
+  // Spectral Octaves Test
+  call gr_init_minkowski();
+  // Inject energy in single octave (low freq)
+  call gr_inject_spectral_energy({"octave": 0, "amplitude": 1e-6});
+  let step = 0;
+  while step < 3 {
+    call gr_step(1e-3);
+    step = step + 1;
+  }
+  let spectral_data = call gr_get_spectral_data();  // D_band array
+  let active_bands = call count_nonzero_bands(spectral_data, 1e-12);
+  // Expect limited leakage (<=3 bands)
+  return active_bands <= 3;
+}
+
+fn main() {
+  let results = {};
+  results["CWT"] = call test_cwt();
+  results["PDT"] = call test_pdt();
+  results["RTIT"] = call test_rtit();
+  results["GST"] = call test_gst();
+  results["SOT"] = call test_sot();
+  call print("GCAT 0.5 Test Results:", results);
+  let all_pass = results["CWT"] and results["PDT"] and results["RTIT"] and results["GST"] and results["SOT"];
+  if all_pass {
+    call print("Verdict: Solver appears honest");
+  } else {
+    call print("Verdict: Solver is lying (shows signs of fakery)");
+  }
+}
