@@ -194,6 +194,8 @@ class GRCoreFields:
         self.gamma_sym6 = np.zeros((Nx, Ny, Nz, 6))
         # Extrinsic curvature K_{ij}, shape (Nx, Ny, Nz, 6) in sym6 form
         self.K_sym6 = np.zeros((Nx, Ny, Nz, 6))
+        # Trace of extrinsic curvature K
+        self.K_trace = np.zeros((Nx, Ny, Nz))
         # Lapse \alpha
         self.alpha = np.ones((Nx, Ny, Nz))
         # Shift \beta^i, vector
@@ -223,6 +225,7 @@ class GRCoreFields:
         self.gamma_sym6[..., SYM6_IDX["zz"]] = 1.0
         # K_sym6 all zero
         self.K_sym6.fill(0.0)
+        self.K_trace.fill(0.0)
         self.alpha.fill(1.0)
         self.beta.fill(0.0)
         # Initialize active constraint fields
@@ -252,6 +255,7 @@ class GRCoreFields:
         # K = trace K
         gamma_inv = inv_sym6(self.gamma_sym6)
         K_trace = trace_sym6(self.K_sym6, gamma_inv)
+        self.K_trace = K_trace
 
         # A_ij = K_ij - (1/3) γ_ij trK
         A_full = np.zeros((self.Nx, self.Ny, self.Nz, 3, 3))
@@ -271,14 +275,12 @@ class GRCoreFields:
         self.A_sym6 = mat33_to_sym6(A_full)
 
     def bssn_recompose(self):
-        """Recompose ADM fields from BSSN variables: γ_ij = e^{4φ} γ̃_ij, K_ij = A_ij + (1/3) γ_ij K"""
+        """Recompose ADM fields from BSSN variables: γ_ij = e^{4φ} γ̃_ij, K_ij = e^{4φ} (A_ij + (1/3) γ̃_ij K)"""
         psi4 = np.exp(4 * self.phi)
         psi4_expanded = psi4[..., np.newaxis]
         self.gamma_sym6 = psi4_expanded * self.gamma_tilde_sym6
 
-        # For K, need to compute K_trace from A and phi evolution, but for now assume it's done in stepper
-        # This method assumes gamma_tilde and A are set, recomposes gamma
-        # K recomposition needs K_trace, which comes from phi evolution
-        pass
+        # K_ij = e^{4χ} (A_ij + (1/3) γ̃_ij K_trace)
+        self.K_sym6 = psi4_expanded * (self.A_sym6 + (1.0/3.0) * self.gamma_tilde_sym6 * self.K_trace[..., np.newaxis])
 
     # Other methods as needed

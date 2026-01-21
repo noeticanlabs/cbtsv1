@@ -1,0 +1,63 @@
+{
+  "ir_hash": "02be07c1d1df2d341cc314a4f153d14b61b2d157e46933969f8e2becca4d056b",
+  "module": "minkowski_rhs.v0_1",
+  "op": {
+    "bc": "periodic",
+    "dim": 3,
+    "effects": {
+      "read": [
+        "S_PHY"
+      ],
+      "write": [
+        "S_PHY"
+      ]
+    },
+    "expr": {
+      "fields": "fields",
+      "kind": "gr_rhs_bundle",
+      "lambda_val": "lambda_val",
+      "out": "rhs_bundle",
+      "sources_enabled": "sources_enabled"
+    },
+    "in": {
+      "compartment": "S_PHY",
+      "name": "fields",
+      "struct": {
+        "A_sym6": "field<f64",
+        "Gamma_tilde": "field<f64",
+        "K_sym6": "field<f64",
+        "Z": "field<f64",
+        "Z_i": "field<f64",
+        "alpha": "field<f64",
+        "beta": "field<f64",
+        "dx": "f64",
+        "dy": "f64",
+        "dz": "f64",
+        "gamma_sym6": "field<f64",
+        "gamma_tilde_sym6": "field<f64",
+        "phi": "field<f64"
+      }
+    },
+    "lane": "PHY.micro.act",
+    "name": "minkowski_rhs_bundle",
+    "out": {
+      "compartment": "S_PHY",
+      "name": "rhs_bundle",
+      "struct": {
+        "rhs_A_sym6": "field<f64",
+        "rhs_Gamma_tilde": "field<f64",
+        "rhs_K_sym6": "field<f64",
+        "rhs_Z": "field<f64",
+        "rhs_Z_i": "field<f64",
+        "rhs_gamma_sym6": "field<f64",
+        "rhs_gamma_tilde_sym6": "field<f64",
+        "rhs_phi": "field<f64"
+      }
+    },
+    "params": {
+      "lambda_val": 0.0,
+      "sources_enabled": false
+    }
+  },
+  "schema": "nsc_ir_v0.1"
+}

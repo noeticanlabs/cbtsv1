@@ -1,0 +1,110 @@
+{
+  "initialization": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "det_gamma_min": 0.999993585998148
+  },
+  "memory_operations": {
+    "passed": true
+  },
+  "single_step": {
+    "passed": true,
+    "dt": 0.1,
+    "dominant_thread": "PHY_H_R2",
+    "rail_violation": null,
+    "step": 0,
+    "t": 0.0
+  },
+  "multi_step_evolution": {
+    "passed": true,
+    "num_steps": 10,
+    "eps_H_history": [
+      0.00011687771786149728,
+      0.00011687771786149728,
+      0.00011687771786149728,
+      0.00011687771786149728,
+      0.00011687771786149728,
+      0.00011687771786149728,
+      0.00011687771786149728,
+      0.00011687771786149728,
+      0.00011687771786149728,
+      0.00011687771786149728
+    ],
+    "eps_M_history": [
+      0.00032239415888043554,
+      0.00032239415888043554,
+      0.00032239415888043554,
+      0.00032239415888043554,
+      0.00032239415888043554,
+      0.00032239415888043554,
+      0.00032239415888043554,
+      0.00032239415888043554,
+      0.00032239415888043554,
+      0.00032239415888043554
+    ],
+    "dominant_threads": [
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2"
+    ],
+    "stage_eps_H_history": [],
+    "final_eps_H": 0.00011687771786149728,
+    "final_eps_M": 0.00032239415888043554
+  },
+  "rails_gates": {
+    "passed": true,
+    "gate_violation": null,
+    "margins": {
+      "eps_H": 0.5560726548612633,
+      "eps_M": 0.0,
+      "R": 4.550546214456754e-11,
+      "det": 0.20000128280859833,
+      "alpha": 1e-08,
+      "lambda": 1.0000055996540247e-08,
+      "kappa": 1.0000086234264887e-12
+    },
+    "sem_ok": true,
+    "sem_reason": "ok"
+  },
+  "phaseloom_threads": {
+    "passed": true,
+    "num_residuals": 9,
+    "dt_min": 9.990009991007993e-05,
+    "dominant_thread": [
+      "PHY",
+      "H",
+      "R0"
+    ]
+  },
+  "constraints_geometry": {
+    "passed": true,
+    "eps_H": 5.560726548612634e-05,
+    "eps_M": 0.0,
+    "R": 7.872364225165463e-05
+  },
+  "summary": {
+    "overall_passed": true,
+    "tests_passed": 7,
+    "total_tests": 7,
+    "grid": "16x16x16",
+    "L": 4.0,
+    "dx": 0.25,
+    "N": 16,
+    "dt_target": 0.0025,
+    "dt_commit": 5.7546540485701164e-08,
+    "dt_ratio": 43443.09803681745,
+    "n_substeps": 1737724,
+    "substep_cap_hit": true,
+    "eps_H_gate": 1e-10,
+    "eps_H_factor": 556072.6548612633,
+    "dominance_note": "CONS dominates: eps_H high; dt lowered; projection applied"
+  }
+}

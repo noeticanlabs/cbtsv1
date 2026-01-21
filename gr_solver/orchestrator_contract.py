@@ -31,6 +31,8 @@ class OrchestratorContract(ABC):
         - Sufficient accepted history is required for verification
         - Claims include thresholds and margins (e.g., "PASS because residual < residual_threshold - margin")
         - Regime labels: 'stable', 'constraint-risk', 'semantic-risk', 'perf-risk'
+    - Claims include thresholds and margins (e.g., "PASS because residual < residual_threshold - margin")
+    - Quarantine actions for risk regimes
         - Issue promotions if stable, quarantines if risk detected
 
         Args:

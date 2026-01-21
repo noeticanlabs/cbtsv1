@@ -27,6 +27,10 @@ class StrType(Type):
 class ArrayType(Type):
     element_type: Type
 
+@dataclass
+class ObjectType(Type):
+    pass
+
 # Trace information
 @dataclass
 class Trace:
@@ -71,11 +75,13 @@ class LoadInst(Instruction):
 @dataclass
 class StoreInst(Instruction):
     ptr: Value
+    index: Optional[Value]
     value: Value
 
 @dataclass
 class AllocInst(Instruction):
-    result: Value  # pointer to array or something
+    result: Value
+    ty: Type
 
 @dataclass
 class GetElementInst(Instruction):

@@ -85,7 +85,10 @@ class GRPolicy:
     """Hard-typed policy parameters for GR/NR integration."""
     H_max: float
     M_max: float
-    R_min: float
+    alpha_floor: float
+    lambda_floor: float
+    kappa_max: float
+    R_max: float
     dt_min: float
     dt_max: float
     retry_max: int
@@ -97,7 +100,10 @@ class GRPolicy:
         return cls(
             H_max=1e-8,
             M_max=1e-8,
-            R_min=-1e10,
+            alpha_floor=1e-8,
+            lambda_floor=1e-8,
+            kappa_max=1e12,
+            R_max=1e6,
             dt_min=1e-8,
             dt_max=1e-4,
             retry_max=5,
@@ -125,6 +131,9 @@ def pde_hash(pde: PDETemplate) -> str:
     import dataclasses
     return hashlib.sha256(canonical_json(dataclasses.asdict(pde)).encode('utf-8')).hexdigest()
 
+def ir_hash(ir: dict) -> str:
+    return hashlib.sha256(canonical_json(ir).encode('utf-8')).hexdigest()
+
 def policy_hash(policy: GRPolicy) -> str:
     import dataclasses
     return hashlib.sha256(canonical_json(dataclasses.asdict(policy)).encode('utf-8')).hexdigest()
@@ -132,24 +141,24 @@ def policy_hash(policy: GRPolicy) -> str:
 def opcode_table_hash() -> str:
     return hashlib.sha256(canonical_json(GLYPH_TO_OPCODE).encode('utf-8')).hexdigest()
 
-def compute_module_id(source: str, prog: Program, bytecode: Bytecode, pde: PDETemplate, policy: GRPolicy) -> str:
+def compute_module_id(source: str, prog: Program, ir: dict, pde: PDETemplate, policy: GRPolicy) -> str:
     sh = compute_source_hash(source)
     ah = ast_hash(prog)
-    bh = bytecode_hash(bytecode)
+    ih = ir_hash(ir)
     ph = pde_hash(pde)
     pyh = policy_hash(policy)
     oh = opcode_table_hash()
-    return f"{sh}-{ah}-{bh}-{ph}-{pyh}-{oh}"
+    return f"{sh}-{ah}-{ih}-{ph}-{pyh}-{oh}"
 
 def compute_module_manifest(source: str) -> dict:
     import dataclasses
-    prog, flattened, bytecode, pde, policy = nsc_to_pde(source)
-    module_id = compute_module_id(source, prog, bytecode, pde, policy)
+    prog, ir, pde, policy = nsc_to_ir(source)
+    module_id = compute_module_id(source, prog, ir, pde, policy)
     return {
         'module_id': module_id,
         'source_hash': compute_source_hash(source),
         'ast_hash': ast_hash(prog),
-        'bytecode_hash': bytecode_hash(bytecode),
+        'ir_hash': ir_hash(ir),
         'pde_hash': pde_hash(pde),
         'policy_hash': policy_hash(policy),
         'opcode_table_hash': opcode_table_hash(),
@@ -162,7 +171,7 @@ def tokenize(nsc: str) -> list[str]:
     if normalized != nsc:
         raise nsc_diag.NSCError(nsc_diag.E_NONCANONICAL_UNICODE, "Non-canonical Unicode")
     # Pattern to match operators and identifiers/numbers
-    pattern = r'(\+|\-|\*|/|∂|∇²|∇|=|\(|\)|\[|\]|φ|⊕|↻|∆|◯|⊖|⇒|□|ℋ|𝓜|𝔊|𝔇|𝔅|𝔄|𝔯|𝕋|\w+|\d+\.?\d*)'
+    pattern = r'(\+|\-|\*|/|∂|∇²|∇|=|\(|\)|\[|\]|\{|\}|φ|⊕|↻|∆|◯|⊖|⇒|□|ℋ|𝓜|𝔊|𝔇|𝔅|𝔄|𝔯|𝕋|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|\w+)'
     tokens = re.findall(pattern, normalized)
     tokens = [t for t in tokens if t.strip()]  # remove empty
     if not tokens:
@@ -171,10 +180,130 @@ def tokenize(nsc: str) -> list[str]:
     for i, t in enumerate(tokens):
         if t == 'import':
             tokens[i] = 'KW_IMPORT'
-        elif re.match(r'[A-Za-z_][A-Za-z0-9_]*', t):
-            tokens[i] = 'IDENT'
+        elif t in GLYPH_TO_OPCODE:
+            continue
+        # elif re.match(r'[A-Za-z_][A-Za-z0-9_]*', t):
+        #     tokens[i] = 'IDENT'
         # else keep as is (operators, numbers, glyphs)
     return tokens
+
+def parse_structured_nsc(nsc: str) -> dict:
+    # Extract module
+    module_match = re.search(r'nsc\.module\s+([^;]+);', nsc)
+    module = module_match.group(1).strip() if module_match else 'default'
+
+    # Extract op name
+    op_match = re.search(r'op\s+(\w+)\s*\{', nsc)
+    op_name = op_match.group(1) if op_match else 'op'
+
+    # Extract lane
+    lane_match = re.search(r'lane:\s*([^;]+);', nsc)
+    lane = lane_match.group(1).strip() if lane_match else 'PHY.micro.act'
+
+    # Extract effects
+    effects_match = re.search(r'effects:\s*read\[([^\]]+)\],\s*write\[([^\]]+)\];', nsc)
+    effects = {'read': [effects_match.group(1).strip()] if effects_match else ['S_PHY'], 'write': [effects_match.group(2).strip()] if effects_match else ['S_PHY']}
+
+    # bc
+    bc_match = re.search(r'bc:\s*([^;]+);', nsc)
+    bc = bc_match.group(1).strip() if bc_match else 'periodic'
+
+    # dim
+    dim_match = re.search(r'dim:\s*(\d+);', nsc)
+    dim = int(dim_match.group(1)) if dim_match else 3
+
+    # in
+    in_match = re.search(r'in\s+(\w+)\s*:\s*struct\s*\{([^}]+)\}\s*@(\w+);', nsc)
+    in_struct = {}
+    in_name = 'fields'
+    in_compartment = 'S_PHY'
+    if in_match:
+        in_name = in_match.group(1)
+        in_compartment = in_match.group(3)
+        fields = in_match.group(2)
+        for field in fields.split(','):
+            field = field.strip()
+            if ':' in field:
+                name, typ = field.split(':', 1)
+                typ = typ.strip()
+                if 'field<' in typ:
+                    typ = typ.split(',')[0]
+                in_struct[name.strip()] = typ
+
+    # out
+    out_match = re.search(r'out\s+(\w+)\s*:\s*struct\s*\{([^}]+)\}\s*@(\w+);', nsc)
+    out_struct = {}
+    out_name = 'rhs_bundle'
+    out_compartment = 'S_PHY'
+    if out_match:
+        out_name = out_match.group(1)
+        out_compartment = out_match.group(3)
+        fields = out_match.group(2)
+        for field in fields.split(','):
+            field = field.strip()
+            if ':' in field:
+                name, typ = field.split(':', 1)
+                typ = typ.strip()
+                if 'field<' in typ:
+                    typ = typ.split(',')[0]
+                out_struct[name.strip()] = typ
+
+    # params
+    params = {}
+    param_matches = re.findall(r'param\s+(\w+)\s*:\s*(\w+)\s*=\s*([^;]+);', nsc)
+    for name, typ, value in param_matches:
+        val = value.strip()
+        if val.lower() == 'true':
+            params[name.strip()] = True
+        elif val.lower() == 'false':
+            params[name.strip()] = False
+        else:
+            try:
+                params[name.strip()] = eval(val)
+            except:
+                params[name.strip()] = val
+
+    # expr
+    expr_match = re.search(r'(\w+)\s*=\s*compute_gr_rhs\(([^)]+)\);', nsc)
+    expr = {}
+    if expr_match:
+        out = expr_match.group(1)
+        args = expr_match.group(2)
+        arg_list = [a.strip() for a in args.split(',')]
+        expr = {
+            'kind': 'gr_rhs_bundle',
+            'fields': arg_list[0] if len(arg_list) > 0 else 'fields',
+            'lambda_val': arg_list[1] if len(arg_list) > 1 else 'lambda_val',
+            'out': out,
+            'sources_enabled': arg_list[2] if len(arg_list) > 2 else 'sources_enabled'
+        }
+
+    # build op
+    op = {
+        'bc': bc,
+        'dim': dim,
+        'effects': effects,
+        'expr': expr,
+        'in': {
+            'compartment': in_compartment,
+            'name': in_name,
+            'struct': in_struct
+        },
+        'lane': lane,
+        'name': op_name,
+        'out': {
+            'compartment': out_compartment,
+            'name': out_name,
+            'struct': out_struct
+        },
+        'params': params
+    }
+
+    return {
+        'module': module,
+        'op': op,
+        'schema': 'nsc_ir_v0.1'
+    }
 
 def compile_to_bytecode(flat: list[FlatGlyph], file_path: str = None) -> Bytecode:
     code = []
@@ -185,7 +314,7 @@ def compile_to_bytecode(flat: list[FlatGlyph], file_path: str = None) -> Bytecod
             opcode = 7
         elif glyph in GLYPH_TO_OPCODE:
             opcode = GLYPH_TO_OPCODE[glyph]
-        elif glyph.isalnum() or ('.' in glyph and glyph.replace('.', '').isdigit()):
+        elif glyph.isalnum() or glyph.replace('e', '').replace('E', '').replace('-', '').replace('+', '').replace('.', '').isdigit():
             opcode = glyph
         else:
             raise nsc_diag.NSCError(nsc_diag.E_UNKNOWN_GLYPH, f"Unknown glyph: {glyph} at {fg.span.start}-{fg.span.end}")
@@ -304,14 +433,80 @@ def flatten_with_trace(prog: Program) -> list[FlatGlyph]:
                 result.extend(flatten_phrase(sentence.rhs, f"sentences.{i}.rhs"))
     return result
 
-def nsc_to_pde(nsc: str) -> Tuple[Program, list[str], Bytecode, PDETemplate, GRPolicy]:
-    tokens = tokenize(nsc)
-    prog = parse_program(tokens)
-    flat = flatten_with_trace(prog)
-    bytecode = compile_to_bytecode(flat)
-    pde = assemble_pde(bytecode)
-    policy = GRPolicy.default()  # For now, use default; in future, parse from NSC
-    return prog, [fg.glyph for fg in flat], bytecode, pde, policy
+def parse_policy(prog: Program) -> GRPolicy:
+    policy_dict = {}
+    for sentence in prog.sentences:
+        if sentence.arrow or sentence.rhs is not None:
+            continue  # Skip non-policy sentences
+        lhs = sentence.lhs
+        if len(lhs.items) == 3:
+            if isinstance(lhs.items[0], Atom) and lhs.items[0].value.replace('_', '').isalnum() and not lhs.items[0].value[0].isdigit():
+                if isinstance(lhs.items[1], Atom) and lhs.items[1].value == '=':
+                    if isinstance(lhs.items[2], Atom) and lhs.items[2].value.replace('.', '').replace('e', '').replace('-', '').replace('+', '').isdigit():
+                        key = lhs.items[0].value
+                        # Map glyphs to policy keys
+                        glyph_to_key = {
+                            'ℋ': 'H_max',
+                            '𝓜': 'M_max',
+                            '𝔊': 'R_max',
+                            '𝔄': 'alpha_floor',
+                            '𝔏': 'lambda_floor',
+                            '𝔎': 'kappa_max'
+                        }
+                        key = glyph_to_key.get(key, key)
+                        value = float(lhs.items[2].value)
+                        policy_dict[key] = value
+    # Map to GRPolicy, use defaults if not specified
+    return GRPolicy(
+        H_max=policy_dict.get('H_max', 1e-8),
+        M_max=policy_dict.get('M_max', 1e-8),
+        alpha_floor=policy_dict.get('alpha_floor', 1e-8),
+        lambda_floor=policy_dict.get('lambda_floor', 1e-8),
+        kappa_max=policy_dict.get('kappa_max', 1e12),
+        R_max=policy_dict.get('R_max', 1e6),
+        dt_min=policy_dict.get('dt_min', 1e-8),
+        dt_max=policy_dict.get('dt_max', 1e-4),
+        retry_max=int(policy_dict.get('retry_max', 5)),
+        dissip_level=int(policy_dict.get('dissip_level', 1))
+    )
+
+def nsc_to_ir(nsc: str) -> Tuple[Program, dict, PDETemplate, GRPolicy]:
+    if 'nsc.module' in nsc:
+        ir = parse_structured_nsc(nsc)
+        tokens = tokenize(nsc)
+        prog = parse_program(tokens)
+        pde = PDETemplate({}, 'none')
+        policy = parse_policy(prog)
+    else:
+        tokens = tokenize(nsc)
+        prog = parse_program(tokens)
+        flat = flatten_with_trace(prog)
+        bytecode = compile_to_bytecode(flat)
+        pde = assemble_pde(bytecode)
+        policy = parse_policy(prog)
+        # Build IR from PDE for glyph-based
+        ir = {
+            'module': 'glyph_pde',
+            'op': {
+                'name': 'pde',
+                'expr': {'kind': 'pde_terms', 'terms': pde.terms},
+                'lane': 'default',
+                'effects': {'read': ['S_PHY'], 'write': ['S_PHY']},
+                'bc': pde.boundary if pde.boundary != 'none' else 'periodic',
+                'dim': 3,
+                'in': {},
+                'out': {},
+                'params': {}
+            },
+            'schema': 'nsc_ir_v0.1'
+        }
+    ir_hash_val = ir_hash(ir)
+    ir['ir_hash'] = ir_hash_val
+    return prog, ir, pde, policy
+
+def export_ir(ir: dict, path: str) -> None:
+    with open(path, 'w') as f:
+        json.dump(ir, f, indent=2)
 
 def create_bundle(src: str, out_path: str) -> None:
     if not os.path.isdir(src):

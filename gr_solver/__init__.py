@@ -4,3 +4,6 @@
 from stepper_contract_memory import StepperContractWithMemory
 from orchestrator_contract_memory import OrchestratorContractWithMemory
 from solver_contract_memory import SolverContractWithMemory
+
+# Main solver class
+from .gr_solver import GRSolver

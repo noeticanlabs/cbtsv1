@@ -44,6 +44,11 @@ class GRHostAPI:
             'alpha': self.fields.alpha.copy(),
             'beta': self.fields.beta.copy(),
             'phi': self.fields.phi.copy(),
+            'gamma_tilde_sym6': self.fields.gamma_tilde_sym6.copy(),
+            'A_sym6': self.fields.A_sym6.copy(),
+            'Gamma_tilde': self.fields.Gamma_tilde.copy(),
+            'Z': self.fields.Z.copy(),
+            'Z_i': self.fields.Z_i.copy(),
             't': self.orchestrator.t,
             'step': self.orchestrator.step,
             'eps_H_prev': self.orchestrator.eps_H_prev,
@@ -64,6 +69,11 @@ class GRHostAPI:
         self.fields.alpha[:] = state_data['alpha']
         self.fields.beta[:] = state_data['beta']
         self.fields.phi[:] = state_data['phi']
+        self.fields.gamma_tilde_sym6[:] = state_data['gamma_tilde_sym6']
+        self.fields.A_sym6[:] = state_data['A_sym6']
+        self.fields.Gamma_tilde[:] = state_data['Gamma_tilde']
+        self.fields.Z[:] = state_data['Z']
+        self.fields.Z_i[:] = state_data['Z_i']
         self.orchestrator.t = state_data['t']
         self.orchestrator.step = state_data['step']
         self.orchestrator.eps_H_prev = state_data['eps_H_prev']
@@ -136,7 +146,13 @@ class GRHostAPI:
             self.stepper.dissipation_level = max(self.stepper.dissipation_level, level)
         else:
             # Fallback: apply to gauge or fields
-            pass  # Placeholder for actual dissipation logic
+            # Simple numerical dissipation: apply slight exponential decay to damp high frequencies
+            decay_factor = 1.0 - level * 0.001
+            self.fields.gamma_sym6 *= decay_factor
+            self.fields.K_sym6 *= decay_factor
+            self.fields.alpha *= decay_factor
+            self.fields.beta *= decay_factor
+            self.fields.phi *= decay_factor
         logger.debug(f"Dissipation applied at level {level}")
 
     def accept_step(self) -> None:

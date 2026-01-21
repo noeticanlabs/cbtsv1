@@ -10,6 +10,7 @@ from typing import Dict, List, Any, Optional, Tuple, Callable
 import json
 import hashlib
 import threading
+import copy
 from dataclasses import dataclass
 from aeonic_memory_contract import AeonicMemoryContract
 from aeonic_memory_bank import AeonicMemoryBank
@@ -110,7 +111,11 @@ class AML:
         """Begin a transaction for commit/rollback."""
         transaction = {
             'tag': tag,
-            'state': {},
+            'state': {
+                'tiers': copy.deepcopy(self.memory_bank.tiers),
+                'attempt_counter': self.memory_contract.attempt_counter,
+                'step_counter': self.memory_contract.step_counter
+            },
             'receipts': []
         }
         self.transaction_stack.append(transaction)
@@ -138,8 +143,10 @@ class AML:
             raise SEMFailure("No active transaction to rollback")
 
         transaction = self.transaction_stack.pop()
-        # Restore state if needed (simplified)
-        # In full implementation, would revert memory changes
+        # Restore state to ensure consistent state after rejection
+        self.memory_bank.tiers = copy.deepcopy(transaction['state']['tiers'])
+        self.memory_contract.attempt_counter = transaction['state']['attempt_counter']
+        self.memory_contract.step_counter = transaction['state']['step_counter']
 
     def execute_operation(self, operation_func: Callable, *args, compartment: str, operation: str, kappa: Optional[Kappa] = None, **kwargs):
         """Execute an operation within AML legality layer."""

@@ -19,6 +19,7 @@ try:
 except ImportError:
     jit = lambda f=None, **kwargs: f if f else (lambda g: g)
 from .gr_core_fields import inv_sym6, sym6_to_mat33, mat33_to_sym6
+from gr_geometry_nsc import compute_christoffels_compiled, compute_ricci_compiled, second_covariant_derivative_scalar_compiled, lie_derivative_gamma_compiled, lie_derivative_K_compiled
 
 @jit(nopython=True)
 def _sym6_to_mat33_jit(sym6):
@@ -181,18 +182,17 @@ class GRGeometry:
         self._lie_K_cache.clear()
 
     def compute_christoffels(self):
-        """Compute Christoffel symbols \\Gamma^k_{ij} and Gamma^i using finite differences."""
+        """Compute Christoffel symbols \\Gamma^k_{ij} and Gamma^i using compiled functions."""
         gamma_hash = hash_array(self.fields.gamma_sym6)
         if gamma_hash in self._christoffel_cache:
             self.christoffels, self.Gamma = self._christoffel_cache[gamma_hash]
             self._christoffel_cache.move_to_end(gamma_hash)
             return
 
-        Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
         dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
         gamma = self.fields.gamma_sym6  # (Nx, Ny, Nz, 6)
 
-        self.christoffels, self.Gamma = _compute_christoffels_jit(Nx, Ny, Nz, gamma, dx, dy, dz)
+        self.christoffels, self.Gamma = compute_christoffels_compiled(gamma, dx, dy, dz)
 
         # Cache the result
         self._christoffel_cache[gamma_hash] = (self.christoffels.copy(), self.Gamma.copy())
@@ -200,15 +200,14 @@ class GRGeometry:
             self._christoffel_cache.popitem(last=False)
 
     def compute_ricci_for_metric(self, gamma_sym6, christoffels):
-        """Compute Ricci tensor R_{ij} for a given metric and its Christoffels."""
+        """Compute Ricci tensor R_{ij} for a given metric and its Christoffels using compiled function."""
         combined_hash = hash_array(np.concatenate([gamma_sym6.flatten(), christoffels.flatten()]))
         if combined_hash in self._ricci_for_metric_cache:
             return self._ricci_for_metric_cache[combined_hash]
 
-        Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
         dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
 
-        ricci = _compute_ricci_for_metric_jit(Nx, Ny, Nz, gamma_sym6, christoffels, dx, dy, dz)
+        ricci = compute_ricci_compiled(gamma_sym6, christoffels, dx, dy, dz)
 
         # Cache the result
         self._ricci_for_metric_cache[combined_hash] = ricci.copy()
@@ -233,41 +232,47 @@ class GRGeometry:
         R_tilde = self.compute_ricci_for_metric(gamma_tilde, conformal_christoffels)
 
         # Now, compute the phi terms
-        phi = self.fields.phi
-        if np.max(np.abs(phi)) < 1e-14:
-            # If phi is zero, R_ij = R_tilde_ij
+        chi = self.fields.phi
+        if np.max(np.abs(chi)) < 1e-14:
+            # If chi is zero, R_ij = R_tilde_ij
             self.ricci = R_tilde
         else:
-            # Compute physical Christoffels
-            self.compute_christoffels()
-
             Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
             dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
 
-            # grad_phi
-            grad_phi = np.zeros((Nx, Ny, Nz, 3))
-            grad_phi[..., 0] = np.gradient(phi, dx, axis=0)
-            grad_phi[..., 1] = np.gradient(phi, dy, axis=1)
-            grad_phi[..., 2] = np.gradient(phi, dz, axis=2)
+            # grad_chi
+            grad_chi = np.zeros((Nx, Ny, Nz, 3))
+            # The BSSN formula for R_ij requires conformal covariant derivatives of chi.
+            # For a scalar, the conformal covariant derivative is the same as the partial derivative.
+            grad_chi[..., 0] = np.gradient(chi, dx, axis=0) # \tilde{D}_x \chi = \partial_x \chi
+            grad_chi[..., 1] = np.gradient(chi, dy, axis=1) # \tilde{D}_y \chi = \partial_y \chi
+            grad_chi[..., 2] = np.gradient(chi, dz, axis=2) # \tilde{D}_z \chi = \partial_z \chi
 
-            # DD_phi = D_i D_j phi
-            DD_phi = self.second_covariant_derivative_scalar(phi)
+            # DD_chi = D_i D_j chi
+            # This should be the second *conformal* covariant derivative: \tilde{D}_i \tilde{D}_j \chi
+            DD_chi = self.second_covariant_derivative_scalar(chi, christoffels=conformal_christoffels)
 
-            # Lap_phi = gamma^{ij} D_i D_j phi
-            gamma_inv = inv_sym6(self.fields.gamma_sym6)
-            gamma_inv_full = sym6_to_mat33(gamma_inv)
-            Lap_phi = np.einsum('...ij,...ij', gamma_inv_full, DD_phi)
+            # Lap_chi = gamma^{ij} D_i D_j chi
+            # This should be the conformal Laplacian: \tilde{gamma}^{ij} \tilde{D}_i \tilde{D}_j \chi
+            gamma_tilde_inv = inv_sym6(gamma_tilde)
+            gamma_tilde_inv_full = sym6_to_mat33(gamma_tilde_inv)
+            Lap_chi = np.einsum('...ij,...ij', gamma_tilde_inv_full, DD_chi)
 
-            # D^k phi D_k phi
-            D_phi_D_phi = np.einsum('...ij,...i,...j', gamma_inv_full, grad_phi, grad_phi)
+            # D^k chi D_k chi
+            # This should be with the conformal metric: \tilde{D}^k \chi \tilde{D}_k \chi
+            D_chi_D_chi = np.einsum('...ij,...i,...j', gamma_tilde_inv_full, grad_chi, grad_chi)
 
-            gamma_full = sym6_to_mat33(self.fields.gamma_sym6)
+            # The formula relates R_ij to \tilde{R}_ij. The extra terms involve chi and the conformal metric.
+            # R_ij = \tilde{R}_ij - 2 \tilde{D}_i \tilde{D}_j \chi - 2 \tilde{\gamma}_{ij} \tilde{\Delta}\chi + 4 (\tilde{D}_i\chi)(\tilde{D}_j\chi) - 4 \tilde{\gamma}_{ij} (\tilde{D}_k\chi)(\tilde{D}^k\chi)
+            # where \tilde{\Delta} is the conformal Laplacian.
+            gamma_tilde_full = sym6_to_mat33(gamma_tilde)
 
-            R_phi = -2 * DD_phi - 2 * gamma_full * Lap_phi[..., np.newaxis, np.newaxis] \
-                    + 4 * np.einsum('...i,...j->...ij', grad_phi, grad_phi) \
-                    - 4 * gamma_full * D_phi_D_phi[..., np.newaxis, np.newaxis]
+            R_chi = (-2 * DD_chi
+                     - 2 * gamma_tilde_full * Lap_chi[..., np.newaxis, np.newaxis]
+                     + 4 * np.einsum('...i,...j->...ij', grad_chi, grad_chi)
+                     - 4 * gamma_tilde_full * D_chi_D_chi[..., np.newaxis, np.newaxis])
 
-            self.ricci = R_tilde + R_phi
+            self.ricci = R_tilde + R_chi
 
         # Cache the result
         self._ricci_cache[combined_hash] = self.ricci.copy()
@@ -320,33 +325,24 @@ class GRGeometry:
 
         return D_V
 
-    def second_covariant_derivative_scalar(self, scalar):
-        """Compute D_i D_j scalar = ∂_i ∂_j scalar - Γ^k_{ij} ∂_k scalar"""
-        combined_hash = hash_array(np.concatenate([self.fields.gamma_sym6.flatten(), scalar.flatten()]))
+    def second_covariant_derivative_scalar(self, scalar, christoffels=None):
+        """Compute D_i D_j scalar = ∂_i ∂_j scalar - Γ^k_{ij} ∂_k scalar using compiled function"""
+        if christoffels is None:
+            if not hasattr(self, 'christoffels') or self.christoffels is None:
+                self.compute_christoffels()
+            christoffels_to_use = self.christoffels
+            gamma_hash = hash_array(self.fields.gamma_sym6)
+        else:
+            christoffels_to_use = christoffels
+            # Use a hash of the provided christoffels as a proxy for the metric hash
+            gamma_hash = hash_array(christoffels)
+        combined_hash = gamma_hash + '_' + hash_array(scalar.flatten())
         if combined_hash in self._second_cov_deriv_scalar_cache:
             return self._second_cov_deriv_scalar_cache[combined_hash]
 
-        if not hasattr(self, 'christoffels') or self.christoffels is None:
-            self.compute_christoffels()
-
         dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
-        Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
 
-        # ∂_k scalar
-        grad_scalar = np.zeros((Nx, Ny, Nz, 3))
-        grad_scalar[..., 0] = np.gradient(scalar, dx, axis=0)
-        grad_scalar[..., 1] = np.gradient(scalar, dy, axis=1)
-        grad_scalar[..., 2] = np.gradient(scalar, dz, axis=2)
-
-        # ∂_i ∂_j scalar
-        hess_scalar = np.zeros((Nx, Ny, Nz, 3, 3))
-        for i in range(3):
-            hess_scalar[..., i, 0] = np.gradient(grad_scalar[..., i], dx, axis=0)
-            hess_scalar[..., i, 1] = np.gradient(grad_scalar[..., i], dy, axis=1)
-            hess_scalar[..., i, 2] = np.gradient(grad_scalar[..., i], dz, axis=2)
-
-        # D_i D_j scalar = ∂_i ∂_j scalar - Γ^k_{ij} ∂_k scalar
-        DD_scalar = hess_scalar - np.einsum('...kij,...k->...ij', self.christoffels, grad_scalar)
+        DD_scalar = second_covariant_derivative_scalar_compiled(scalar, christoffels_to_use, dx, dy, dz)
 
         # Cache the result
         self._second_cov_deriv_scalar_cache[combined_hash] = DD_scalar.copy()
@@ -356,37 +352,14 @@ class GRGeometry:
         return DD_scalar
 
     def lie_derivative_gamma(self, gamma_sym6, beta):
-        """Compute Lie derivative L_β γ_ij = β^k ∂_k γ_ij + γ_kj ∂_i β^k + γ_ik ∂_j β^k"""
+        """Compute Lie derivative L_β γ_ij using compiled function"""
         combined_hash = hash_array(np.concatenate([gamma_sym6.flatten(), beta.flatten()]))
         if combined_hash in self._lie_gamma_cache:
             return self._lie_gamma_cache[combined_hash]
 
         dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
-        Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
 
-        # Convert to full tensor
-        gamma_full = sym6_to_mat33(gamma_sym6)
-
-        # ∂_k γ_ij
-        dgamma_dx = np.gradient(gamma_full, dx, axis=0)
-        dgamma_dy = np.gradient(gamma_full, dy, axis=1)
-        dgamma_dz = np.gradient(gamma_full, dz, axis=2)
-        dgamma_d = np.stack([dgamma_dx, dgamma_dy, dgamma_dz], axis=0)  # (3, Nx, Ny, Nz, 3, 3)
-
-        # β^k ∂_k γ_ij
-        lie_term1 = np.einsum('...k,k...ij->...ij', beta, dgamma_d)
-
-        # γ_kj ∂_i β^k + γ_ik ∂_j β^k
-        grad_beta = np.zeros((Nx, Ny, Nz, 3, 3))
-        for k in range(3):
-            grad_beta[..., k, 0] = np.gradient(beta[..., k], dx, axis=0)
-            grad_beta[..., k, 1] = np.gradient(beta[..., k], dy, axis=1)
-            grad_beta[..., k, 2] = np.gradient(beta[..., k], dz, axis=2)
-
-        lie_term2 = np.einsum('...kj,...ki->...ij', gamma_full, grad_beta) + np.einsum('...ik,...kj->...ij', gamma_full, grad_beta)
-
-        lie_gamma_full = lie_term1 + lie_term2
-        lie_gamma_sym6 = mat33_to_sym6(lie_gamma_full)
+        lie_gamma_sym6 = lie_derivative_gamma_compiled(gamma_sym6, beta, dx, dy, dz)
 
         # Cache the result
         self._lie_gamma_cache[combined_hash] = lie_gamma_sym6.copy()
@@ -396,38 +369,14 @@ class GRGeometry:
         return lie_gamma_sym6
 
     def lie_derivative_K(self, K_sym6, beta):
-        """Compute Lie derivative L_β K_ij = β^k ∂_k K_ij + K_kj ∂_i β^k + K_ik ∂_j β^k"""
+        """Compute Lie derivative L_β K_ij using compiled function"""
         combined_hash = hash_array(np.concatenate([K_sym6.flatten(), beta.flatten()]))
         if combined_hash in self._lie_K_cache:
             return self._lie_K_cache[combined_hash]
 
-        # Similar to gamma, but for K_sym6
         dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
-        Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
 
-        # Convert to full tensor
-        K_full = sym6_to_mat33(K_sym6)
-
-        # ∂_k K_ij
-        dK_dx = np.gradient(K_full, dx, axis=0)
-        dK_dy = np.gradient(K_full, dy, axis=1)
-        dK_dz = np.gradient(K_full, dz, axis=2)
-        dK_d = np.stack([dK_dx, dK_dy, dK_dz], axis=0)  # (3, Nx, Ny, Nz, 3, 3)
-
-        # β^k ∂_k K_ij
-        lie_term1 = np.einsum('...k,k...ij->...ij', beta, dK_d)
-
-        # K_kj ∂_i β^k + K_ik ∂_j β^k
-        grad_beta = np.zeros((Nx, Ny, Nz, 3, 3))
-        for k in range(3):
-            grad_beta[..., k, 0] = np.gradient(beta[..., k], dx, axis=0)
-            grad_beta[..., k, 1] = np.gradient(beta[..., k], dy, axis=1)
-            grad_beta[..., k, 2] = np.gradient(beta[..., k], dz, axis=2)
-
-        lie_term2 = np.einsum('...kj,...ki->...ij', K_full, grad_beta) + np.einsum('...ik,...kj->...ij', K_full, grad_beta)
-
-        lie_K_full = lie_term1 + lie_term2
-        lie_K_sym6 = mat33_to_sym6(lie_K_full)
+        lie_K_sym6 = lie_derivative_K_compiled(K_sym6, beta, dx, dy, dz)
 
         # Cache the result
         self._lie_K_cache[combined_hash] = lie_K_sym6.copy()

@@ -214,3 +214,54 @@ class GRStepReceipt:
             canonical = json.dumps(receipt_data, sort_keys=True, separators=(',', ':'))
             kwargs['id'] = hashlib.sha256(canonical.encode()).hexdigest()
         return cls(**kwargs)
+
+
+@dataclass
+class OmegaReceipt:
+    """Unified receipt with hash chaining."""
+    prev: Optional[str]  # Previous receipt id, null for genesis
+    tier: str  # Receipt tier: "msolve", "mstep", "morch", "grstep"
+    record: Dict[str, Any]  # Specific receipt data
+    id: str  # SHA256 hash of {prev, tier, record}
+
+    def __post_init__(self):
+        if not self.tier:
+            raise SEMFailure("tier cannot be empty")
+        if self.id != self.compute_id():
+            raise SEMFailure("id does not match computed hash")
+        # Note: prev can be None for genesis
+
+    @staticmethod
+    def compute_id(prev: Optional[str], tier: str, record: Dict[str, Any]) -> str:
+        """Compute receipt id as sha256(canonical_json({prev, tier, record})).hex"""
+        data = {
+            "prev": prev,
+            "tier": tier,
+            "record": record
+        }
+        canonical = json.dumps(data, sort_keys=True, separators=(',', ':'))
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+    @classmethod
+    def create(cls, prev: Optional[str], tier: str, record: Dict[str, Any]) -> 'OmegaReceipt':
+        """Create OmegaReceipt with computed id."""
+        id_hash = cls.compute_id(prev, tier, record)
+        return cls(prev=prev, tier=tier, record=record, id=id_hash)
+
+
+def validate_receipt_chain(receipts: List[OmegaReceipt]) -> bool:
+    """Validate receipt chain by checking hashes and prev links."""
+    if not receipts:
+        return True
+    # Check first receipt: prev should be None or some genesis
+    # But since prev can be None, and for now, assume the first has prev=None
+    prev_id = None
+    for receipt in receipts:
+        if receipt.prev != prev_id:
+            return False
+        # Verify id matches
+        computed_id = OmegaReceipt.compute_id(receipt.prev, receipt.tier, receipt.record)
+        if receipt.id != computed_id:
+            return False
+        prev_id = receipt.id
+    return True

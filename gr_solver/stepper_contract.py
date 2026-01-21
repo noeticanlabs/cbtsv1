@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Dict
 
 
 class StepperContract(ABC):
@@ -51,6 +51,15 @@ class StepperContract(ABC):
         Emit step receipt only on acceptance.
 
         Advances audit time τ and contributes to immutable history.
+        """
+        pass
+
+    @abstractmethod
+    def check_gates(self, rails_policy) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        Check gates using rails_policy thresholds.
+
+        Returns: (accepted: bool, violation_type: 'dt'|'state'|'sem', details: dict)
         """
         pass
 

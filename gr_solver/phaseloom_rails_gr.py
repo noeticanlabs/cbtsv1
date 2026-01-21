@@ -13,14 +13,29 @@ LEXICON_SYMBOLS = {
 }
 
 import numpy as np
+import json
+from noetica_nsc_phase1 import nsc
 
 class GRPhaseLoomRails:
-    def __init__(self, fields, alpha_floor=1e-8, H_max=1e-4, M_max=1e-4, R_max=1e6, warning_threshold=0.8, lambda_floor=1e-8, kappa_max=1e12):
+    def __init__(self, fields, coupling_policy_path="coupling_policy_v0.1.json", alpha_floor=1e-8, H_max=1e-4, M_max=1e-4, R_max=1e6, warning_threshold=0.8, lambda_floor=1e-8, kappa_max=1e12):
         self.fields = fields
-        self.alpha_floor = alpha_floor
-        self.H_max = H_max
-        self.M_max = M_max
-        self.R_max = R_max
+
+        # Load coupling policy for configurable thresholds
+        with open(coupling_policy_path, 'r') as f:
+            self.policy = json.load(f)
+        self.gate_thresholds = self.policy.get('gate_thresholds', {})
+
+        # Link to NSC glyph policies from gr_gates.py for dynamic gates
+        from .gr_gates import GateChecker
+        # Assuming constraints are passed or available; for now, create a placeholder
+        self.gate_checker = None  # Will need to set this with actual constraints
+
+        # Override defaults with policy if available
+        self.alpha_floor = self.gate_thresholds.get('alpha_floor', alpha_floor)
+        self.H_max = self.gate_thresholds.get('eps_H_max', H_max)
+        self.H_warn = self.gate_thresholds.get('eps_H_warn', 7.5e-5)
+        self.M_max = self.gate_thresholds.get('eps_M_max', M_max)
+        self.R_max = R_max  # Not in policy, keep default
         self.warning_threshold = warning_threshold
         self.lambda_floor = lambda_floor
         self.kappa_max = kappa_max
@@ -84,7 +99,9 @@ class GRPhaseLoomRails:
 
         # Soft gates
         if eps_H > self.H_max:
-            return f"eps_H > H_max ({eps_H:.2e} > {self.H_max:.2e})"
+            return f"fail: eps_H > H_max ({eps_H:.2e} > {self.H_max:.2e})"
+        elif eps_H > self.H_warn:
+            return f"warn: eps_H > H_warn ({eps_H:.2e} > {self.H_warn:.2e})"
         if eps_M > self.M_max:
             return f"eps_M > M_max ({eps_M:.2e} > {self.M_max:.2e})"
 

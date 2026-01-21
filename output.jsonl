@@ -4,3 +4,9 @@
 {"workload": "W1", "mode": "baseline", "param": [16, 0.2], "time": 158.01317949499935, "peak_alloc": 10198934, "correct": true}
 {"workload": "W2", "mode": "aeonic", "param": [32, 0.5], "time": 2513.8588281890006, "peak_alloc": 84930604, "correct": true}
 {"workload": "W2", "mode": "baseline", "param": [32, 0.5], "time": 2688.5080121909996, "peak_alloc": 84923106, "correct": true}
+{"workload": "W0", "mode": "aeonic", "param": [8, 0.1], "time": 0.28834206800092943, "peak_alloc": 992921, "correct": false}
+{"workload": "W0", "mode": "baseline", "param": [8, 0.1], "time": 0.32868626699928427, "peak_alloc": 989924, "correct": false}
+{"workload": "W1", "mode": "aeonic", "param": [16, 0.2], "time": 1.962300512001093, "peak_alloc": 6293340, "correct": false}
+{"workload": "W1", "mode": "baseline", "param": [16, 0.2], "time": 2.0230735129989625, "peak_alloc": 6293340, "correct": false}
+{"workload": "W2", "mode": "aeonic", "param": [32, 0.5], "time": 17.478391434000514, "peak_alloc": 50103209, "correct": false}
+{"workload": "W2", "mode": "baseline", "param": [32, 0.5], "time": 17.722274282001308, "peak_alloc": 50103209, "correct": false}

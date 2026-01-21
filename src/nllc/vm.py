@@ -4,6 +4,7 @@ import dataclasses
 from typing import Dict, List, Any, Optional
 from src.nllc.nir import *
 from src.common.receipt import create_run_receipt
+from gr_solver.gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6, norm2_sym6
 
 class VM:
     def __init__(self, module: Module, module_id: str, dep_closure_hash: str, gr_host_api=None):
@@ -78,10 +79,19 @@ class VM:
 
     def execute_instruction(self, inst: Instruction, env: Dict[str, Any]):
         if isinstance(inst, ConstInst):
-            env[inst.result.name] = inst.value
+            if isinstance(inst.value, list):
+                env[inst.result.name] = [env[name] for name in inst.value]
+            elif isinstance(inst.value, dict):
+                env[inst.result.name] = {k: env[v] for k, v in inst.value.items()}
+            else:
+                env[inst.result.name] = inst.value
         elif isinstance(inst, BinOpInst):
-            left = env[inst.left.name]
-            right = env[inst.right.name]
+            try:
+                left = env[inst.left.name]
+                right = env[inst.right.name]
+            except KeyError as e:
+                print(f"KeyError in BinOpInst: {e}, inst: {inst}, env keys: {list(env.keys())}")
+                raise
             if inst.op == '+':
                 result = left + right
             elif inst.op == '-':
@@ -98,8 +108,14 @@ class VM:
                 result = left < right
             elif inst.op == '>':
                 result = left > right
+            elif inst.op == '<=':
+                result = left <= right
+            elif inst.op == '>=':
+                result = left >= right
             elif inst.op == 'and':
                 result = left and right
+            elif inst.op == 'or':
+                result = left or right
             else:
                 raise NotImplementedError(f"Op {inst.op}")
             env[inst.result.name] = result
@@ -119,10 +135,23 @@ class VM:
             # For now, assume variables are direct
             env[inst.result.name] = env[inst.ptr.name]
         elif isinstance(inst, StoreInst):
-            env[inst.ptr.name] = env[inst.value.name]
+            if inst.index:
+                # array[index] = value
+                array = env[inst.ptr.name]
+                index = env[inst.index.name]
+                value = env[inst.value.name]
+                array[index] = value
+            else:
+                # var = value
+                env[inst.ptr.name] = env[inst.value.name]
         elif isinstance(inst, AllocInst):
-            # For arrays, perhaps list
-            env[inst.result.name] = []
+            if isinstance(inst.ty, ArrayType):
+                env[inst.result.name] = []
+            elif isinstance(inst.ty, ObjectType):
+                env[inst.result.name] = {}
+            else:
+                # Scalars (Int, Float, Bool, Str) initialized to None (or default)
+                env[inst.result.name] = None
         elif isinstance(inst, GetElementInst):
             array = env[inst.array.name]
             index = env[inst.index.name]
@@ -136,34 +165,22 @@ class VM:
             return None
         elif name == 'len':
             return len(args[0])
-        # GR Integration built-ins
-        elif name == 'gr_get_state_hash':
-            return self.gr_host_api.get_state_hash()
-        elif name == 'gr_snapshot':
-            return self.gr_host_api.snapshot()
-        elif name == 'gr_restore':
-            self.gr_host_api.restore(args[0])
-            return None
-        elif name == 'gr_step':
-            self.gr_host_api.step(args[0], args[1])  # dt, stage
-            return None
-        elif name == 'gr_compute_constraints':
-            return self.gr_host_api.compute_constraints()
-        elif name == 'gr_energy_metrics':
-            return self.gr_host_api.energy_metrics()
-        elif name == 'gr_apply_gauge':
-            self.gr_host_api.apply_gauge(args[0])  # dt
-            return None
-        elif name == 'gr_apply_dissipation':
-            self.gr_host_api.apply_dissipation(args[0])  # level
-            return None
-        elif name == 'gr_accept_step':
-            self.gr_host_api.accept_step()
-            return None
-        elif name == 'gr_reject_step':
-            self.gr_host_api.reject_step()
-            return None
-        # Add more as needed
+        elif name == 'inv_sym6':
+            return inv_sym6(*args)
+        elif name == 'trace_sym6':
+            return trace_sym6(*args)
+        elif name == 'sym6_to_mat33':
+            return sym6_to_mat33(*args)
+        elif name == 'mat33_to_sym6':
+            return mat33_to_sym6(*args)
+        elif name == 'det_sym6':
+            return det_sym6(*args)
+        elif name == 'norm2_sym6':
+            return norm2_sym6(*args)
+        # GR Integration built-ins - try dynamic dispatch first
+        if hasattr(self.gr_host_api, name):
+            return getattr(self.gr_host_api, name)(*args)
+        # Fallback to hardcoded if needed
         raise NotImplementedError(f"Builtin {name}")
 
     def create_step_receipt(self, inst: Instruction, step_id: str) -> dict:

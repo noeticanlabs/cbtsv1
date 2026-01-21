@@ -1,0 +1,124 @@
+{
+  "initialization": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "det_gamma_min": 0.9999935504118296
+  },
+  "memory_operations": {
+    "passed": true
+  },
+  "single_step": {
+    "passed": true,
+    "dt": 0.1,
+    "dominant_thread": "PHY_H_R2",
+    "rail_violation": null,
+    "step": 0,
+    "t": 0.0
+  },
+  "multi_step_evolution": {
+    "passed": true,
+    "num_steps": 10,
+    "eps_H_history": [
+      0.0001224606133005514,
+      0.0001224606133005514,
+      0.0001224606133005514,
+      0.0001224606133005514,
+      0.0001224606133005514,
+      0.0001224606133005514,
+      0.0001224606133005514,
+      0.0001224606133005514,
+      0.0001224606133005514,
+      0.0001224606133005514
+    ],
+    "eps_M_history": [
+      0.0003191789863088467,
+      0.0003191789863088467,
+      0.0003191789863088467,
+      0.0003191789863088467,
+      0.0003191789863088467,
+      0.0003191789863088467,
+      0.0003191789863088467,
+      0.0003191789863088467,
+      0.0003191789863088467,
+      0.0003191789863088467
+    ],
+    "dominant_threads": [
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2"
+    ],
+    "t_history": [
+      1e-08,
+      6.292176827425977e-08,
+      1.1584353654851954e-07,
+      1.6876530482277933e-07,
+      2.216870730970391e-07,
+      2.746088413712989e-07,
+      3.2753060964555865e-07,
+      3.804523779198184e-07,
+      4.333741461940782e-07,
+      4.86295914468338e-07
+    ],
+    "stage_eps_H_history": [],
+    "final_eps_H": 0.0001224606133005514,
+    "final_eps_M": 0.0003191789863088467,
+    "final_t": 4.86295914468338e-07
+  },
+  "rails_gates": {
+    "passed": true,
+    "gate_violation": null,
+    "margins": {
+      "eps_H": 0.6046671145870107,
+      "eps_M": 0.0,
+      "R": 6.816099905532837e-11,
+      "det": 0.2000012899259536,
+      "alpha": 1e-08,
+      "lambda": 1.0000060221489968e-08,
+      "kappa": 1.000008851180532e-12
+    },
+    "sem_ok": true,
+    "sem_reason": "ok"
+  },
+  "phaseloom_threads": {
+    "passed": true,
+    "num_residuals": 9,
+    "dt_min": 9.990009991007993e-05,
+    "dominant_thread": [
+      "PHY",
+      "H",
+      "R0"
+    ]
+  },
+  "constraints_geometry": {
+    "passed": true,
+    "eps_H": 6.0466711458701075e-05,
+    "eps_M": 0.0,
+    "R": 0.00011800832449118213
+  },
+  "summary": {
+    "overall_passed": true,
+    "tests_passed": 7,
+    "total_tests": 7,
+    "grid": "16x16x16",
+    "L": 4.0,
+    "dx": 0.25,
+    "N": 16,
+    "dt_target": 0.0025,
+    "dt_commit": 5.2921768274259773e-08,
+    "dt_ratio": 47239.540202891454,
+    "n_substeps": 1889582,
+    "substep_cap_hit": true,
+    "eps_H_gate": 1e-10,
+    "eps_H_factor": 604667.1145870107,
+    "dominance_note": "CONS dominates: eps_H high; dt lowered; projection applied",
+    "final_t": 4.86295914468338e-07
+  }
+}

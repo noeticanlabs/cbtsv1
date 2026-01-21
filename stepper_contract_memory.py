@@ -17,7 +17,16 @@ class StepperContractWithMemory(StepperContract):
         self.memory = memory
         self.phaseloom = phaseloom
         self.default_dt = dt_floor  # For compatibility
-        self.promotion_engine = PromotionEngine(memory)
+        self.promotion_engine = PromotionEngine(self.memory)
+
+        # Adaptive dt governor parameters
+        self.dt_governor = dt_floor
+        self.dt_grow_factor = 1.1
+        self.dt_shrink_factor = 0.7
+        self.success_threshold = 5
+        self.consecutive_successes = 0
+        self.max_dt = 0.1
+        self.min_dt = dt_floor
 
     def step(self, X_n, t_n, dt_candidate, rails_policy, phaseloom_caps):
         # Get last attempt's gate for classification
@@ -71,55 +80,50 @@ class StepperContractWithMemory(StepperContract):
         return hashlib.md5(state_str.encode()).hexdigest()[:8]
 
     def suggest_dt(self, regime_hash):
-        """Suggest dt based on past stats for this regime."""
-        # Placeholder: return default dt
-        return self.dt_floor
+        """Suggest dt based on the governor."""
+        return self.dt_governor
 
     def post_step_update(self, dt, success, pre_resid, post_resid, regime_hash):
-        """Store the step data."""
-        # Placeholder
-        pass
+        """Update the governor based on step success."""
+        if success:
+            self.consecutive_successes += 1
+            if self.consecutive_successes >= self.success_threshold:
+                self.dt_governor = min(self.max_dt, self.dt_governor * self.dt_grow_factor)
+                self.consecutive_successes = 0
+        else:
+            self.consecutive_successes = 0
+            self.dt_governor = max(self.min_dt, self.dt_governor * self.dt_shrink_factor)
 
     def honesty_ok(self, pre_resid, post_resid, rails, eps_H, eps_M, geometry, fields):
-        """Check for rail violations or residual increases with noise-floor awareness. Return True if ok, False if not."""
-        # Noise-floor-aware honesty check
-        scale = 1.0  # Could be adjusted based on problem scale
-        rel_slack = 1e-4
-        ulp_slack = 256
-        abs_floor = 1e-7
-        eps = np.finfo(np.float64).eps
-        floor = max(abs_floor, ulp_slack * eps * max(1.0, scale))
+        """Check for rail violations or residual increases. A residual increase is a soft-fail.
+        Return (accepted, hard_fail, penalty)."""
+        noise_floor_tolerance = 1e-8  # Calibrated tolerance for floating point noise (avoids soft fails from ~2e-9/step numerical accumulation)
 
-        # If in noise basement, allow
-        if pre_resid <= floor and post_resid <= floor:
-            return True
-        elif post_resid > pre_resid * (1.0 + rel_slack) + floor:
-            # Violation: compute delta and rel for logging
-            delta_residual = post_resid - pre_resid
-            rel_delta = delta_residual / max(pre_resid, floor) if max(pre_resid, floor) > 0 else float('inf')
-            logger.warning("Residual increased", extra={
-                "extra_data": {
-                    "pre_resid": pre_resid,
-                    "post_resid": post_resid,
-                    "delta_residual": delta_residual,
-                    "rel_delta": rel_delta
-                }
-            })
-            return False
-
-        # Check rails
+        # First, check for hard rail violations.
         violation = rails.check_gates(eps_H, eps_M, geometry, fields)
         if violation:
-            logger.warning("Rail violation", extra={"extra_data": {"violation": violation}})
-            return False
-        return True
+            logger.warning("Rail violation: hard fail", extra={"extra_data": {"violation": violation}})
+            return False, True, float('inf')
+
+        # Next, check for residual increases (soft fail).
+        if post_resid > pre_resid + noise_floor_tolerance:
+            penalty = (post_resid - pre_resid) * 1e6 # Penalize based on magnitude of increase
+            logger.warning(f"Honesty check soft fail: Residual increased beyond tolerance: {pre_resid} -> {post_resid}")
+            # A residual increase is a soft fail, step is not accepted but can be retried.
+            return False, False, penalty
+
+        # If all checks pass, the step is accepted.
+        return True, False, 0.0
 
     def attempt_receipt(self, X_n, t_n, dt_attempted, attempt_number):
         """Placeholder implementation for abstract method."""
-        # Emit attempt receipt - placeholder
         pass
 
     def step_receipt(self, X_next, t_next, dt_used):
         """Placeholder implementation for abstract method."""
-        # Emit step receipt - placeholder
         pass
+
+    def check_gates(self, rails_policy):
+        """Implement check_gates for memory stepper."""
+        # For now, always pass, as memory doesn't enforce gates
+        return True, '', {}

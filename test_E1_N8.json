@@ -1,0 +1,110 @@
+{
+  "initialization": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "det_gamma_min": 0.999994506309169
+  },
+  "memory_operations": {
+    "passed": true
+  },
+  "single_step": {
+    "passed": true,
+    "dt": 0.1,
+    "dominant_thread": "PHY_H_R2",
+    "rail_violation": null,
+    "step": 1,
+    "t": 0.1
+  },
+  "multi_step_evolution": {
+    "passed": true,
+    "num_steps": 10,
+    "eps_H_history": [
+      3.5204361616374456e-05,
+      4.52692830508871e-05,
+      5.62974839122289e-05,
+      6.78205412865064e-05,
+      7.96237304192555e-05,
+      9.159861390416807e-05,
+      0.00010368546946762783,
+      0.00010368546946762783,
+      0.00010368546946762783,
+      0.00010368546946762783
+    ],
+    "eps_M_history": [
+      0.00010037178392732773,
+      0.00010037178392732773,
+      0.00010037178392732773,
+      0.00010037178392732773,
+      0.00010037178392732773,
+      0.00010037178392732773,
+      0.00010037178392732773,
+      0.00010037178392732773,
+      0.00010037178392732773,
+      0.00010037178392732773
+    ],
+    "dominant_threads": [
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2"
+    ],
+    "stage_eps_H_history": [],
+    "final_eps_H": 0.00010368546946762783,
+    "final_eps_M": 0.00010037178392732773
+  },
+  "rails_gates": {
+    "passed": true,
+    "gate_violation": "warn: eps_H > H_warn (8.37e-05 > 7.50e-05)",
+    "margins": {
+      "eps_H": 0.8368513923929884,
+      "eps_M": 0.46364397681160996,
+      "R": 6.359917593604407e-11,
+      "det": 0.20000106876424797,
+      "alpha": 1.000002113156681e-08,
+      "lambda": 1.0000043911098326e-08,
+      "kappa": 1.0000083150519513e-12
+    },
+    "sem_ok": true,
+    "sem_reason": "ok"
+  },
+  "phaseloom_threads": {
+    "passed": true,
+    "num_residuals": 9,
+    "dt_min": 9.989999976361276e-05,
+    "dominant_thread": [
+      "PHY",
+      "H",
+      "R0"
+    ]
+  },
+  "constraints_geometry": {
+    "passed": true,
+    "eps_H": 8.368513923929885e-05,
+    "eps_M": 4.6364397681161e-05,
+    "R": 6.359917593604407e-05
+  },
+  "summary": {
+    "overall_passed": true,
+    "tests_passed": 7,
+    "total_tests": 7,
+    "grid": "8x8x8",
+    "L": 4.0,
+    "dx": 0.5,
+    "N": 8,
+    "dt_target": 0.005,
+    "dt_commit": 3.823861503860093e-08,
+    "dt_ratio": 130757.87381296694,
+    "n_substeps": 2615158,
+    "substep_cap_hit": true,
+    "eps_H_gate": 1e-10,
+    "eps_H_factor": 836851.3923929884,
+    "dominance_note": "CONS dominates: eps_H high; dt lowered; projection applied"
+  }
+}

@@ -1,0 +1,4076 @@
+{
+  "functions": [
+    {
+      "name": "main",
+      "params": [],
+      "return_ty": {},
+      "blocks": [
+        {
+          "name": "entry",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 222,
+                  "end": 249
+                },
+                "ast_path": "program.statements[0].body[0].expr.args[0]"
+              },
+              "result": {
+                "name": "%0",
+                "ty": {}
+              },
+              "value": "Testing initialization..."
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 211,
+                  "end": 259
+                },
+                "ast_path": "program.statements[0].body[0]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%0",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 274,
+                  "end": 301
+                },
+                "ast_path": "program.statements[0].body[1].expr"
+              },
+              "result": {
+                "name": "%1",
+                "ty": {}
+              },
+              "func": "compute_constraints",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 256,
+                  "end": 309
+                },
+                "ast_path": "program.statements[0].body[1]"
+              },
+              "result": {
+                "name": "%2",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 256,
+                  "end": 309
+                },
+                "ast_path": "program.statements[0].body[1]"
+              },
+              "ptr": {
+                "name": "%2",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%1",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 318,
+                  "end": 329
+                },
+                "ast_path": "program.statements[0].body[2].expr.array"
+              },
+              "result": {
+                "name": "%3",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%2",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 330,
+                  "end": 337
+                },
+                "ast_path": "program.statements[0].body[2].expr.index"
+              },
+              "result": {
+                "name": "%4",
+                "ty": {}
+              },
+              "value": "eps_H"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 318,
+                  "end": 339
+                },
+                "ast_path": "program.statements[0].body[2].expr"
+              },
+              "result": {
+                "name": "%5",
+                "ty": {}
+              },
+              "array": {
+                "name": "%3",
+                "ty": {}
+              },
+              "index": {
+                "name": "%4",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 306,
+                  "end": 347
+                },
+                "ast_path": "program.statements[0].body[2]"
+              },
+              "result": {
+                "name": "%6",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 306,
+                  "end": 347
+                },
+                "ast_path": "program.statements[0].body[2]"
+              },
+              "ptr": {
+                "name": "%6",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%5",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 356,
+                  "end": 367
+                },
+                "ast_path": "program.statements[0].body[3].expr.array"
+              },
+              "result": {
+                "name": "%7",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%2",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 368,
+                  "end": 375
+                },
+                "ast_path": "program.statements[0].body[3].expr.index"
+              },
+              "result": {
+                "name": "%8",
+                "ty": {}
+              },
+              "value": "eps_M"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 356,
+                  "end": 377
+                },
+                "ast_path": "program.statements[0].body[3].expr"
+              },
+              "result": {
+                "name": "%9",
+                "ty": {}
+              },
+              "array": {
+                "name": "%7",
+                "ty": {}
+              },
+              "index": {
+                "name": "%8",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 344,
+                  "end": 385
+                },
+                "ast_path": "program.statements[0].body[3]"
+              },
+              "result": {
+                "name": "%10",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 344,
+                  "end": 385
+                },
+                "ast_path": "program.statements[0].body[3]"
+              },
+              "ptr": {
+                "name": "%10",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%9",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 386,
+                  "end": 391
+                },
+                "ast_path": "program.statements[0].body[4].cond.left.left.left"
+              },
+              "result": {
+                "name": "%11",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%6",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 394,
+                  "end": 398
+                },
+                "ast_path": "program.statements[0].body[4].cond.left.left.right"
+              },
+              "result": {
+                "name": "%12",
+                "ty": {}
+              },
+              "value": 10000000000.0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 386,
+                  "end": 398
+                },
+                "ast_path": "program.statements[0].body[4].cond.left.left"
+              },
+              "result": {
+                "name": "%13",
+                "ty": {}
+              },
+              "left": {
+                "name": "%11",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%12",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 403,
+                  "end": 408
+                },
+                "ast_path": "program.statements[0].body[4].cond.left.right"
+              },
+              "result": {
+                "name": "%14",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%10",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 386,
+                  "end": 408
+                },
+                "ast_path": "program.statements[0].body[4].cond.left"
+              },
+              "result": {
+                "name": "%15",
+                "ty": {}
+              },
+              "left": {
+                "name": "%13",
+                "ty": {}
+              },
+              "op": "and",
+              "right": {
+                "name": "%14",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 411,
+                  "end": 415
+                },
+                "ast_path": "program.statements[0].body[4].cond.right"
+              },
+              "result": {
+                "name": "%16",
+                "ty": {}
+              },
+              "value": 10000000000.0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 386,
+                  "end": 415
+                },
+                "ast_path": "program.statements[0].body[4].cond"
+              },
+              "result": {
+                "name": "%17",
+                "ty": {}
+              },
+              "left": {
+                "name": "%15",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%16",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 383,
+                  "end": 685
+                },
+                "ast_path": "program.statements[0].body[4]"
+              },
+              "cond": {
+                "name": "%17",
+                "ty": {}
+              },
+              "true_block": "bb0",
+              "false_block": "bb1"
+            }
+          ]
+        },
+        {
+          "name": "bb0",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 437,
+                  "end": 469
+                },
+                "ast_path": "program.statements[0].body[4].body[0].expr.args[0]"
+              },
+              "result": {
+                "name": "%18",
+                "ty": {}
+              },
+              "value": "Initialization passed: eps_H ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 471,
+                  "end": 476
+                },
+                "ast_path": "program.statements[0].body[4].body[0].expr.args[1]"
+              },
+              "result": {
+                "name": "%19",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%6",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 478,
+                  "end": 487
+                },
+                "ast_path": "program.statements[0].body[4].body[0].expr.args[2]"
+              },
+              "result": {
+                "name": "%20",
+                "ty": {}
+              },
+              "value": "eps_M ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 489,
+                  "end": 494
+                },
+                "ast_path": "program.statements[0].body[4].body[0].expr.args[3]"
+              },
+              "result": {
+                "name": "%21",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%10",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 426,
+                  "end": 502
+                },
+                "ast_path": "program.statements[0].body[4].body[0]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%18",
+                  "ty": {}
+                },
+                {
+                  "name": "%19",
+                  "ty": {}
+                },
+                {
+                  "name": "%20",
+                  "ty": {}
+                },
+                {
+                  "name": "%21",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 383,
+                  "end": 685
+                },
+                "ast_path": "program.statements[0].body[4].body"
+              },
+              "cond": null,
+              "true_block": "bb2",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb1",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 529,
+                  "end": 561
+                },
+                "ast_path": "program.statements[0].body[4].else_body[0].expr.args[0]"
+              },
+              "result": {
+                "name": "%22",
+                "ty": {}
+              },
+              "value": "Initialization failed: eps_H ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 563,
+                  "end": 568
+                },
+                "ast_path": "program.statements[0].body[4].else_body[0].expr.args[1]"
+              },
+              "result": {
+                "name": "%23",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%6",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 570,
+                  "end": 579
+                },
+                "ast_path": "program.statements[0].body[4].else_body[0].expr.args[2]"
+              },
+              "result": {
+                "name": "%24",
+                "ty": {}
+              },
+              "value": "eps_M ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 581,
+                  "end": 586
+                },
+                "ast_path": "program.statements[0].body[4].else_body[0].expr.args[3]"
+              },
+              "result": {
+                "name": "%25",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%10",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 518,
+                  "end": 603
+                },
+                "ast_path": "program.statements[0].body[4].else_body[0]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%22",
+                  "ty": {}
+                },
+                {
+                  "name": "%23",
+                  "ty": {}
+                },
+                {
+                  "name": "%24",
+                  "ty": {}
+                },
+                {
+                  "name": "%25",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 597,
+                  "end": 610
+                },
+                "ast_path": "program.statements[0].body[4].else_body[1]"
+              },
+              "value": null
+            }
+          ]
+        },
+        {
+          "name": "bb2",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 692,
+                  "end": 722
+                },
+                "ast_path": "program.statements[0].body[5].expr.args[0]"
+              },
+              "result": {
+                "name": "%26",
+                "ty": {}
+              },
+              "value": "Testing memory operations..."
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 681,
+                  "end": 824
+                },
+                "ast_path": "program.statements[0].body[5]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%26",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 831,
+                  "end": 855
+                },
+                "ast_path": "program.statements[0].body[6].expr.args[0]"
+              },
+              "result": {
+                "name": "%27",
+                "ty": {}
+              },
+              "value": "Testing single step..."
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 820,
+                  "end": 865
+                },
+                "ast_path": "program.statements[0].body[6]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%27",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 877,
+                  "end": 893
+                },
+                "ast_path": "program.statements[0].body[7].expr"
+              },
+              "result": {
+                "name": "%28",
+                "ty": {}
+              },
+              "func": "snapshot",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 862,
+                  "end": 901
+                },
+                "ast_path": "program.statements[0].body[7]"
+              },
+              "result": {
+                "name": "%29",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 862,
+                  "end": 901
+                },
+                "ast_path": "program.statements[0].body[7]"
+              },
+              "ptr": {
+                "name": "%29",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%28",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 907,
+                  "end": 911
+                },
+                "ast_path": "program.statements[0].body[8].expr"
+              },
+              "result": {
+                "name": "%30",
+                "ty": {}
+              },
+              "value": 1e-06
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 898,
+                  "end": 921
+                },
+                "ast_path": "program.statements[0].body[8]"
+              },
+              "result": {
+                "name": "%31",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 898,
+                  "end": 921
+                },
+                "ast_path": "program.statements[0].body[8]"
+              },
+              "ptr": {
+                "name": "%31",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%30",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 927,
+                  "end": 929
+                },
+                "ast_path": "program.statements[0].body[9].expr.args[0]"
+              },
+              "result": {
+                "name": "%32",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%31",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 931,
+                  "end": 932
+                },
+                "ast_path": "program.statements[0].body[9].expr.args[1]"
+              },
+              "result": {
+                "name": "%33",
+                "ty": {}
+              },
+              "value": 0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 917,
+                  "end": 943
+                },
+                "ast_path": "program.statements[0].body[9]"
+              },
+              "result": null,
+              "func": "step",
+              "args": [
+                {
+                  "name": "%32",
+                  "ty": {}
+                },
+                {
+                  "name": "%33",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 956,
+                  "end": 958
+                },
+                "ast_path": "program.statements[0].body[10].expr.args[0]"
+              },
+              "result": {
+                "name": "%34",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%31",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 939,
+                  "end": 968
+                },
+                "ast_path": "program.statements[0].body[10]"
+              },
+              "result": null,
+              "func": "apply_gauge",
+              "args": [
+                {
+                  "name": "%34",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 989,
+                  "end": 1016
+                },
+                "ast_path": "program.statements[0].body[11].expr"
+              },
+              "result": {
+                "name": "%35",
+                "ty": {}
+              },
+              "func": "compute_constraints",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 965,
+                  "end": 1024
+                },
+                "ast_path": "program.statements[0].body[11]"
+              },
+              "result": {
+                "name": "%36",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 965,
+                  "end": 1024
+                },
+                "ast_path": "program.statements[0].body[11]"
+              },
+              "ptr": {
+                "name": "%36",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%35",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1039,
+                  "end": 1056
+                },
+                "ast_path": "program.statements[0].body[12].expr.array"
+              },
+              "result": {
+                "name": "%37",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%36",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1057,
+                  "end": 1064
+                },
+                "ast_path": "program.statements[0].body[12].expr.index"
+              },
+              "result": {
+                "name": "%38",
+                "ty": {}
+              },
+              "value": "eps_H"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1039,
+                  "end": 1066
+                },
+                "ast_path": "program.statements[0].body[12].expr"
+              },
+              "result": {
+                "name": "%39",
+                "ty": {}
+              },
+              "array": {
+                "name": "%37",
+                "ty": {}
+              },
+              "index": {
+                "name": "%38",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1021,
+                  "end": 1074
+                },
+                "ast_path": "program.statements[0].body[12]"
+              },
+              "result": {
+                "name": "%40",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1021,
+                  "end": 1074
+                },
+                "ast_path": "program.statements[0].body[12]"
+              },
+              "ptr": {
+                "name": "%40",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%39",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1089,
+                  "end": 1106
+                },
+                "ast_path": "program.statements[0].body[13].expr.array"
+              },
+              "result": {
+                "name": "%41",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%36",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1107,
+                  "end": 1114
+                },
+                "ast_path": "program.statements[0].body[13].expr.index"
+              },
+              "result": {
+                "name": "%42",
+                "ty": {}
+              },
+              "value": "eps_M"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1089,
+                  "end": 1116
+                },
+                "ast_path": "program.statements[0].body[13].expr"
+              },
+              "result": {
+                "name": "%43",
+                "ty": {}
+              },
+              "array": {
+                "name": "%41",
+                "ty": {}
+              },
+              "index": {
+                "name": "%42",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1071,
+                  "end": 1124
+                },
+                "ast_path": "program.statements[0].body[13]"
+              },
+              "result": {
+                "name": "%44",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1071,
+                  "end": 1124
+                },
+                "ast_path": "program.statements[0].body[13]"
+              },
+              "ptr": {
+                "name": "%44",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%43",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1125,
+                  "end": 1136
+                },
+                "ast_path": "program.statements[0].body[14].cond.left.left.left"
+              },
+              "result": {
+                "name": "%45",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%40",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1139,
+                  "end": 1143
+                },
+                "ast_path": "program.statements[0].body[14].cond.left.left.right"
+              },
+              "result": {
+                "name": "%46",
+                "ty": {}
+              },
+              "value": 10000000000.0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1125,
+                  "end": 1143
+                },
+                "ast_path": "program.statements[0].body[14].cond.left.left"
+              },
+              "result": {
+                "name": "%47",
+                "ty": {}
+              },
+              "left": {
+                "name": "%45",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%46",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1148,
+                  "end": 1159
+                },
+                "ast_path": "program.statements[0].body[14].cond.left.right"
+              },
+              "result": {
+                "name": "%48",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%44",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1125,
+                  "end": 1159
+                },
+                "ast_path": "program.statements[0].body[14].cond.left"
+              },
+              "result": {
+                "name": "%49",
+                "ty": {}
+              },
+              "left": {
+                "name": "%47",
+                "ty": {}
+              },
+              "op": "and",
+              "right": {
+                "name": "%48",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1162,
+                  "end": 1166
+                },
+                "ast_path": "program.statements[0].body[14].cond.right"
+              },
+              "result": {
+                "name": "%50",
+                "ty": {}
+              },
+              "value": 10000000000.0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1125,
+                  "end": 1166
+                },
+                "ast_path": "program.statements[0].body[14].cond"
+              },
+              "result": {
+                "name": "%51",
+                "ty": {}
+              },
+              "left": {
+                "name": "%49",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%50",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1122,
+                  "end": 1510
+                },
+                "ast_path": "program.statements[0].body[14]"
+              },
+              "cond": {
+                "name": "%51",
+                "ty": {}
+              },
+              "true_block": "bb3",
+              "false_block": "bb4"
+            }
+          ]
+        },
+        {
+          "name": "bb3",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1177,
+                  "end": 1209
+                },
+                "ast_path": "program.statements[0].body[14].body[0]"
+              },
+              "result": null,
+              "func": "accept_step",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1216,
+                  "end": 1245
+                },
+                "ast_path": "program.statements[0].body[14].body[1].expr.args[0]"
+              },
+              "result": {
+                "name": "%52",
+                "ty": {}
+              },
+              "value": "Single step passed: eps_H ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1247,
+                  "end": 1258
+                },
+                "ast_path": "program.statements[0].body[14].body[1].expr.args[1]"
+              },
+              "result": {
+                "name": "%53",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%40",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1260,
+                  "end": 1269
+                },
+                "ast_path": "program.statements[0].body[14].body[1].expr.args[2]"
+              },
+              "result": {
+                "name": "%54",
+                "ty": {}
+              },
+              "value": "eps_M ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1271,
+                  "end": 1282
+                },
+                "ast_path": "program.statements[0].body[14].body[1].expr.args[3]"
+              },
+              "result": {
+                "name": "%55",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%44",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1205,
+                  "end": 1290
+                },
+                "ast_path": "program.statements[0].body[14].body[1]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%52",
+                  "ty": {}
+                },
+                {
+                  "name": "%53",
+                  "ty": {}
+                },
+                {
+                  "name": "%54",
+                  "ty": {}
+                },
+                {
+                  "name": "%55",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1122,
+                  "end": 1510
+                },
+                "ast_path": "program.statements[0].body[14].body"
+              },
+              "cond": null,
+              "true_block": "bb5",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb4",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1306,
+                  "end": 1338
+                },
+                "ast_path": "program.statements[0].body[14].else_body[0]"
+              },
+              "result": null,
+              "func": "reject_step",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1347,
+                  "end": 1355
+                },
+                "ast_path": "program.statements[0].body[14].else_body[1].expr.args[0]"
+              },
+              "result": {
+                "name": "%56",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%29",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1334,
+                  "end": 1370
+                },
+                "ast_path": "program.statements[0].body[14].else_body[1]"
+              },
+              "result": null,
+              "func": "restore",
+              "args": [
+                {
+                  "name": "%56",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1377,
+                  "end": 1406
+                },
+                "ast_path": "program.statements[0].body[14].else_body[2].expr.args[0]"
+              },
+              "result": {
+                "name": "%57",
+                "ty": {}
+              },
+              "value": "Single step failed: eps_H ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1408,
+                  "end": 1419
+                },
+                "ast_path": "program.statements[0].body[14].else_body[2].expr.args[1]"
+              },
+              "result": {
+                "name": "%58",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%40",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1421,
+                  "end": 1430
+                },
+                "ast_path": "program.statements[0].body[14].else_body[2].expr.args[2]"
+              },
+              "result": {
+                "name": "%59",
+                "ty": {}
+              },
+              "value": "eps_M ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1432,
+                  "end": 1443
+                },
+                "ast_path": "program.statements[0].body[14].else_body[2].expr.args[3]"
+              },
+              "result": {
+                "name": "%60",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%44",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1366,
+                  "end": 1460
+                },
+                "ast_path": "program.statements[0].body[14].else_body[2]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%57",
+                  "ty": {}
+                },
+                {
+                  "name": "%58",
+                  "ty": {}
+                },
+                {
+                  "name": "%59",
+                  "ty": {}
+                },
+                {
+                  "name": "%60",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1454,
+                  "end": 1467
+                },
+                "ast_path": "program.statements[0].body[14].else_body[3]"
+              },
+              "value": null
+            }
+          ]
+        },
+        {
+          "name": "bb5",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1517,
+                  "end": 1550
+                },
+                "ast_path": "program.statements[0].body[15].expr.args[0]"
+              },
+              "result": {
+                "name": "%61",
+                "ty": {}
+              },
+              "value": "Testing multi-step evolution..."
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1506,
+                  "end": 1560
+                },
+                "ast_path": "program.statements[0].body[15]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%61",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1573,
+                  "end": 1575
+                },
+                "ast_path": "program.statements[0].body[16].expr"
+              },
+              "result": {
+                "name": "%62",
+                "ty": {}
+              },
+              "value": 10
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1557,
+                  "end": 1584
+                },
+                "ast_path": "program.statements[0].body[16]"
+              },
+              "result": {
+                "name": "%63",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1557,
+                  "end": 1584
+                },
+                "ast_path": "program.statements[0].body[16]"
+              },
+              "ptr": {
+                "name": "%63",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%62",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1592,
+                  "end": 1593
+                },
+                "ast_path": "program.statements[0].body[17].expr"
+              },
+              "result": {
+                "name": "%64",
+                "ty": {}
+              },
+              "value": 0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1581,
+                  "end": 1602
+                },
+                "ast_path": "program.statements[0].body[17]"
+              },
+              "result": {
+                "name": "%65",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1581,
+                  "end": 1602
+                },
+                "ast_path": "program.statements[0].body[17]"
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%64",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1619,
+                  "end": 1622
+                },
+                "ast_path": "program.statements[0].body[18].expr"
+              },
+              "result": {
+                "name": "%66",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "value": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1599,
+                  "end": 1630
+                },
+                "ast_path": "program.statements[0].body[18]"
+              },
+              "result": {
+                "name": "%67",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "ty": {
+                "element_type": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1599,
+                  "end": 1630
+                },
+                "ast_path": "program.statements[0].body[18]"
+              },
+              "ptr": {
+                "name": "%67",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "index": null,
+              "value": {
+                "name": "%66",
+                "ty": {
+                  "element_type": {}
+                }
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1647,
+                  "end": 1650
+                },
+                "ast_path": "program.statements[0].body[19].expr"
+              },
+              "result": {
+                "name": "%68",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "value": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1627,
+                  "end": 1661
+                },
+                "ast_path": "program.statements[0].body[19]"
+              },
+              "result": {
+                "name": "%69",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "ty": {
+                "element_type": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1627,
+                  "end": 1661
+                },
+                "ast_path": "program.statements[0].body[19]"
+              },
+              "ptr": {
+                "name": "%69",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "index": null,
+              "value": {
+                "name": "%68",
+                "ty": {
+                  "element_type": {}
+                }
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1656,
+                  "end": 2574
+                },
+                "ast_path": "program.statements[0].body[20]"
+              },
+              "cond": null,
+              "true_block": "bb6",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb6",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1662,
+                  "end": 1666
+                },
+                "ast_path": "program.statements[0].body[20].cond.left"
+              },
+              "result": {
+                "name": "%70",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1669,
+                  "end": 1678
+                },
+                "ast_path": "program.statements[0].body[20].cond.right"
+              },
+              "result": {
+                "name": "%71",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%63",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1662,
+                  "end": 1678
+                },
+                "ast_path": "program.statements[0].body[20].cond"
+              },
+              "result": {
+                "name": "%72",
+                "ty": {}
+              },
+              "left": {
+                "name": "%70",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%71",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1656,
+                  "end": 2574
+                },
+                "ast_path": "program.statements[0].body[20].cond"
+              },
+              "cond": {
+                "name": "%72",
+                "ty": {}
+              },
+              "true_block": "bb7",
+              "false_block": "bb8"
+            }
+          ]
+        },
+        {
+          "name": "bb7",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1710,
+                  "end": 1726
+                },
+                "ast_path": "program.statements[0].body[20].body[0].expr"
+              },
+              "result": {
+                "name": "%73",
+                "ty": {}
+              },
+              "func": "snapshot",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1689,
+                  "end": 1738
+                },
+                "ast_path": "program.statements[0].body[20].body[0]"
+              },
+              "result": {
+                "name": "%74",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1689,
+                  "end": 1738
+                },
+                "ast_path": "program.statements[0].body[20].body[0]"
+              },
+              "ptr": {
+                "name": "%74",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%73",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1750,
+                  "end": 1754
+                },
+                "ast_path": "program.statements[0].body[20].body[1].expr"
+              },
+              "result": {
+                "name": "%75",
+                "ty": {}
+              },
+              "value": 1e-06
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1735,
+                  "end": 1768
+                },
+                "ast_path": "program.statements[0].body[20].body[1]"
+              },
+              "result": {
+                "name": "%76",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1735,
+                  "end": 1768
+                },
+                "ast_path": "program.statements[0].body[20].body[1]"
+              },
+              "ptr": {
+                "name": "%76",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%75",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1774,
+                  "end": 1782
+                },
+                "ast_path": "program.statements[0].body[20].body[2].expr.args[0]"
+              },
+              "result": {
+                "name": "%77",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%76",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1784,
+                  "end": 1785
+                },
+                "ast_path": "program.statements[0].body[20].body[2].expr.args[1]"
+              },
+              "result": {
+                "name": "%78",
+                "ty": {}
+              },
+              "value": 0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1764,
+                  "end": 1800
+                },
+                "ast_path": "program.statements[0].body[20].body[2]"
+              },
+              "result": null,
+              "func": "step",
+              "args": [
+                {
+                  "name": "%77",
+                  "ty": {}
+                },
+                {
+                  "name": "%78",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1813,
+                  "end": 1821
+                },
+                "ast_path": "program.statements[0].body[20].body[3].expr.args[0]"
+              },
+              "result": {
+                "name": "%79",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%76",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1796,
+                  "end": 1835
+                },
+                "ast_path": "program.statements[0].body[20].body[3]"
+              },
+              "result": null,
+              "func": "apply_gauge",
+              "args": [
+                {
+                  "name": "%79",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1856,
+                  "end": 1883
+                },
+                "ast_path": "program.statements[0].body[20].body[4].expr"
+              },
+              "result": {
+                "name": "%80",
+                "ty": {}
+              },
+              "func": "compute_constraints",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1832,
+                  "end": 1895
+                },
+                "ast_path": "program.statements[0].body[20].body[4]"
+              },
+              "result": {
+                "name": "%81",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1832,
+                  "end": 1895
+                },
+                "ast_path": "program.statements[0].body[20].body[4]"
+              },
+              "ptr": {
+                "name": "%81",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%80",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1910,
+                  "end": 1927
+                },
+                "ast_path": "program.statements[0].body[20].body[5].expr.array"
+              },
+              "result": {
+                "name": "%82",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%81",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1928,
+                  "end": 1935
+                },
+                "ast_path": "program.statements[0].body[20].body[5].expr.index"
+              },
+              "result": {
+                "name": "%83",
+                "ty": {}
+              },
+              "value": "eps_H"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1910,
+                  "end": 1937
+                },
+                "ast_path": "program.statements[0].body[20].body[5].expr"
+              },
+              "result": {
+                "name": "%84",
+                "ty": {}
+              },
+              "array": {
+                "name": "%82",
+                "ty": {}
+              },
+              "index": {
+                "name": "%83",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1892,
+                  "end": 1949
+                },
+                "ast_path": "program.statements[0].body[20].body[5]"
+              },
+              "result": {
+                "name": "%85",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1892,
+                  "end": 1949
+                },
+                "ast_path": "program.statements[0].body[20].body[5]"
+              },
+              "ptr": {
+                "name": "%85",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%84",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1964,
+                  "end": 1981
+                },
+                "ast_path": "program.statements[0].body[20].body[6].expr.array"
+              },
+              "result": {
+                "name": "%86",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%81",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1982,
+                  "end": 1989
+                },
+                "ast_path": "program.statements[0].body[20].body[6].expr.index"
+              },
+              "result": {
+                "name": "%87",
+                "ty": {}
+              },
+              "value": "eps_M"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1964,
+                  "end": 1991
+                },
+                "ast_path": "program.statements[0].body[20].body[6].expr"
+              },
+              "result": {
+                "name": "%88",
+                "ty": {}
+              },
+              "array": {
+                "name": "%86",
+                "ty": {}
+              },
+              "index": {
+                "name": "%87",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1946,
+                  "end": 2003
+                },
+                "ast_path": "program.statements[0].body[20].body[6]"
+              },
+              "result": {
+                "name": "%89",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1946,
+                  "end": 2003
+                },
+                "ast_path": "program.statements[0].body[20].body[6]"
+              },
+              "ptr": {
+                "name": "%89",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%88",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2004,
+                  "end": 2015
+                },
+                "ast_path": "program.statements[0].body[20].body[7].cond.left.left.left"
+              },
+              "result": {
+                "name": "%90",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%85",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2018,
+                  "end": 2022
+                },
+                "ast_path": "program.statements[0].body[20].body[7].cond.left.left.right"
+              },
+              "result": {
+                "name": "%91",
+                "ty": {}
+              },
+              "value": 10000000000.0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2004,
+                  "end": 2022
+                },
+                "ast_path": "program.statements[0].body[20].body[7].cond.left.left"
+              },
+              "result": {
+                "name": "%92",
+                "ty": {}
+              },
+              "left": {
+                "name": "%90",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%91",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2027,
+                  "end": 2038
+                },
+                "ast_path": "program.statements[0].body[20].body[7].cond.left.right"
+              },
+              "result": {
+                "name": "%93",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%89",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2004,
+                  "end": 2038
+                },
+                "ast_path": "program.statements[0].body[20].body[7].cond.left"
+              },
+              "result": {
+                "name": "%94",
+                "ty": {}
+              },
+              "left": {
+                "name": "%92",
+                "ty": {}
+              },
+              "op": "and",
+              "right": {
+                "name": "%93",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2041,
+                  "end": 2045
+                },
+                "ast_path": "program.statements[0].body[20].body[7].cond.right"
+              },
+              "result": {
+                "name": "%95",
+                "ty": {}
+              },
+              "value": 10000000000.0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2004,
+                  "end": 2045
+                },
+                "ast_path": "program.statements[0].body[20].body[7].cond"
+              },
+              "result": {
+                "name": "%96",
+                "ty": {}
+              },
+              "left": {
+                "name": "%94",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%95",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2001,
+                  "end": 2548
+                },
+                "ast_path": "program.statements[0].body[20].body[7]"
+              },
+              "cond": {
+                "name": "%96",
+                "ty": {}
+              },
+              "true_block": "bb9",
+              "false_block": "bb10"
+            }
+          ]
+        },
+        {
+          "name": "bb9",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2060,
+                  "end": 2105
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[0]"
+              },
+              "result": null,
+              "func": "accept_step",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2108,
+                  "end": 2121
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[1].expr.left"
+              },
+              "result": {
+                "name": "%97",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "ptr": {
+                "name": "%67",
+                "ty": {
+                  "element_type": {}
+                }
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2125,
+                  "end": 2136
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[1].expr.right.elements[0]"
+              },
+              "result": {
+                "name": "%99",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%85",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2124,
+                  "end": 2138
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[1].expr.right"
+              },
+              "result": {
+                "name": "%98",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "value": [
+                "%99"
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2108,
+                  "end": 2138
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[1].expr"
+              },
+              "result": {
+                "name": "%100",
+                "ty": {}
+              },
+              "left": {
+                "name": "%97",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "op": "+",
+              "right": {
+                "name": "%98",
+                "ty": {
+                  "element_type": {}
+                }
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2092,
+                  "end": 2164
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[1]"
+              },
+              "ptr": {
+                "name": "%67",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "index": null,
+              "value": {
+                "name": "%100",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2167,
+                  "end": 2180
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[2].expr.left"
+              },
+              "result": {
+                "name": "%101",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "ptr": {
+                "name": "%69",
+                "ty": {
+                  "element_type": {}
+                }
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2184,
+                  "end": 2195
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[2].expr.right.elements[0]"
+              },
+              "result": {
+                "name": "%103",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%89",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2183,
+                  "end": 2197
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[2].expr.right"
+              },
+              "result": {
+                "name": "%102",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "value": [
+                "%103"
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2167,
+                  "end": 2197
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[2].expr"
+              },
+              "result": {
+                "name": "%104",
+                "ty": {}
+              },
+              "left": {
+                "name": "%101",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "op": "+",
+              "right": {
+                "name": "%102",
+                "ty": {
+                  "element_type": {}
+                }
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2151,
+                  "end": 2214
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[2]"
+              },
+              "ptr": {
+                "name": "%69",
+                "ty": {
+                  "element_type": {}
+                }
+              },
+              "index": null,
+              "value": {
+                "name": "%104",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2221,
+                  "end": 2227
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[3].expr.args[0]"
+              },
+              "result": {
+                "name": "%105",
+                "ty": {}
+              },
+              "value": "Step"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2229,
+                  "end": 2233
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[3].expr.args[1]"
+              },
+              "result": {
+                "name": "%106",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2235,
+                  "end": 2254
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[3].expr.args[2]"
+              },
+              "result": {
+                "name": "%107",
+                "ty": {}
+              },
+              "value": "accepted: eps_H ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2256,
+                  "end": 2267
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[3].expr.args[3]"
+              },
+              "result": {
+                "name": "%108",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%85",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2269,
+                  "end": 2278
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[3].expr.args[4]"
+              },
+              "result": {
+                "name": "%109",
+                "ty": {}
+              },
+              "value": "eps_M ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2280,
+                  "end": 2291
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[3].expr.args[5]"
+              },
+              "result": {
+                "name": "%110",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%89",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2210,
+                  "end": 2303
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body[3]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%105",
+                  "ty": {}
+                },
+                {
+                  "name": "%106",
+                  "ty": {}
+                },
+                {
+                  "name": "%107",
+                  "ty": {}
+                },
+                {
+                  "name": "%108",
+                  "ty": {}
+                },
+                {
+                  "name": "%109",
+                  "ty": {}
+                },
+                {
+                  "name": "%110",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2001,
+                  "end": 2548
+                },
+                "ast_path": "program.statements[0].body[20].body[7].body"
+              },
+              "cond": null,
+              "true_block": "bb11",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb10",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2323,
+                  "end": 2359
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[0]"
+              },
+              "result": null,
+              "func": "reject_step",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2368,
+                  "end": 2382
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[1].expr.args[0]"
+              },
+              "result": {
+                "name": "%111",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%74",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2355,
+                  "end": 2401
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[1]"
+              },
+              "result": null,
+              "func": "restore",
+              "args": [
+                {
+                  "name": "%111",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2408,
+                  "end": 2414
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[2].expr.args[0]"
+              },
+              "result": {
+                "name": "%112",
+                "ty": {}
+              },
+              "value": "Step"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2416,
+                  "end": 2420
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[2].expr.args[1]"
+              },
+              "result": {
+                "name": "%113",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2422,
+                  "end": 2441
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[2].expr.args[2]"
+              },
+              "result": {
+                "name": "%114",
+                "ty": {}
+              },
+              "value": "rejected: eps_H ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2443,
+                  "end": 2454
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[2].expr.args[3]"
+              },
+              "result": {
+                "name": "%115",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%85",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2456,
+                  "end": 2465
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[2].expr.args[4]"
+              },
+              "result": {
+                "name": "%116",
+                "ty": {}
+              },
+              "value": "eps_M ="
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2467,
+                  "end": 2478
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[2].expr.args[5]"
+              },
+              "result": {
+                "name": "%117",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%89",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2397,
+                  "end": 2497
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[2]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%112",
+                  "ty": {}
+                },
+                {
+                  "name": "%113",
+                  "ty": {}
+                },
+                {
+                  "name": "%114",
+                  "ty": {}
+                },
+                {
+                  "name": "%115",
+                  "ty": {}
+                },
+                {
+                  "name": "%116",
+                  "ty": {}
+                },
+                {
+                  "name": "%117",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2500,
+                  "end": 2509
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[3].expr"
+              },
+              "result": {
+                "name": "%118",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%63",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2493,
+                  "end": 2534
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body[3]"
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%118",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2001,
+                  "end": 2548
+                },
+                "ast_path": "program.statements[0].body[20].body[7].else_body"
+              },
+              "cond": null,
+              "true_block": "bb11",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb11",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2551,
+                  "end": 2555
+                },
+                "ast_path": "program.statements[0].body[20].body[8].expr.left"
+              },
+              "result": {
+                "name": "%119",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2558,
+                  "end": 2559
+                },
+                "ast_path": "program.statements[0].body[20].body[8].expr.right"
+              },
+              "result": {
+                "name": "%120",
+                "ty": {}
+              },
+              "value": 1
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2551,
+                  "end": 2559
+                },
+                "ast_path": "program.statements[0].body[20].body[8].expr"
+              },
+              "result": {
+                "name": "%121",
+                "ty": {}
+              },
+              "left": {
+                "name": "%119",
+                "ty": {}
+              },
+              "op": "+",
+              "right": {
+                "name": "%120",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2544,
+                  "end": 2566
+                },
+                "ast_path": "program.statements[0].body[20].body[8]"
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%121",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 1656,
+                  "end": 2574
+                },
+                "ast_path": "program.statements[0].body[20].body"
+              },
+              "cond": null,
+              "true_block": "bb6",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb8",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2575,
+                  "end": 2579
+                },
+                "ast_path": "program.statements[0].body[21].cond.left"
+              },
+              "result": {
+                "name": "%122",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2583,
+                  "end": 2592
+                },
+                "ast_path": "program.statements[0].body[21].cond.right"
+              },
+              "result": {
+                "name": "%123",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%63",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2575,
+                  "end": 2592
+                },
+                "ast_path": "program.statements[0].body[21].cond"
+              },
+              "result": {
+                "name": "%124",
+                "ty": {}
+              },
+              "left": {
+                "name": "%122",
+                "ty": {}
+              },
+              "op": "==",
+              "right": {
+                "name": "%123",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2572,
+                  "end": 2820
+                },
+                "ast_path": "program.statements[0].body[21]"
+              },
+              "cond": {
+                "name": "%124",
+                "ty": {}
+              },
+              "true_block": "bb12",
+              "false_block": "bb13"
+            }
+          ]
+        },
+        {
+          "name": "bb12",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2614,
+                  "end": 2654
+                },
+                "ast_path": "program.statements[0].body[21].body[0].expr.args[0]"
+              },
+              "result": {
+                "name": "%125",
+                "ty": {}
+              },
+              "value": "Multi-step evolution passed: completed"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2656,
+                  "end": 2665
+                },
+                "ast_path": "program.statements[0].body[21].body[0].expr.args[1]"
+              },
+              "result": {
+                "name": "%126",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%63",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2667,
+                  "end": 2674
+                },
+                "ast_path": "program.statements[0].body[21].body[0].expr.args[2]"
+              },
+              "result": {
+                "name": "%127",
+                "ty": {}
+              },
+              "value": "steps"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2603,
+                  "end": 2682
+                },
+                "ast_path": "program.statements[0].body[21].body[0]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%125",
+                  "ty": {}
+                },
+                {
+                  "name": "%126",
+                  "ty": {}
+                },
+                {
+                  "name": "%127",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2572,
+                  "end": 2820
+                },
+                "ast_path": "program.statements[0].body[21].body"
+              },
+              "cond": null,
+              "true_block": "bb14",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb13",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2709,
+                  "end": 2746
+                },
+                "ast_path": "program.statements[0].body[21].else_body[0].expr.args[0]"
+              },
+              "result": {
+                "name": "%128",
+                "ty": {}
+              },
+              "value": "Multi-step evolution failed at step"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2748,
+                  "end": 2752
+                },
+                "ast_path": "program.statements[0].body[21].else_body[0].expr.args[1]"
+              },
+              "result": {
+                "name": "%129",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%65",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2698,
+                  "end": 2760
+                },
+                "ast_path": "program.statements[0].body[21].else_body[0]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%128",
+                  "ty": {}
+                },
+                {
+                  "name": "%129",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2572,
+                  "end": 2820
+                },
+                "ast_path": "program.statements[0].body[21].else_body"
+              },
+              "cond": null,
+              "true_block": "bb14",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb14",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2827,
+                  "end": 2864
+                },
+                "ast_path": "program.statements[0].body[22].expr.args[0]"
+              },
+              "result": {
+                "name": "%130",
+                "ty": {}
+              },
+              "value": "Testing constraints and geometry..."
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2816,
+                  "end": 2874
+                },
+                "ast_path": "program.statements[0].body[22]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%130",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2895,
+                  "end": 2922
+                },
+                "ast_path": "program.statements[0].body[23].expr"
+              },
+              "result": {
+                "name": "%131",
+                "ty": {}
+              },
+              "func": "compute_constraints",
+              "args": []
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2871,
+                  "end": 2930
+                },
+                "ast_path": "program.statements[0].body[23]"
+              },
+              "result": {
+                "name": "%132",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2871,
+                  "end": 2930
+                },
+                "ast_path": "program.statements[0].body[23]"
+              },
+              "ptr": {
+                "name": "%132",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%131",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2945,
+                  "end": 2962
+                },
+                "ast_path": "program.statements[0].body[24].expr.array"
+              },
+              "result": {
+                "name": "%133",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%132",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2963,
+                  "end": 2970
+                },
+                "ast_path": "program.statements[0].body[24].expr.index"
+              },
+              "result": {
+                "name": "%134",
+                "ty": {}
+              },
+              "value": "eps_H"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2945,
+                  "end": 2972
+                },
+                "ast_path": "program.statements[0].body[24].expr"
+              },
+              "result": {
+                "name": "%135",
+                "ty": {}
+              },
+              "array": {
+                "name": "%133",
+                "ty": {}
+              },
+              "index": {
+                "name": "%134",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2927,
+                  "end": 2980
+                },
+                "ast_path": "program.statements[0].body[24]"
+              },
+              "result": {
+                "name": "%136",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2927,
+                  "end": 2980
+                },
+                "ast_path": "program.statements[0].body[24]"
+              },
+              "ptr": {
+                "name": "%136",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%135",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2995,
+                  "end": 3012
+                },
+                "ast_path": "program.statements[0].body[25].expr.array"
+              },
+              "result": {
+                "name": "%137",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%132",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3013,
+                  "end": 3020
+                },
+                "ast_path": "program.statements[0].body[25].expr.index"
+              },
+              "result": {
+                "name": "%138",
+                "ty": {}
+              },
+              "value": "eps_M"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2995,
+                  "end": 3022
+                },
+                "ast_path": "program.statements[0].body[25].expr"
+              },
+              "result": {
+                "name": "%139",
+                "ty": {}
+              },
+              "array": {
+                "name": "%137",
+                "ty": {}
+              },
+              "index": {
+                "name": "%138",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2977,
+                  "end": 3030
+                },
+                "ast_path": "program.statements[0].body[25]"
+              },
+              "result": {
+                "name": "%140",
+                "ty": {}
+              },
+              "ty": {}
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 2977,
+                  "end": 3030
+                },
+                "ast_path": "program.statements[0].body[25]"
+              },
+              "ptr": {
+                "name": "%140",
+                "ty": {}
+              },
+              "index": null,
+              "value": {
+                "name": "%139",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3031,
+                  "end": 3042
+                },
+                "ast_path": "program.statements[0].body[26].cond.left.left.left"
+              },
+              "result": {
+                "name": "%141",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%136",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3045,
+                  "end": 3048
+                },
+                "ast_path": "program.statements[0].body[26].cond.left.left.right"
+              },
+              "result": {
+                "name": "%142",
+                "ty": {}
+              },
+              "value": 1000000.0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3031,
+                  "end": 3048
+                },
+                "ast_path": "program.statements[0].body[26].cond.left.left"
+              },
+              "result": {
+                "name": "%143",
+                "ty": {}
+              },
+              "left": {
+                "name": "%141",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%142",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3053,
+                  "end": 3064
+                },
+                "ast_path": "program.statements[0].body[26].cond.left.right"
+              },
+              "result": {
+                "name": "%144",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%140",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3031,
+                  "end": 3064
+                },
+                "ast_path": "program.statements[0].body[26].cond.left"
+              },
+              "result": {
+                "name": "%145",
+                "ty": {}
+              },
+              "left": {
+                "name": "%143",
+                "ty": {}
+              },
+              "op": "and",
+              "right": {
+                "name": "%144",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3067,
+                  "end": 3070
+                },
+                "ast_path": "program.statements[0].body[26].cond.right"
+              },
+              "result": {
+                "name": "%146",
+                "ty": {}
+              },
+              "value": 1000000.0
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3031,
+                  "end": 3070
+                },
+                "ast_path": "program.statements[0].body[26].cond"
+              },
+              "result": {
+                "name": "%147",
+                "ty": {}
+              },
+              "left": {
+                "name": "%145",
+                "ty": {}
+              },
+              "op": "<",
+              "right": {
+                "name": "%146",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3028,
+                  "end": 3263
+                },
+                "ast_path": "program.statements[0].body[26]"
+              },
+              "cond": {
+                "name": "%147",
+                "ty": {}
+              },
+              "true_block": "bb15",
+              "false_block": "bb16"
+            }
+          ]
+        },
+        {
+          "name": "bb15",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3092,
+                  "end": 3130
+                },
+                "ast_path": "program.statements[0].body[26].body[0].expr.args[0]"
+              },
+              "result": {
+                "name": "%148",
+                "ty": {}
+              },
+              "value": "Constraints and geometry test passed"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3081,
+                  "end": 3138
+                },
+                "ast_path": "program.statements[0].body[26].body[0]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%148",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3028,
+                  "end": 3263
+                },
+                "ast_path": "program.statements[0].body[26].body"
+              },
+              "cond": null,
+              "true_block": "bb17",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb16",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3165,
+                  "end": 3204
+                },
+                "ast_path": "program.statements[0].body[26].else_body[0].expr.args[0]"
+              },
+              "result": {
+                "name": "%149",
+                "ty": {}
+              },
+              "value": "Constraints and geometry test failed:"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3206,
+                  "end": 3217
+                },
+                "ast_path": "program.statements[0].body[26].else_body[0].expr.args[1]"
+              },
+              "result": {
+                "name": "%150",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%136",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3219,
+                  "end": 3230
+                },
+                "ast_path": "program.statements[0].body[26].else_body[0].expr.args[2]"
+              },
+              "result": {
+                "name": "%151",
+                "ty": {}
+              },
+              "ptr": {
+                "name": "%140",
+                "ty": {}
+              }
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3154,
+                  "end": 3238
+                },
+                "ast_path": "program.statements[0].body[26].else_body[0]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%149",
+                  "ty": {}
+                },
+                {
+                  "name": "%150",
+                  "ty": {}
+                },
+                {
+                  "name": "%151",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3028,
+                  "end": 3263
+                },
+                "ast_path": "program.statements[0].body[26].else_body"
+              },
+              "cond": null,
+              "true_block": "bb17",
+              "false_block": null
+            }
+          ]
+        },
+        {
+          "name": "bb17",
+          "instructions": [
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3270,
+                  "end": 3315
+                },
+                "ast_path": "program.statements[0].body[27].expr.args[0]"
+              },
+              "result": {
+                "name": "%152",
+                "ty": {}
+              },
+              "value": "Comprehensive GR solver NLLC test completed"
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 3259,
+                  "end": 3319
+                },
+                "ast_path": "program.statements[0].body[27]"
+              },
+              "result": null,
+              "func": "print",
+              "args": [
+                {
+                  "name": "%152",
+                  "ty": {}
+                }
+              ]
+            },
+            {
+              "trace": {
+                "file": "test_comprehensive_gr_solver.nllc",
+                "span": {
+                  "start": 132,
+                  "end": 3319
+                },
+                "ast_path": "program.statements[0]"
+              },
+              "value": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

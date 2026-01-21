@@ -10,7 +10,7 @@ class PhaseLoomContract(ABC):
     - SEM hard failure forces immediate reject/abort: Implementations must check for SEM failures and raise appropriate exceptions or abort computation.
     - Thresholds are part of policy hash: Policy thresholds are immutable within a computation window; changes require versioning to avoid mid-window SEM inconsistencies.
     - Residuals normalized or unit-typed: Input residuals_r must be normalized or have unit types to ensure consistency; non-compliant inputs should be rejected.
-    - Action suggestions per tier FAST/MID/SLOW: Action suggestions must be organized by tier (FAST, MID, SLOW) for prioritization.
+    - Action suggestions per tier R0/R1/R2: Action suggestions must be organized by tier (R0, R1, R2) for prioritization.
     """
 
     @abstractmethod
@@ -32,6 +32,6 @@ class PhaseLoomContract(ABC):
             Tuple of (dt_caps, dominant_thread, action_suggestions)
             - dt_caps: Computed dt capacity limits (type depends on implementation, e.g., dict or list).
             - dominant_thread: String identifier of the dominant thread.
-            - action_suggestions: Dict with keys 'FAST', 'MID', 'SLOW' containing lists of suggested actions.
+            - action_suggestions: Dict with keys 'R0', 'R1', 'R2' containing lists of suggested actions.
         """
         pass

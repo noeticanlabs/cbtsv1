@@ -56,8 +56,8 @@ def do_hash(src: str, cache: bool = False):
                     if nsc_source:
                         break
             if nsc_source:
-                prog, flattened, bc, tpl = nsc.nsc_to_pde(nsc_source)
-                module_id = nsc.compute_module_id(nsc_source, prog, bc, tpl)
+                prog, flattened, bc, tpl, policy = nsc.nsc_to_pde(nsc_source)
+                module_id = nsc.compute_module_id(nsc_source, prog, bc, tpl, policy)
                 hit = nsc_cache.cache_has_verified(module_id)
                 print(f"cache={'hit' if hit else 'miss'}")
             else:
@@ -81,8 +81,8 @@ def do_bundle(src: str, out: str, cache: bool = False):
                 if nsc_source:
                     break
             if nsc_source:
-                prog, flattened, bc, tpl = nsc.nsc_to_pde(nsc_source)
-                module_id = nsc.compute_module_id(nsc_source, prog, bc, tpl)
+                prog, flattened, bc, tpl, policy = nsc.nsc_to_pde(nsc_source)
+                module_id = nsc.compute_module_id(nsc_source, prog, bc, tpl, policy)
                 if nsc_cache.cache_has_verified(module_id):
                     # Zip from cache to out
                     cache_d = nsc_cache.cache_dir(module_id)
@@ -389,7 +389,7 @@ def explain_from_source(src: str, index: int) -> dict:
                 break
     if not nsc_source:
         raise ValueError("No .nsc file found in source")
-    prog, flattened, bc, tpl = nsc.nsc_to_pde(nsc_source)
+    prog, flattened, bc, tpl, policy = nsc.nsc_to_pde(nsc_source)
     if index < 0 or index >= len(bc.opcodes):
         raise ValueError(f"Index {index} out of range for opcodes length {len(bc.opcodes)}")
     opcode = bc.opcodes[index]
@@ -418,7 +418,7 @@ def explain_from_bundle(bundle_path: str, index: int) -> dict:
                 break
         if not nsc_source:
             raise ValueError("No .nsc file found in bundle")
-    prog, flattened, bc, tpl = nsc.nsc_to_pde(nsc_source)
+    prog, flattened, bc, tpl, policy = nsc.nsc_to_pde(nsc_source)
     if index < 0 or index >= len(bc.opcodes):
         raise ValueError(f"Index {index} out of range for opcodes length {len(bc.opcodes)}")
     opcode = bc.opcodes[index]
@@ -526,7 +526,7 @@ def main():
     if args.command == 'eval':
         try:
             src = args.glyph_string
-            prog, flattened, bc, tpl = nsc.nsc_to_pde(src)
+            prog, flattened, bc, tpl, policy = nsc.nsc_to_pde(src)
             tokens = tokenize(src)
             if args.trace:
                 print("TOKENS (indexed):", list(enumerate(tokens)))
@@ -540,6 +540,7 @@ def main():
             print("bytecode:", bc.opcodes)
             print("PDE LaTeX:", tpl.as_latex())
             print("boundary:", tpl.boundary)
+            print("policy:", asdict(policy))
         except Exception as e:
             raise nsc_diag.NSCError(nsc_diag.E_CLI_USAGE, str(e))
 
@@ -547,7 +548,7 @@ def main():
         try:
             with open(args.filepath, 'r') as f:
                 src = f.read()
-            prog, flattened, bc, tpl = nsc.nsc_to_pde(src)
+            prog, flattened, bc, tpl, policy = nsc.nsc_to_pde(src)
             tokens = tokenize(src)
             if args.trace:
                 print("TOKENS (indexed):", list(enumerate(tokens)))
@@ -561,6 +562,7 @@ def main():
             print("bytecode:", bc.opcodes)
             print("PDE LaTeX:", tpl.as_latex())
             print("boundary:", tpl.boundary)
+            print("policy:", asdict(policy))
         except Exception as e:
             raise nsc_diag.NSCError(nsc_diag.E_CLI_USAGE, str(e))
 
@@ -568,7 +570,7 @@ def main():
         try:
             with open(args.filepath, 'r') as f:
                 src = f.read()
-            prog, flattened, bc, tpl = nsc.nsc_to_pde(src)
+            prog, flattened, bc, tpl, policy = nsc.nsc_to_pde(src)
             data = nsc_export.export_symbolic(src, prog, flattened, bc, tpl)
             with open(args.out, 'w') as f:
                 json.dump(data, f, indent=2)

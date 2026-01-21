@@ -1,0 +1,7 @@
+H_max = 1e-4
+H_warn = 7.5e-5
+M_max = 1e-4
+R_max = 1e6
+alpha_floor = 1e-8
+lambda_floor = 1e-8
+kappa_max = 1e12

@@ -12,6 +12,7 @@ class TokenKind(Enum):
     IF = "if"
     ELSE = "else"
     WHILE = "while"
+    BREAK = "break"
     RETURN = "return"
     IMPORT = "import"
     THREAD = "thread"
@@ -70,6 +71,7 @@ def tokenize(source: str) -> List[Token]:
         (r'if', TokenKind.IF),
         (r'else', TokenKind.ELSE),
         (r'while', TokenKind.WHILE),
+        (r'break', TokenKind.BREAK),
         (r'return', TokenKind.RETURN),
         (r'import', TokenKind.IMPORT),
         (r'thread', TokenKind.THREAD),
@@ -80,7 +82,6 @@ def tokenize(source: str) -> List[Token]:
         (r'true', TokenKind.TRUE),
         (r'false', TokenKind.FALSE),
         (r'call', TokenKind.CALL),
-        (r'[a-zA-Z_][a-zA-Z0-9_]*', TokenKind.IDENT),
         (r'\d*\.\d+([eE][+-]?\d+)?|\d+[eE][+-]?\d+', TokenKind.FLOAT),
         (r'\d+', TokenKind.INT),
         (r'"([^"\\]|\\.)*"', TokenKind.STRING),
@@ -106,6 +107,7 @@ def tokenize(source: str) -> List[Token]:
         (r':', TokenKind.COLON),
         (r',', TokenKind.COMMA),
         (r';', TokenKind.SEMI),
+        (r'[a-zA-Z_][a-zA-Z0-9_]*', TokenKind.IDENT),
     ]
     while pos < len(source):
         if source[pos].isspace():

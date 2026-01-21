@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import List
 from .lex import Token, TokenKind, tokenize
 from .ast import *
+from .ast import BreakStmt
 
 class ParseError(Exception):
     pass
@@ -54,14 +55,28 @@ class Parser:
             return self.parse_if()
         elif tok.kind == TokenKind.WHILE:
             return self.parse_while()
+        elif tok.kind == TokenKind.BREAK:
+            return self.parse_break()
         elif tok.kind == TokenKind.RETURN:
             return self.parse_return()
         elif tok.kind == TokenKind.THREAD:
             return self.parse_thread()
         elif tok.kind == TokenKind.IDENT:
-            if self.peek().kind == TokenKind.ASSIGN:
-                return self.parse_assign()
-            else:
+            start_pos = self.pos
+            try:
+                lvalue = self.parse_lvalue()
+                if self.current().kind == TokenKind.ASSIGN:
+                    self.expect(TokenKind.ASSIGN)
+                    expr = self.parse_expr()
+                    self.expect(TokenKind.SEMI)
+                    end = self.current().span.end
+                    return AssignStmt(Span(tok.span.start, end), lvalue, expr)
+                else:
+                    # backtrack
+                    self.pos = start_pos
+                    return self.parse_expr_stmt()
+            except ParseError:
+                self.pos = start_pos
                 return self.parse_expr_stmt()
         else:
             return self.parse_expr_stmt()
@@ -84,6 +99,21 @@ class Parser:
         end = self.current().span.end
         return LetStmt(Span(start, end), var_tok.value, expr)
 
+    def parse_lvalue(self) -> Expr:
+        tok = self.current()
+        if tok.kind == TokenKind.IDENT:
+            name = tok.value
+            self.advance()
+            expr = Var(tok.span, name)
+            while self.current().kind == TokenKind.LBRACKET:
+                self.expect(TokenKind.LBRACKET)
+                index = self.parse_expr()
+                self.expect(TokenKind.RBRACKET)
+                expr = Index(Span(expr.span.start, self.current().span.end), expr, index)
+            return expr
+        else:
+            raise ParseError("Expected lvalue")
+
     def parse_mut(self) -> MutStmt:
         start = self.current().span.start
         self.expect(TokenKind.MUT)
@@ -96,12 +126,12 @@ class Parser:
 
     def parse_assign(self) -> AssignStmt:
         start = self.current().span.start
-        var_tok = self.expect(TokenKind.IDENT)
+        lvalue = self.parse_lvalue()
         self.expect(TokenKind.ASSIGN)
         expr = self.parse_expr()
         self.expect(TokenKind.SEMI)
         end = self.current().span.end
-        return AssignStmt(Span(start, end), var_tok.value, expr)
+        return AssignStmt(Span(start, end), lvalue, expr)
 
     def parse_fn(self) -> FnDecl:
         start = self.current().span.start
@@ -164,6 +194,13 @@ class Parser:
         self.expect(TokenKind.SEMI)
         end = self.current().span.end
         return ReturnStmt(Span(start, end), expr)
+
+    def parse_break(self) -> BreakStmt:
+        start = self.current().span.start
+        self.expect(TokenKind.BREAK)
+        self.expect(TokenKind.SEMI)
+        end = self.current().span.end
+        return BreakStmt(Span(start, end))
 
     def parse_expr_stmt(self) -> ExprStmt:
         start = self.current().span.start
@@ -298,6 +335,21 @@ class Parser:
             expr = self.parse_expr()
             self.expect(TokenKind.RPAREN)
             return expr
+        elif tok.kind == TokenKind.IF:
+            start = tok.span.start
+            self.expect(TokenKind.IF)
+            cond = self.parse_expr()
+            self.expect(TokenKind.LBRACE)
+            body = self.parse_expr()
+            self.expect(TokenKind.RBRACE)
+            else_body = None
+            if self.current().kind == TokenKind.ELSE:
+                self.expect(TokenKind.ELSE)
+                self.expect(TokenKind.LBRACE)
+                else_body = self.parse_expr()
+                self.expect(TokenKind.RBRACE)
+            end = self.current().span.end
+            return IfExpr(Span(start, end), cond, body, else_body)
         else:
             raise ParseError(f"Unexpected token in atom: {tok.kind}")
 

@@ -1,0 +1,124 @@
+{
+  "initialization": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "det_gamma_min": 0.9999933140514853
+  },
+  "memory_operations": {
+    "passed": true
+  },
+  "single_step": {
+    "passed": true,
+    "dt": 0.1,
+    "dominant_thread": "PHY_H_R2",
+    "rail_violation": null,
+    "step": 0,
+    "t": 0.0
+  },
+  "multi_step_evolution": {
+    "passed": true,
+    "num_steps": 10,
+    "eps_H_history": [
+      0.00012671153062347593,
+      0.00012671153062347593,
+      0.00012671153062347593,
+      0.00012671153062347593,
+      0.00012671153062347593,
+      0.00012671153062347593,
+      0.00012671153062347593,
+      0.00012671153062347593,
+      0.00012671153062347593,
+      0.00012671153062347593
+    ],
+    "eps_M_history": [
+      0.0003343463343549475,
+      0.0003343463343549475,
+      0.0003343463343549475,
+      0.0003343463343549475,
+      0.0003343463343549475,
+      0.0003343463343549475,
+      0.0003343463343549475,
+      0.0003343463343549475,
+      0.0003343463343549475,
+      0.0003343463343549475
+    ],
+    "dominant_threads": [
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2"
+    ],
+    "t_history": [
+      1e-08,
+      6.021497252029076e-08,
+      1.1042994504058152e-07,
+      1.6064491756087227e-07,
+      2.1085989008116304e-07,
+      2.610748626014538e-07,
+      3.1128983512174454e-07,
+      3.615048076420353e-07,
+      4.117197801623261e-07,
+      4.619347526826169e-07
+    ],
+    "stage_eps_H_history": [],
+    "final_eps_H": 0.00012671153062347593,
+    "final_eps_M": 0.0003343463343549475,
+    "final_t": 4.619347526826169e-07
+  },
+  "rails_gates": {
+    "passed": true,
+    "gate_violation": null,
+    "margins": {
+      "eps_H": 0.637261131658289,
+      "eps_M": 0.0,
+      "R": 5.115541223362073e-11,
+      "det": 0.2000013371986434,
+      "alpha": 1e-08,
+      "lambda": 1.0000054776456176e-08,
+      "kappa": 1.0000085163321657e-12
+    },
+    "sem_ok": true,
+    "sem_reason": "ok"
+  },
+  "phaseloom_threads": {
+    "passed": true,
+    "num_residuals": 9,
+    "dt_min": 9.990009991007993e-05,
+    "dominant_thread": [
+      "PHY",
+      "H",
+      "R0"
+    ]
+  },
+  "constraints_geometry": {
+    "passed": true,
+    "eps_H": 6.37261131658289e-05,
+    "eps_M": 0.0,
+    "R": 7.305619863947808e-05
+  },
+  "summary": {
+    "overall_passed": true,
+    "tests_passed": 7,
+    "total_tests": 7,
+    "grid": "16x16x16",
+    "L": 4.0,
+    "dx": 0.25,
+    "N": 16,
+    "dt_target": 0.00125,
+    "dt_commit": 5.021497252029076e-08,
+    "dt_ratio": 24892.973893292536,
+    "n_substeps": 1991438,
+    "substep_cap_hit": true,
+    "eps_H_gate": 1e-10,
+    "eps_H_factor": 637261.131658289,
+    "dominance_note": "CONS dominates: eps_H high; dt lowered; projection applied",
+    "final_t": 4.619347526826169e-07
+  }
+}

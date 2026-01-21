@@ -17,10 +17,21 @@ LEXICON_SYMBOLS = {
     "T_io": "PhaseLoom.thread_io"
 }
 
-# PhaseLoom 27-thread lattice constants
-DOMAINS = ['PHY', 'CONS', 'REP']  # PHY: baseline evolution, CONS: constraints + propagation monitors, REP: representation coherence
-SCALES = ['macro', 'step', 'micro']  # macro: window/epoch trends, step: integrator-level, micro: kernel-level
-RESPONSES = ['observe', 'correct', 'rollback']  # observe: compute residuals, correct: apply corrections, rollback: revert
+# PhaseLoom 27-thread lattice constants (Triaxis v1.2)
+from src.triaxis.lexicon import GML
+
+DOMAINS = ['PHY', 'CONS', 'SEM']  # 3 domains
+SCALES = ['L', 'M', 'H']  # 3 scales: L=Low/Macro, M=Mid/Step, H=High/Micro
+RESPONSES = ['R0', 'R1', 'R2']  # 3 responses: R0=Observe, R1=Control/Damp, R2=Audit/Rollback
+
+# Thread ID mapping (3x3x3 = 27 threads)
+THREAD_IDS = {}
+for domain in DOMAINS:
+    for scale in SCALES:
+        for response in RESPONSES:
+            key = f"{domain}_{scale}_{response}"
+            thread_id = f"A:THREAD.{domain}.{scale}.{response}"
+            THREAD_IDS[key] = thread_id
 
 import numpy as np
 
@@ -116,6 +127,25 @@ def dt_thread_determinant(det_gamma, det_gamma_prev, dt_prev, det_gamma_min, C_d
         "metrics": {"det_min": float(det_min), "dot_det": float(dot_det)}
     }
 
+def dt_thread_semantic(eps_H, eps_M, eps_H_target, eps_M_target, C_sem, dt_selected=0.1):
+    """SEM thread: dt proposal based on semantic coherence (residuals approaching targets)."""
+    eps_max = max(eps_H, eps_M)
+    eps_target = min(eps_H_target, eps_M_target)
+    if eps_max <= eps_target:
+        dt = np.inf  # No constraint if already within target
+    else:
+        # Simple linear approach to target
+        dt = C_sem * eps_target / (eps_max - eps_target + 1e-15)
+    ratio = dt_selected / dt if dt > 0 and np.isfinite(dt) else 0.0
+    margin = 1.0 - ratio
+    return {
+        "dt": dt,
+        "ratio": ratio,
+        "margin": margin,
+        "dominant_metric": "eps_max_sem",
+        "metrics": {"eps_max": float(eps_max), "eps_target": float(eps_target)}
+    }
+
 class GRPhaseLoomThreads:
     def __init__(self, fields, eps_H_target=1e-10, eps_M_target=1e-10, m_det_min=0.2, c=1.0, Lambda=0.0, mu_H=0.01, mu_M=0.01, rho_target=0.8):
         self.fields = fields
@@ -154,10 +184,12 @@ class GRPhaseLoomThreads:
             base_proposal = dt_thread_constraints(eps_H, eps_M, eps_H_prev, eps_M_prev, dt_prev, self.eps_H_max, self.eps_M_max, self.C_cons, dt_selected)
         elif domain == 'REP':
             base_proposal = dt_thread_diffusion(self.mu_H, self.mu_M, dx, self.C_diff, dt_selected)
+        elif domain == 'SEM':
+            base_proposal = dt_thread_semantic(eps_H, eps_M, self.eps_H_target, self.eps_M_target, self.C_cons, dt_selected)  # Reuse C_cons for SEM
 
         # Adjust for scale and response
-        scale_factors = {'macro': 2.0, 'step': 1.0, 'micro': 0.5}
-        response_factors = {'observe': 1.0, 'correct': 0.8, 'rollback': 0.1}
+        scale_factors = {'L': 2.0, 'M': 1.0, 'H': 0.5}
+        response_factors = {'R0': 1.0, 'R1': 0.8, 'R2': 0.1}
         adjusted_dt = base_proposal['dt'] * scale_factors[scale] * response_factors[response]
 
         # Recompute ratio and margin
@@ -195,14 +227,15 @@ class GRPhaseLoomThreads:
         dominant_clocks = [k for k, v in valid_candidates.items() if v['dt'] == min_dt]
 
         # Tie-break lexicographic on thread_id
-        dominant_thread = sorted(dominant_clocks)[0]
+        dominant_thread_key = sorted(dominant_clocks)[0]
+        dominant_thread_id = THREAD_IDS.get(dominant_thread_key, dominant_thread_key)
 
-        dt_arbitrated = valid_candidates[dominant_thread]['dt']
+        dt_arbitrated = valid_candidates[dominant_thread_key]['dt']
 
         # Enforce dt bounds
         dt_arbitrated = np.clip(dt_arbitrated, self.dt_min, self.dt_max)
 
-        return dt_arbitrated, dominant_thread, dominant_clocks
+        return dt_arbitrated, dominant_thread_id, dominant_clocks
 
 def compute_omega_current(fields, prev_K=None, prev_gamma=None, spectral_cache=None):
     """Compute spectral activity omega_current from combined field changes using FFT, binned into 3x3x3 k-space bins."""
@@ -264,3 +297,14 @@ def compute_omega_current(fields, prev_K=None, prev_gamma=None, spectral_cache=N
                     omega_current[idx] = 0.0
 
     return omega_current
+
+def compute_coherence_drop(omega_current, prev_omega_current=None, threshold=0.1):
+    """Compute spectral coherence C_o and check for drop below threshold."""
+    # Define C_o as the minimum spectral bin activity (coherence measure)
+    C_o = np.min(omega_current) if len(omega_current) > 0 else 0.0
+    drop_detected = False
+    if prev_omega_current is not None:
+        prev_C_o = np.min(prev_omega_current)
+        if C_o < threshold * prev_C_o:
+            drop_detected = True
+    return C_o, drop_detected

@@ -19,6 +19,7 @@ import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 from .logging_config import array_stats
 from .gr_core_fields import inv_sym6, trace_sym6, norm2_sym6, sym6_to_mat33, mat33_to_sym6
+from gr_constraints_nsc import compute_hamiltonian_compiled, compute_momentum_compiled, discrete_L2_norm_compiled
 
 logger = logging.getLogger('gr_solver.constraints')
 
@@ -46,23 +47,17 @@ class GRConstraints:
         return R[slice_indices] + K_trace**2 - K_sq
 
     def compute_hamiltonian(self):
-        """Compute Hamiltonian constraint \mathcal{H} = R + K^2 - K_{ij}K^{ij} - 2\Lambda."""
+        """Compute Hamiltonian constraint \mathcal{H} = R + K^2 - K_{ij}K^{ij} - 2\Lambda using compiled function."""
         start_time = time.time()
-        Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
-        self.H = np.zeros((Nx, Ny, Nz))
 
         # Ensure geometry R is up to date
         if not hasattr(self.geometry, 'R') or self.geometry.R is None:
             self.geometry.compute_scalar_curvature()
 
-        # Compute sequentially to avoid pickling issues
-        gamma_inv = inv_sym6(self.fields.gamma_sym6)
-        K_trace = trace_sym6(self.fields.K_sym6, gamma_inv)
-        K_sq = norm2_sym6(self.fields.K_sym6, gamma_inv)
-        self.H = self.geometry.R + K_trace**2 - K_sq - 2.0 * self.fields.Lambda
+        self.H = compute_hamiltonian_compiled(self.geometry.R, self.fields.gamma_sym6, self.fields.K_sym6, self.fields.Lambda)
 
         elapsed = time.time() - start_time
-        logger.info(f"Hamiltonian constraint computation time: {elapsed:.4f}s (sequential)")
+        logger.info(f"Hamiltonian constraint computation time: {elapsed:.4f}s (compiled)")
 
 
 
@@ -89,40 +84,48 @@ class GRConstraints:
         K_expanded = K_trace[..., np.newaxis, np.newaxis] * gamma_contravariant
         S_ij = K_contravariant - K_expanded
 
-        # Now, compute D_j S^{j i}
-        # First, get Christoffels from geometry
+        # Now, compute D_j S^{j i} = ∂_j S^{ji} + Γ^i_{jk} S^{kj} + Γ^j_{jk} S^{ki}
+        # Note S is symmetric, so S^{ji} = S^{ij} etc.
+
+        # Get Christoffels from geometry
         if not hasattr(self.geometry, 'christoffels') or self.geometry.christoffels is None:
             self.geometry.compute_christoffels()
 
-        # ∂_j S^{j i}
+        # First term: ∂_j S^{j i}
         dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
-        grad_S_x = np.gradient(S_ij[..., 0, :], dx, axis=0)  # ∂_x S^{0 i}, etc.
+        grad_S_x = np.gradient(S_ij[..., 0, :], dx, axis=0)
         grad_S_y = np.gradient(S_ij[..., 1, :], dy, axis=1)
         grad_S_z = np.gradient(S_ij[..., 2, :], dz, axis=2)
-        # Sum ∂_j S^{j i} = ∂_x S^{x i} + ∂_y S^{y i} + ∂_z S^{z i}
-        partial_div = grad_S_x + grad_S_y + grad_S_z  # shape (Nx, Ny, Nz, 3)
+        partial_div = grad_S_x + grad_S_y + grad_S_z
 
-        # Gamma term: Gamma^i_{jk} S^{j k}
-        # S^{j k} is S_ij with indices j,k
-        # Gamma^i_{jk} S^{j k} = sum_{j,k} Gamma^i_{jk} S^{j k}
-        gamma_term = np.einsum('...ijk,...jk->...i', self.geometry.christoffels, S_ij)
+        # Second term: Γ^i_{jk} S^{jk}
+        gamma_term1 = np.einsum('...ijk,...jk->...i', self.geometry.christoffels, S_ij)
 
-        self.M = partial_div + gamma_term
+        # Third term: Γ^j_{jk} S^{ki}
+        # where Γ^j_{jk} = ∂_k ln(sqrt(det(γ)))
+        from .gr_core_fields import det_sym6
+        det_gamma = det_sym6(self.fields.gamma_sym6)
+        log_sqrt_det_gamma = 0.5 * np.log(det_gamma)
+        grad_log_sqrt_det_gamma = np.stack(np.gradient(log_sqrt_det_gamma, dx, dy, dz), axis=-1)
+        gamma_term2 = np.einsum('...k,...ki->...i', grad_log_sqrt_det_gamma, S_ij)
+
+        self.M = partial_div + gamma_term1 + gamma_term2
 
         elapsed = time.time() - start_time
         logger.info(f"Momentum constraint computation time: {elapsed:.4f}s (sequential)")
 
     def compute_residuals(self):
         """Compute residuals: eps_H (L2 H), eps_M (L2 sqrt(gamma^{ij} M_i M_j)), eps_proj (L2 aux constraints)."""
-        # L2 norm: sqrt( sum field^2 dV )
-        self.eps_H = discrete_L2_norm(self.H, self.fields.dx, self.fields.dy, self.fields.dz)
+        # L2 norm: sqrt( sum field^2 dV ) using compiled function
+        self.eps_H = discrete_L2_norm_compiled(self.H, self.fields.dx, self.fields.dy, self.fields.dz)
+        self.eps_H_grid = self.H  # Grid of Hamiltonian constraint values
 
         # Compute invariant M_norm = sqrt( gamma^{ij} M_i M_j )
         gamma_inv = inv_sym6(self.fields.gamma_sym6)
         gamma_inv_full = sym6_to_mat33(gamma_inv)
         M_norm_squared = np.sum(gamma_inv_full * self.M[..., np.newaxis, :] * self.M[..., :, np.newaxis], axis=(-2, -1))
         M_norm = np.sqrt(M_norm_squared)
-        self.eps_M = discrete_L2_norm(M_norm, self.fields.dx, self.fields.dy, self.fields.dz)
+        self.eps_M = discrete_L2_norm_compiled(M_norm, self.fields.dx, self.fields.dy, self.fields.dz)
 
         # eps_proj: L2 of auxiliary constraints Z and Z_i (BSSN-Z4)
         # Assuming Z and Z_i are available in fields

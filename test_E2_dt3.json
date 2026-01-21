@@ -1,0 +1,124 @@
+{
+  "initialization": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "det_gamma_min": 0.9999934149752545
+  },
+  "memory_operations": {
+    "passed": true
+  },
+  "single_step": {
+    "passed": true,
+    "dt": 0.1,
+    "dominant_thread": "PHY_H_R2",
+    "rail_violation": null,
+    "step": 0,
+    "t": 0.0
+  },
+  "multi_step_evolution": {
+    "passed": true,
+    "num_steps": 10,
+    "eps_H_history": [
+      7.388417436438055e-05,
+      7.388547015543085e-05,
+      7.388882284018348e-05,
+      7.38958295124111e-05,
+      7.39086962645737e-05,
+      7.393047231745475e-05,
+      7.396546877146727e-05,
+      7.401993988314101e-05,
+      7.410311570744558e-05,
+      7.422868147411597e-05
+    ],
+    "eps_M_history": [
+      0.00031009271151013904,
+      0.00031009271151013904,
+      0.00031009271151013904,
+      0.00031009271151013904,
+      0.00031009271151013904,
+      0.00031009271151013904,
+      0.00031009271151013904,
+      0.00031009271151013904,
+      0.00031009271151013904,
+      0.00031009271151013904
+    ],
+    "dominant_threads": [
+      "CONS_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2",
+      "SEM_H_R2"
+    ],
+    "t_history": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "stage_eps_H_history": [],
+    "final_eps_H": 7.422868147411597e-05,
+    "final_eps_M": 0.00031009271151013904,
+    "final_t": 0.0
+  },
+  "rails_gates": {
+    "passed": true,
+    "gate_violation": null,
+    "margins": {
+      "eps_H": 0.502405131724666,
+      "eps_M": 0.0,
+      "R": 2.6498812999620278e-11,
+      "det": 0.20000131701362167,
+      "alpha": 1e-08,
+      "lambda": 1.000005467367845e-08,
+      "kappa": 1.0000087801623064e-12
+    },
+    "sem_ok": true,
+    "sem_reason": "ok"
+  },
+  "phaseloom_threads": {
+    "passed": true,
+    "num_residuals": 9,
+    "dt_min": 9.990009991007993e-05,
+    "dominant_thread": [
+      "PHY",
+      "H",
+      "R0"
+    ]
+  },
+  "constraints_geometry": {
+    "passed": true,
+    "eps_H": 5.024051317246661e-05,
+    "eps_M": 0.0,
+    "R": 7.403587552009446e-05
+  },
+  "summary": {
+    "overall_passed": true,
+    "tests_passed": 7,
+    "total_tests": 7,
+    "grid": "16x16x16",
+    "L": 4.0,
+    "dx": 0.25,
+    "N": 16,
+    "dt_target": 0.000625,
+    "dt_commit": 1e-08,
+    "dt_ratio": 62500.0,
+    "n_substeps": 10000000,
+    "substep_cap_hit": true,
+    "eps_H_gate": 1e-10,
+    "eps_H_factor": 23124.62816465638,
+    "dominance_note": "CONS dominates: eps_H high; dt lowered; projection applied",
+    "final_t": 0.0
+  }
+}

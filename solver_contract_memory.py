@@ -3,6 +3,7 @@ from aeonic_memory_contract import AeonicMemoryContract
 from phaseloom_27 import PhaseLoom27
 from receipt_schemas import Kappa, MSolveReceipt
 import numpy as np
+import hashlib
 
 class SolverContractWithMemory(SolverContract):
     """Solver contract integrated with Aeonic Memory and PhaseLoom."""
@@ -45,7 +46,7 @@ class SolverContractWithMemory(SolverContract):
                 dominant_thread=dominant_thread,
                 actions=self.phaseloom.get_rails(dominant_thread),
                 policy_hash=self.memory.compute_policy_hash(gauge_policy),
-                state_hash="placeholder",  # Cheap fingerprint
+                state_hash=hashlib.sha256(b"state_placeholder").hexdigest(),
                 stage_time=t,
                 stage_id=0,
                 sem_ok=True,

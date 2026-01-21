@@ -1,0 +1,93 @@
+// NSC/NLLC Comprehensive GR Solver Test
+// Mirrors test_comprehensive_gr_solver.py functionality using Noetica Scripting Calculus
+
+fn main() {
+    // Test initialization (assume solver already initialized)
+    call print("Testing initialization...");
+    let constraints = call compute_constraints();
+    let eps_H = constraints["eps_H"];
+    let eps_M = constraints["eps_M"];
+
+    if eps_H < 1e10 and eps_M < 1e10 {
+        call print("Initialization passed: eps_H =", eps_H, "eps_M =", eps_M);
+    } else {
+        call print("Initialization failed: eps_H =", eps_H, "eps_M =", eps_M);
+        return;
+    }
+
+    // Test memory operations (simplified - assume host handles)
+    call print("Testing memory operations...");
+    // In NLLC, memory operations are implicit or handled by host
+
+    // Test single step
+    call print("Testing single step...");
+    let snapshot = call snapshot();
+    let dt = 1e-6;
+    call step(dt, 0);
+    call apply_gauge(dt);
+    let constraints_after = call compute_constraints();
+    let eps_H_after = constraints_after["eps_H"];
+    let eps_M_after = constraints_after["eps_M"];
+
+    if eps_H_after < 1e10 and eps_M_after < 1e10 {
+        call accept_step();
+        call print("Single step passed: eps_H =", eps_H_after, "eps_M =", eps_M_after);
+    } else {
+        call reject_step();
+        call restore(snapshot);
+        call print("Single step failed: eps_H =", eps_H_after, "eps_M =", eps_M_after);
+        return;
+    }
+
+    // Test multi-step evolution
+    call print("Testing multi-step evolution...");
+    let max_steps = 10;
+    let step = 0;
+    let eps_H_history = [];
+    let eps_M_history = [];
+
+    while step < max_steps {
+        let snapshot_multi = call snapshot();
+        let dt_multi = 1e-6;
+        call step(dt_multi, 0);
+        call apply_gauge(dt_multi);
+        let constraints_multi = call compute_constraints();
+        let eps_H_multi = constraints_multi["eps_H"];
+        let eps_M_multi = constraints_multi["eps_M"];
+
+        if eps_H_multi < 1e10 and eps_M_multi < 1e10 {
+            call accept_step();
+            eps_H_history = eps_H_history + [eps_H_multi];
+            eps_M_history = eps_M_history + [eps_M_multi];
+            call print("Step", step, "accepted: eps_H =", eps_H_multi, "eps_M =", eps_M_multi);
+        } else {
+            call reject_step();
+            call restore(snapshot_multi);
+            call print("Step", step, "rejected: eps_H =", eps_H_multi, "eps_M =", eps_M_multi);
+            step = max_steps; // Break loop
+        }
+
+        step = step + 1;
+    }
+
+    if step == max_steps {
+        call print("Multi-step evolution passed: completed", max_steps, "steps");
+    } else {
+        call print("Multi-step evolution failed at step", step);
+    }
+
+    // Test constraints and geometry (simplified)
+    call print("Testing constraints and geometry...");
+    let final_constraints = call compute_constraints();
+    let final_eps_H = final_constraints["eps_H"];
+    let final_eps_M = final_constraints["eps_M"];
+
+    if final_eps_H < 1e6 and final_eps_M < 1e6 {
+        call print("Constraints and geometry test passed");
+    } else {
+        call print("Constraints and geometry test failed:", final_eps_H, final_eps_M);
+    }
+
+    // Summary
+    call print("Comprehensive GR solver NLLC test completed");
+}

@@ -75,7 +75,7 @@ Extend `phaseloom_threads_gr.py` to full 27 threads:
 class PhaseLoom27:
     DOMAINS = ['PHY', 'CONS', 'SEM']
     SCALES = ['L', 'M', 'H']
-    RESPONSES = ['FAST', 'MID', 'SLOW']
+    RESPONSES = ['R0', 'R1', 'R2']
 
     def __init__(self):
         self.threads = {}  # (domain, scale, response) -> ThreadState
@@ -101,7 +101,7 @@ class PhaseLoom27:
         pass
 ```
 
-Thread indices: T[D,S,C] for D∈{PHY,CONS,SEM}, S∈{L,M,H}, C∈{FAST,MID,SLOW}
+Thread indices: T[D,S,C] for D∈{PHY,CONS,SEM}, S∈{L,M,H}, C∈{R0,R1,R2}
 
 ### 3. Receipt Schema Classes
 

@@ -37,7 +37,8 @@ class GRScheduler:
             return min(self.fixed_dt, self.max_dt)
         dx = self.fields.dx
         dt_cfl = 0.5 * dx / self.c  # Assuming hyperbolic waves
-        dt_curv = 1.0  # Placeholder
+        K_norm = np.max(np.linalg.norm(self.fields.K_sym6, axis=-1))
+        dt_curv = self.fields.dx / max(np.sqrt(K_norm), 1e-6)  # Curvature clock based on extrinsic curvature norm
         dt_constraint = 1.0 if eps_H < 1e-6 else 0.1
         dt_gauge = 1.0
         dt_lambda = np.sqrt(3 / abs(self.Lambda) / self.c**2) if self.Lambda != 0 else 1e10

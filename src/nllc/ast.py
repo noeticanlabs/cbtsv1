@@ -34,7 +34,7 @@ class MutStmt(Statement):
 
 @dataclass
 class AssignStmt(Statement):
-    var: str
+    lvalue: 'Expr'
     expr: 'Expr'
 
 @dataclass
@@ -51,6 +51,10 @@ class WhileStmt(Statement):
 @dataclass
 class ReturnStmt(Statement):
     expr: Optional['Expr'] = None
+
+@dataclass
+class BreakStmt(Statement):
+    pass
 
 @dataclass
 class ExprStmt(Statement):
@@ -117,3 +121,9 @@ class BinOp(Expr):
     left: Expr
     op: str
     right: Expr
+
+@dataclass
+class IfExpr(Expr):
+    cond: Expr
+    body: Expr
+    else_body: Optional[Expr] = None

@@ -183,7 +183,7 @@ class Parser:
 
     def is_operator(self, token: str) -> bool:
         # Operators that are binary/infix
-        operators = {'+', '-', '*', '/', '∂', '∇', '∇²', '=', '⊕', '↻', '∆', '◯', '⊖', '⇒', '□'}
+        operators = {'+', '-', '*', '/', '∂', '∇', '∇²', '=', '⊕', '↻', '∆', '◯', '⊖', '⇒', '□', 'ℋ', '𝓜', '𝔊', '𝔇', '𝔅', '𝔄', '𝔯', '𝕋'}
         return token in operators
 
 def parse_program(tokens: List[str]) -> Program:

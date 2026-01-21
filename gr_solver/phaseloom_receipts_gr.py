@@ -24,12 +24,15 @@ from datetime import datetime
 import numpy as np
 import hashlib
 from .logging_config import ReceiptLevels
+from receipt_schemas import OmegaReceipt
 
 class GRPhaseLoomReceipts:
     def __init__(self):
-        self.receipts = []
+        self.receipts = []  # Keep for compatibility, but use omega_receipts
+        self.omega_receipts = []
         self.events = []
         self.config = ReceiptLevels()
+        self.last_id = None
         self.macro_aggregates = {
             'eps_post_H': [],
             'eps_post_M': [],
@@ -53,6 +56,8 @@ class GRPhaseLoomReceipts:
                 "C_global": loom_data.get('C_global', 0.0),
                 "C_band": loom_data.get('C_band', []).tolist(),
                 "D_band": loom_data.get('D_band', []).tolist(),
+                "C_o": loom_data.get('C_o', 0.0),
+                "coherence_drop": loom_data.get('coherence_drop', 0.0),
                 "dt_loom": dt_loom
             }
             D_band_arr = loom_data.get('D_band', [])
@@ -128,6 +133,13 @@ class GRPhaseLoomReceipts:
             cleaned_threads[name] = cleaned_data
         receipt["threads"] = cleaned_threads
 
+        # Create OmegaReceipt for unified LoC ledger
+        omega_record = receipt.copy()
+        omega_receipt = OmegaReceipt.create(prev=self.last_id, tier="gr_phaseloom", record=omega_record)
+        self.omega_receipts.append(omega_receipt)
+        self.last_id = omega_receipt.id
+
+        # Legacy receipts for compatibility
         self.receipts.append(receipt)
         # Aggregate for macro receipts
         self.macro_aggregates['eps_post_H'].append(eps_post_H)
@@ -143,7 +155,7 @@ class GRPhaseLoomReceipts:
         self.macro_aggregates['mu_M'].append(mu_M)
         self.macro_aggregates['rollback_count'].append(rollback_count)
         # In real impl, write to file or DB
-        # print(f"Ω-Receipt: {json.dumps(receipt, indent=2)}")  # Commented out to reduce output
+        # print(f"Ω-Receipt: {json.dumps(asdict(omega_receipt), indent=2)}")  # Commented out to reduce output
 
     def emit_event(self, event_type, data):
         """Emit PhaseLoom timeline event"""
@@ -209,6 +221,12 @@ class GRPhaseLoomReceipts:
             "lexicon": "canon_v1_2",
             "modules": ["gr_solver"]
         }
+        # Create OmegaReceipt
+        omega_record = receipt.copy()
+        omega_receipt = OmegaReceipt.create(prev=self.last_id, tier="gr_phaseloom", record=omega_record)
+        self.omega_receipts.append(omega_receipt)
+        self.last_id = omega_receipt.id
+
         self.receipts.append(receipt)
 
     def emit_macro(self, step):
@@ -237,6 +255,12 @@ class GRPhaseLoomReceipts:
             "lexicon": "canon_v1_2",
             "modules": ["gr_solver"]
         }
+        # Create OmegaReceipt
+        omega_record = macro_receipt.copy()
+        omega_receipt = OmegaReceipt.create(prev=self.last_id, tier="gr_phaseloom", record=omega_record)
+        self.omega_receipts.append(omega_receipt)
+        self.last_id = omega_receipt.id
+
         self.receipts.append(macro_receipt)
         # Reset aggregates
         for k in self.macro_aggregates:

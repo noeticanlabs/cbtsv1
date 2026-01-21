@@ -1,12 +1,17 @@
 import json
 import time
 from dataclasses import dataclass, asdict
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, Optional
 from receipt_schemas import MSolveReceipt, MStepReceipt, MOrchReceipt
+
+def canonical_json_dumps(obj):
+    """Triaxis v1.2 canonical JSON serialization: sorted keys, no whitespace, floats as decimal strings."""
+    return json.dumps(obj, sort_keys=True, separators=(',', ':'), default=str)
 
 @dataclass
 class AeonicReceipts:
     log_file: str = "aeonic_receipts.jsonl"
+    last_id: Optional[str] = None
 
     def emit_event(self, event_type: str, details: Dict[str, Any]):
         """Emit a JSONL log entry for a memory event."""
@@ -19,14 +24,30 @@ class AeonicReceipts:
             f.write(json.dumps(entry, default=str) + '\n')
 
     def emit_structured_receipt(self, receipt: Union[MSolveReceipt, MStepReceipt, MOrchReceipt]):
-        """Emit structured receipt with full schema."""
+        """Emit unified OmegaReceipt with hash chaining."""
+        from receipt_schemas import OmegaReceipt
+
+        # Determine tier based on type
+        tier_map = {
+            MSolveReceipt: "msolve",
+            MStepReceipt: "mstep",
+            MOrchReceipt: "morch"
+        }
+        tier = tier_map[type(receipt)]
+
+        # Convert receipt to dict for record
         receipt_dict = asdict(receipt)
-        # Convert Kappa to dict for JSON serialization
         if 'kappa' in receipt_dict and hasattr(receipt.kappa, 'o'):
             receipt_dict['kappa'] = {'o': receipt.kappa.o, 's': receipt.kappa.s, 'mu': receipt.kappa.mu}
 
-        event_type = type(receipt).__name__.upper()
-        self.emit_event(event_type, receipt_dict)
+        # Create unified receipt
+        omega_receipt = OmegaReceipt.create(prev=self.last_id, tier=tier, record=receipt_dict)
+
+        # Emit
+        self.emit_event("OMEGARECEIPT", asdict(omega_receipt))
+
+        # Update last_id
+        self.last_id = omega_receipt.id
 
     def snapshot_failure(self, attempts: list, filename: str = "failure_snapshot.jsonl"):
         """Persist failure snapshot for forensics."""

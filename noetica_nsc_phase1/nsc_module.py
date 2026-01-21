@@ -4,6 +4,7 @@ import zipfile
 from zipfile import ZipInfo
 import hashlib
 import unicodedata
+import dataclasses
 from dataclasses import dataclass
 from typing import List
 from . import nsc_diag
@@ -170,16 +171,19 @@ def write_module_bundle(module_artifact: ModuleArtifact, out_path: str, root_dir
         entries['manifest.json'] = canonical_json({
             'module_manifest_M': module_artifact.module_manifest_M,
             'module_id': module_artifact.module_id,
-            # Add other fields as per Section 7.1
         })
-        # Add file artifacts or something, but task says "Write all the entries as in Section 7.1"
-        # Assuming similar to create_bundle, but for modules
-        # Perhaps write each file's compiled data
+        # Write sources and artifacts
         for fa in module_artifact.file_artifacts:
             # Write source
             entries[f"sources/{fa.path}"] = read_source_file(root_dir, fa.path)
-            # Write bytecode, etc.
-            entries[f"artifacts/{fa.path}.bytecode"] = canonical_json(module_artifact.module_bytecode.opcodes)  # Placeholder
+            # Write bytecode artifacts
+            entries[f"artifacts/{fa.path}.bytecode"] = canonical_json(fa.bytecode.opcodes)
+            entries[f"artifacts/{fa.path}.trace"] = canonical_json([dataclasses.asdict(te) for te in fa.trace])
+            entries[f"artifacts/{fa.path}.pde"] = canonical_json(fa.pde_coeffs)
+        # Write module artifacts
+        entries['artifacts/module.bytecode'] = canonical_json(module_artifact.module_bytecode.opcodes)
+        entries['artifacts/module.trace'] = canonical_json([dataclasses.asdict(te) for te in module_artifact.module_trace])
+        entries['artifacts/module.pde'] = canonical_json(module_artifact.module_pde)
         # Sort
         for name in sorted(entries):
             zi = ZipInfo(name)

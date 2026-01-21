@@ -274,6 +274,26 @@ class GRLoC:
         # For now, zero contribution
         pass
 
+    def apply_projection(self):
+        """
+        Apply projection to functionalize K_proj term: enforce det(gamma_tilde) = 1
+        """
+        # Enforce det(gamma_tilde) = 1 by rescaling
+        gamma_tilde_mat = sym6_to_mat33(self.fields.gamma_tilde_sym6)
+        det = np.linalg.det(gamma_tilde_mat)
+        det_correction = det ** (-1.0/3.0)
+        gamma_tilde_new = gamma_tilde_mat * det_correction[..., np.newaxis, np.newaxis]
+        gamma_tilde_proj_sym6 = mat33_to_sym6(gamma_tilde_new)
+        self.K_proj['gamma_tilde_sym6'][:] = gamma_tilde_proj_sym6 - self.fields.gamma_tilde_sym6
+
+    def apply_boundary_conditions(self):
+        """
+        Apply boundary conditions to functionalize K_bc term.
+        For periodic boundaries, no adjustment needed.
+        """
+        # For periodic boundaries, K_bc remains zero
+        pass
+
     def compute_eps(self):
         """
         Compute coherence errors eps_H, eps_M, eps_proj.

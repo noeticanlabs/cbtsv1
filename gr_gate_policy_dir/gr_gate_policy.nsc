@@ -1,0 +1,6 @@
+H_max = 1e-4
+M_max = 1e-4
+R_max = 1e6
+alpha_floor = 1e-8
+lambda_floor = 1e-8
+kappa_max = 1e12

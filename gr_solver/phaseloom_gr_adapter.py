@@ -31,7 +31,7 @@ class GRPhaseLoomAdapter:
         # Thread tiers: 9 constraint, 9 gauge, 9 geometry
         self.N_threads = 27
         # History for phase unwrapping and rates
-        self.theta_prev = np.zeros(self.N_threads)
+        self.theta_phase_prev = np.zeros(self.N_threads)
         self.t_prev = 0.0
         self.initialized = False
 
@@ -58,23 +58,23 @@ class GRPhaseLoomAdapter:
         return a_vals, b_vals
 
     def compute_theta_rho_omega(self, a_vals, b_vals, t_current, dt):
-        """Compute theta, rho, omega for all threads."""
-        theta = np.arctan2(b_vals, a_vals)
-        rho = np.sqrt(a_vals**2 + b_vals**2)
+        """Compute theta_phase, phi_amp, omega for all threads."""
+        theta_phase = np.arctan2(b_vals, a_vals)
+        phi_amp = np.sqrt(a_vals**2 + b_vals**2)
 
         # Unwrap phases
         if not self.initialized:
-            self.theta_prev = theta.copy()
+            self.theta_phase_prev = theta_phase.copy()
             self.t_prev = t_current
             self.initialized = True
             omega = np.zeros(self.N_threads)
         else:
             # Simple unwrap: if diff > pi, subtract 2pi
-            theta_unwrapped = theta.copy()
-            diff = theta - self.theta_prev
+            theta_unwrapped = theta_phase.copy()
+            diff = theta_phase - self.theta_phase_prev
             theta_unwrapped -= 2 * np.pi * np.round(diff / (2 * np.pi))
-            omega = (theta_unwrapped - self.theta_prev) / (t_current - self.t_prev)
-            self.theta_prev = theta_unwrapped.copy()
+            omega = (theta_unwrapped - self.theta_phase_prev) / (t_current - self.t_prev)
+            self.theta_phase_prev = theta_unwrapped.copy()
             self.t_prev = t_current
 
-        return theta, rho, omega
+        return theta_phase, phi_amp, omega_phase

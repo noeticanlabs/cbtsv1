@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import logging
+import argparse
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from gr_solver.gr_solver import GRSolver
@@ -19,15 +20,15 @@ class ComprehensiveGRSolverTest:
     Exercises all major functions: memory, rails, gates, geometry, constraints, stepping.
     """
 
-    def __init__(self, Nx=16, Ny=16, Nz=16, L=4.0):
-        self.Nx = Nx
-        self.Ny = Ny
-        self.Nz = Nz
+    def __init__(self, N=8, L=4.0, dt=None):
+        self.N = N
+        self.Nx = self.Ny = self.Nz = N
         self.L = L
-        self.dx = L / Nx
-        self.solver = GRSolver(Nx, Ny, Nz, self.dx, self.dx, self.dx)
+        self.dx = L / N
+        self.dt = dt
+        self.solver = GRSolver(N, N, N, self.dx, self.dx, self.dx)
         self.results = {}
-        logger.info(f"Initialized test with grid {Nx}x{Ny}x{Nz}, L={L}")
+        logger.info(f"Initialized test with grid {N}x{N}x{N}, L={L}, dt={dt}")
 
     def test_initialization(self):
         """Test Minkowski initialization and initial computations."""
@@ -101,7 +102,7 @@ class ComprehensiveGRSolverTest:
         """Test single orchestrator step."""
         logger.info("Testing single step...")
         try:
-            dt, dominant_thread, rail_violation = self.solver.orchestrator.run_step()
+            dt, dominant_thread, rail_violation = self.solver.orchestrator.run_step(dt_max=self.dt)
 
             assert np.isfinite(dt), "dt not finite"
             assert isinstance(dominant_thread, str), "dominant_thread not string"
@@ -123,8 +124,10 @@ class ComprehensiveGRSolverTest:
             return True
 
         except Exception as e:
+            import traceback
             logger.error(f"Single step test failed: {e}")
-            self.results['single_step'] = {'passed': False, 'error': str(e)}
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            self.results['single_step'] = {'passed': False, 'error': str(e), 'traceback': traceback.format_exc()}
             return False
 
     def test_multi_step_evolution(self):
@@ -135,16 +138,22 @@ class ComprehensiveGRSolverTest:
             eps_H_history = []
             eps_M_history = []
             dominant_threads = []
+            t_history = []
 
             for i in range(num_steps):
-                dt, dominant_thread, rail_violation = self.solver.orchestrator.run_step()
+                dt, dominant_thread, rail_violation = self.solver.orchestrator.run_step(dt_max=self.dt)
                 eps_H_history.append(float(self.solver.constraints.eps_H))
                 eps_M_history.append(float(self.solver.constraints.eps_M))
                 dominant_threads.append(dominant_thread)
+                t_history.append(float(self.solver.orchestrator.t))
 
                 # Check no catastrophic failures
                 assert np.isfinite(dt), f"dt not finite at step {i}"
                 assert np.all(np.isfinite(self.solver.fields.gamma_sym6)), f"gamma_sym6 not finite at step {i}"
+
+            # Collect stage_eps_H from receipts
+            receipts = self.solver.orchestrator.receipts.receipts
+            stage_eps_H_history = [r.get('stage_eps_H', {}) for r in receipts[-num_steps:] if 'stage_eps_H' in r]
 
             self.results['multi_step_evolution'] = {
                 'passed': True,
@@ -152,8 +161,11 @@ class ComprehensiveGRSolverTest:
                 'eps_H_history': eps_H_history,
                 'eps_M_history': eps_M_history,
                 'dominant_threads': dominant_threads,
+                't_history': t_history,
+                'stage_eps_H_history': stage_eps_H_history,
                 'final_eps_H': eps_H_history[-1],
-                'final_eps_M': eps_M_history[-1]
+                'final_eps_M': eps_M_history[-1],
+                'final_t': t_history[-1]
             }
             logger.info("Multi-step evolution test passed")
             return True
@@ -257,7 +269,7 @@ class ComprehensiveGRSolverTest:
             self.results['constraints_geometry'] = {'passed': False, 'error': str(e)}
             return False
 
-    def run_all_tests(self):
+    def run_all_tests(self, output_file=None):
         """Run all test methods and collect results."""
         logger.info("Running comprehensive GR solver system tests...")
 
@@ -280,22 +292,52 @@ class ComprehensiveGRSolverTest:
 
         overall_passed = passed == total
 
+        # Get last state if available
+        last_state = getattr(self.solver.orchestrator, 'last_state', None)
+        summary_extra = {}
+        if last_state:
+            summary_extra.update({
+                'dx': float(self.dx),
+                'N': self.N,  # Assuming cubic
+                'L': float(self.L),
+                'dt_target': float(self.dt) if self.dt else None,
+                'dt_commit': float(last_state.dt_commit) if last_state.dt_commit else None,
+                'dt_ratio': float(last_state.dt_ratio) if last_state.dt_ratio else None,
+                'n_substeps': last_state.n_substeps,
+                'substep_cap_hit': last_state.substep_cap_hit,
+                'eps_H_gate': float(last_state.eps_H_gate) if last_state.eps_H_gate else None,
+                'eps_H_factor': float(last_state.eps_H_factor) if last_state.eps_H_factor else None,
+                'dominance_note': last_state.dominance_note
+            })
+
+        # Add final t from multi_step if available
+        if 'multi_step_evolution' in self.results and self.results['multi_step_evolution']['passed']:
+            summary_extra['final_t'] = self.results['multi_step_evolution']['final_t']
+
         self.results['summary'] = {
             'overall_passed': overall_passed,
             'tests_passed': passed,
             'total_tests': total,
             'grid': f"{self.Nx}x{self.Ny}x{self.Nz}",
-            'L': self.L
+            'L': self.L,
+            **summary_extra
         }
 
         # Save results
-        with open('test_comprehensive_gr_solver_results.json', 'w') as f:
+        if output_file is None:
+            output_file = f'test_E1_N{self.N}.json'
+        with open(output_file, 'w') as f:
             json.dump(self.results, f, indent=2)
 
         logger.info(f"Tests completed: {passed}/{total} passed")
         return overall_passed
 
 if __name__ == "__main__":
-    test = ComprehensiveGRSolverTest()
-    passed = test.run_all_tests()
+    parser = argparse.ArgumentParser(description='Run comprehensive GR solver test.')
+    parser.add_argument('--N', type=int, default=8, help='Grid size N')
+    parser.add_argument('--dt', type=float, required=True, help='Time step dt')
+    parser.add_argument('--output', type=str, help='Output file path')
+    args = parser.parse_args()
+    test = ComprehensiveGRSolverTest(N=args.N, L=4.0, dt=args.dt)
+    passed = test.run_all_tests(output_file=args.output)
     print(f"Comprehensive GR Solver Test Passed: {passed}")

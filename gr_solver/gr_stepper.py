@@ -20,6 +20,7 @@ import json
 import os
 import inspect
 from datetime import datetime
+from typing import Tuple, Dict, Any
 try:
     from numba import jit
 except ImportError:
@@ -30,6 +31,7 @@ from stepper_contract_memory import StepperContractWithMemory
 from gr_solver.stepper_contract import StepperContract
 from .gr_geometry import _sym6_to_mat33_jit, _inv_sym6_jit, _compute_christoffels_jit
 from .gr_loc import GRLoC
+from nsc_runtime_min import load_nscir, make_rhs_callable
 
 logger = logging.getLogger('gr_solver.stepper')
 
@@ -126,7 +128,7 @@ def _compute_gamma_tilde_rhs_jit(Nx, Ny, Nz, alpha, beta, phi, Gamma_tilde, A_sy
     return rhs_Gamma_tilde
 
 class GRStepper(StepperContract):
-    def __init__(self, fields, geometry, constraints, gauge, memory_contract=None, phaseloom=None, aeonic_mode=True, max_attempts=20, dt_floor=1e-10):
+    def __init__(self, fields, geometry, constraints, gauge, memory_contract=None, phaseloom=None, aeonic_mode=True, max_attempts=20, dt_floor=1e-10, temporal_system=None):
         super().__init__(max_attempts=max_attempts, dt_floor=dt_floor)
         self.fields = fields
         self.geometry = geometry
@@ -140,6 +142,14 @@ class GRStepper(StepperContract):
         self.memory = StepperContractWithMemory(memory_contract, phaseloom, max_attempts=max_attempts, dt_floor=dt_floor) if memory_contract and phaseloom else None
         self.aeonic_mode = aeonic_mode
         self.loc_operator = GRLoC(fields, geometry, constraints, lambda_val=self.lambda_val, kappa_H=1.0, kappa_M=1.0)
+        self.temporal_system = temporal_system
+
+        # Load Hadamard RHS if available
+        try:
+            from nsc_runtime_min import make_rhs_callable
+            self.rhs_func = make_rhs_callable('minkowski_rhs.nscir.json')
+        except:
+            self.rhs_func = None
 
         # Receipt chain for audit trail
         self.prev_receipt_hash = "0" * 64  # Initial hash for chain start
@@ -378,58 +388,140 @@ class GRStepper(StepperContract):
         with open(self.receipts_file, 'a') as f:
             f.write(json.dumps(receipt) + '\n')
 
-    def check_gates(self):
-        """Check step gates. Return (pass, reasons, margins)."""
+    def check_gates_internal(self, rails_policy=None):
+        """Check step gates. Return (accepted, hard_fail, penalty, reasons, margins)."""
+        if rails_policy is None:
+            rails_policy = {
+                'eps_H_max': 1e-2,  # soft
+                'eps_H_hard_max': 1e-1,
+                'eps_M_max': 1e-2,
+                'eps_M_hard_max': 1e-1,
+                'eps_proj_max': 1e-2,
+                'eps_proj_hard_max': 1e-1,
+                'eps_clk_max': 1e-2,
+                'eps_clk_hard_max': 1e-1,
+                'spike_soft_max': 1e2,
+                'spike_hard_max': 1e3
+            }
+
         # Compute residuals
         eps_H = float(self.constraints.eps_H)
         eps_M = float(self.constraints.eps_M)
         eps_proj = float(self.constraints.eps_proj)
         eps_clk = float(self.constraints.eps_clk) if self.constraints.eps_clk is not None else 0.0
 
-        # Gate thresholds (configurable, increased for stability)
-        eps_H_max = 1e-1
-        eps_M_max = 1e-1
-        eps_proj_max = 1e-1
-        eps_clk_max = 1e-1
+        eps_H_soft_max = rails_policy.get('eps_H_max', 1e-2)
+        eps_H_hard_max = rails_policy.get('eps_H_hard_max', 1e-1)
+        eps_M_soft_max = rails_policy.get('eps_M_max', 1e-2)
+        eps_M_hard_max = rails_policy.get('eps_M_hard_max', 1e-1)
+        eps_proj_soft_max = rails_policy.get('eps_proj_max', 1e-2)
+        eps_proj_hard_max = rails_policy.get('eps_proj_hard_max', 1e-1)
+        eps_clk_soft_max = rails_policy.get('eps_clk_max', 1e-2)
+        eps_clk_hard_max = rails_policy.get('eps_clk_hard_max', 1e-1)
+        spike_soft_max = rails_policy.get('spike_soft_max', 1e2)
+        spike_hard_max = rails_policy.get('spike_hard_max', 1e3)
 
-        # Check gates
-        gates_pass = True
+        # Check for hard fails: NaN or inf
+        if np.isnan(eps_H) or np.isinf(eps_H) or np.isnan(eps_M) or np.isinf(eps_M) or np.isnan(eps_proj) or np.isinf(eps_proj) or np.isnan(eps_clk) or np.isinf(eps_clk):
+            logger.error("Hard fail: NaN or infinite residuals in gates", extra={
+                "extra_data": {
+                    "eps_H": eps_H,
+                    "eps_M": eps_M,
+                    "eps_proj": eps_proj,
+                    "eps_clk": eps_clk
+                }
+            })
+            return False, True, float('inf'), ["NaN/inf residuals"], {}
+
+        accepted = True
+        hard_fail = False
+        penalty = 0.0
         reasons = []
         margins = {}
+        corrections = {}
 
-        if eps_H > eps_H_max:
-            gates_pass = False
-            reasons.append(f"eps_H = {eps_H:.2e} > {eps_H_max:.2e}")
-            margins['eps_H'] = eps_H_max - eps_H
+        # Special handling for eps_H
+        eps_H_warn = 7.5e-5
+        eps_H_fail = 1e-4
+        if eps_H > eps_H_fail:
+            hard_fail = True
+            accepted = False
+            reasons.append(f"eps_H = {eps_H:.2e} > {eps_H_fail:.2e}")
+            margins['eps_H'] = eps_H_fail - eps_H
+        elif eps_H > eps_H_warn:
+            penalty += (eps_H - eps_H_warn) / eps_H_warn
+            reasons.append(f"Warn: eps_H = {eps_H:.2e} > {eps_H_warn:.2e}")
+            margins['eps_H'] = eps_H_warn - eps_H
+            corrections = {'reduce_dt': True, 'increase_kappa_budget': True, 'increase_projection_freq': True}
 
-        if eps_M > eps_M_max:
-            gates_pass = False
-            reasons.append(f"eps_M = {eps_M:.2e} > {eps_M_max:.2e}")
-            margins['eps_M'] = eps_M_max - eps_M
+        # Check other eps
+        for eps, name, soft, hard in [
+            (eps_M, 'eps_M', eps_M_soft_max, eps_M_hard_max),
+            (eps_proj, 'eps_proj', eps_proj_soft_max, eps_proj_hard_max),
+            (eps_clk, 'eps_clk', eps_clk_soft_max, eps_clk_hard_max)
+        ]:
+            if eps > hard:
+                hard_fail = True
+                accepted = False
+                reasons.append(f"{name} = {eps:.2e} > {hard:.2e}")
+                margins[name] = hard - eps
+            elif eps > soft:
+                penalty += (eps - soft) / soft
+                reasons.append(f"Soft: {name} = {eps:.2e} > {soft:.2e}")
+                margins[name] = soft - eps
 
-        if eps_proj > eps_proj_max:
-            gates_pass = False
-            reasons.append(f"eps_proj = {eps_proj:.2e} > {eps_proj_max:.2e}")
-            margins['eps_proj'] = eps_proj_max - eps_proj
-
-        if eps_clk > eps_clk_max:
-            gates_pass = False
-            reasons.append(f"eps_clk = {eps_clk:.2e} > {eps_clk_max:.2e}")
-            margins['eps_clk'] = eps_clk_max - eps_clk
-
-        # Spike norms (placeholder - check for large gradients)
+        # Spike norms
         spike_norms = {
             'alpha_spike': np.max(np.abs(np.gradient(self.fields.alpha))),
             'K_spike': np.max(np.abs(np.gradient(self.fields.K_sym6)))
         }
-        spike_max = 1e3  # Arbitrary threshold
         for field, spike in spike_norms.items():
-            if spike > spike_max:
-                gates_pass = False
-                reasons.append(f"{field} spike = {spike:.2e} > {spike_max:.2e}")
-                margins[field] = spike_max - spike
+            if np.isnan(spike) or np.isinf(spike):
+                hard_fail = True
+                accepted = False
+                reasons.append(f"Hard: {field} NaN/inf")
+                margins[field] = float('-inf')
+            elif spike > spike_hard_max:
+                hard_fail = True
+                accepted = False
+                reasons.append(f"{field} spike = {spike:.2e} > {spike_hard_max:.2e}")
+                margins[field] = spike_hard_max - spike
+            elif spike > spike_soft_max:
+                penalty += (spike - spike_soft_max) / spike_soft_max
+                reasons.append(f"Soft: {field} spike = {spike:.2e} > {spike_soft_max:.2e}")
+                margins[field] = spike_soft_max - spike
 
-        return gates_pass, reasons, margins
+        return accepted, hard_fail, penalty, reasons, margins, corrections
+
+    def check_gates(self, rails_policy) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        Implement StepperContract.check_gates.
+
+        Classifies violation types: dt-dependent (e.g., CFL), state-dependent (e.g., constraints), sem.
+        """
+        accepted, hard_fail, penalty, reasons, margins = self.check_gates(rails_policy)
+
+        if hard_fail or not accepted:
+            # Classify violation type
+            violation_type = 'state'  # default
+            for reason in reasons:
+                if 'CFL' in reason or 'dt' in reason.lower() or 'timestep' in reason.lower():
+                    violation_type = 'dt'
+                    break
+                elif 'NaN' in reason or 'inf' in reason or 'sem' in reason.upper():
+                    violation_type = 'sem'
+                    break
+                # else state
+
+            details = {
+                'hard_fail': hard_fail,
+                'penalty': penalty,
+                'reasons': reasons,
+                'margins': margins
+            }
+            return False, violation_type, details
+        else:
+            return True, '', {}
 
     def emit_ledger_eval_receipt(self, ledgers):
         """Emit LEDGER_EVAL receipt after step completion."""
@@ -463,7 +555,7 @@ class GRStepper(StepperContract):
         with open(self.receipts_file, 'a') as f:
             f.write(json.dumps(receipt) + '\n')
 
-    def emit_step_receipt(self, accepted, rejection_reason=None):
+    def emit_step_receipt(self, accepted, rejection_reason=None, stage_eps_H=None, corrections_applied=None):
         """Emit STEP_ACCEPT or STEP_REJECT receipt."""
         event = 'STEP_ACCEPT' if accepted else 'STEP_REJECT'
 
@@ -482,7 +574,7 @@ class GRStepper(StepperContract):
             }
         }
 
-        gates_pass, reasons, margins = self.check_gates()
+        accepted_gates, hard_fail_gates, penalty_gates, reasons, margins, _ = self.check_gates_internal()
 
         receipt = {
             'run_id': 'gr_solver_run_001',
@@ -501,11 +593,14 @@ class GRStepper(StepperContract):
             },
             'ledgers': ledgers,
             'gates': {
-                'pass': gates_pass,
+                'pass': accepted_gates,
+                'penalty': penalty_gates,
                 'reasons': reasons,
                 'margins': margins
             },
+            'stage_eps_H': stage_eps_H or {},
             'rejection_reason': rejection_reason,
+            'corrections_applied': corrections_applied or {},
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
 
@@ -545,6 +640,11 @@ class GRStepper(StepperContract):
             self.constraints.eps_proj_initial = self.constraints.eps_proj
             # Initialize eps_clk
             self.constraints.eps_clk = 0.0
+
+            # Initialize stage eps_H logging
+            stage_eps_H = {}
+            stage_eps_H['eps_H_pre'] = float(self.constraints.eps_H)
+
             logger.debug("Starting UFE step", extra={
                 "extra_data": {
                     "dt": dt,
@@ -761,9 +861,20 @@ class GRStepper(StepperContract):
             # Apply constraint damping (projection effects)
             self.apply_damping()
             self.constraints.compute_residuals()
+            stage_eps_H['eps_H_post_phys'] = float(self.constraints.eps_H)
+            stage_eps_H['eps_H_post_cons'] = float(self.constraints.eps_H)
             # Evolve gauge
             self.gauge.evolve_lapse(dt)
             self.gauge.evolve_shift(dt)
+            # Recompute geometry and constraints after gauge evolution
+            self.geometry.compute_christoffels()
+            self.geometry.compute_ricci()
+            self.geometry.compute_scalar_curvature()
+            self.constraints.compute_hamiltonian()
+            self.constraints.compute_momentum()
+            self.constraints.compute_residuals()
+            stage_eps_H['eps_H_post_gauge'] = float(self.constraints.eps_H)
+            stage_eps_H['eps_H_post_filter'] = float(self.constraints.eps_H)
 
             # Emit LEDGER_EVAL receipt
             final_ledgers = {
@@ -782,11 +893,24 @@ class GRStepper(StepperContract):
             self.emit_ledger_eval_receipt(final_ledgers)
 
             # Check gates
-            gates_pass, reasons, margins = self.check_gates()
+            accepted_gates, hard_fail_gates, penalty_gates, reasons, margins, corrections = self.check_gates_internal()
+            if corrections:
+                self.apply_corrections(corrections)
 
-            if gates_pass:
+            accepted = accepted_gates
+            hard_fail = hard_fail_gates
+            penalty = penalty_gates
+
+            if not hard_fail:
+                # Log soft violations
+                if penalty > 0:
+                    logger.warning("UFE step accepted with soft violations", extra={
+                        "extra_data": {
+                            "penalty": penalty,
+                            "reasons": reasons
+                        }
+                    })
                 # Accept step
-                self.emit_step_receipt(accepted=True)
                 # Increment step count for multi-rate
                 self.step_count += 1
                 logger.debug("UFE step accepted", extra={
@@ -801,7 +925,10 @@ class GRStepper(StepperContract):
                         }
                     }
                 })
-                return True, None, self.current_dt, None  # accepted, state unchanged, dt_used, no reason
+                self.emit_step_receipt(accepted=True, stage_eps_H=stage_eps_H, corrections_applied=corrections)
+                # Increment step count for multi-rate
+                self.step_count += 1
+                return True, None, self.current_dt, None, stage_eps_H  # accepted, state unchanged, dt_used, no reason, stage_eps_H
             else:
                 # Reject step: rollback to initial state
                 self.fields.gamma_sym6 = u0_gamma
@@ -817,7 +944,7 @@ class GRStepper(StepperContract):
                 self.geometry.compute_scalar_curvature()
 
                 rejection_reason = f"Gates failed: {', '.join(reasons)}"
-                self.emit_step_receipt(accepted=False, rejection_reason=rejection_reason)
+                self.emit_step_receipt(accepted=False, rejection_reason=rejection_reason, stage_eps_H=stage_eps_H, corrections_applied=corrections)
 
                 # Suggest smaller dt for retry
                 dt_new = max(self.current_dt / 2.0, 1e-10)
@@ -832,183 +959,61 @@ class GRStepper(StepperContract):
                     }
                 })
                 # Note: step_count not incremented on rejection
-                return False, None, dt_new, rejection_reason  # rejected, state rolled back, new dt, reason
+                return False, None, dt_new, rejection_reason, stage_eps_H  # rejected, state rolled back, new dt, reason, stage_eps_H
 
     def step(self, X_n, t_n, dt_candidate, rails_policy, phaseloom_caps):
-        """Implement the stepper contract step method with stage pipeline: planning, per-stage RHS/gauge/filter/provisional/coherence/audit/response."""
-        # Stage planning: dt, authoritative buffers
-        accepted = False
+        """
+        Implement StepperContract.step using step_ufe.
+        This ensures consistency and removes code duplication.
+        """
+        # X_n is ignored as we operate on self.fields directly
+
+        dt = dt_candidate
         rejection_reason = None
-        attempt_number = 0
-        dt_scale = 1.0
-        damping_gain = 1.0
-        while attempt_number < self.max_attempts and not accepted:
-            attempt_number += 1
-            # Compute clocks and dt
-            clocks, dt_used = self.compute_clocks(dt_candidate * dt_scale)
-            self.emit_clock_decision_receipt(clocks)
-            # Authoritative buffers: initial state
-            Psi_auth = {
-                'gamma_sym6': self.fields.gamma_sym6.copy(),
-                'K_sym6': self.fields.K_sym6.copy(),
-                'phi': self.fields.phi.copy(),
-                'gamma_tilde_sym6': self.fields.gamma_tilde_sym6.copy(),
-                'A_sym6': self.fields.A_sym6.copy(),
-                'Gamma_tilde': self.fields.Gamma_tilde.copy(),
-                'Z': self.fields.Z.copy(),
-                'Z_i': self.fields.Z_i.copy()
-            }
-            self.loc_operator.set_authoritative_state(Psi_auth)
-            # Log initial constraint residuals
-            self.constraints.compute_hamiltonian()
-            self.constraints.compute_momentum()
-            self.constraints.compute_residuals()
-            self.constraints.eps_H_initial = self.constraints.eps_H
-            self.constraints.eps_M_initial = self.constraints.eps_M
-            self.constraints.eps_proj_initial = self.constraints.eps_proj
-            self.constraints.eps_clk = 0.0
-            # Multi-stage RK4 with coherence
-            num_stages = 4
-            k_stages = [None] * num_stages
-            stage_failed = False
-            rejection_reason = None
-            slow_update = (self.step_count % self.slow_rate == 0)
-            for k in range(num_stages):
-                # Build RHS
-                self.compute_rhs(t_n + k * dt_used / num_stages, slow_update)
-                rhs_norms = {
-                    'gamma': np.linalg.norm(self.rhs_gamma_sym6),
-                    'K': np.linalg.norm(self.rhs_K_sym6),
-                    'phi': np.linalg.norm(self.rhs_phi),
-                    'gamma_tilde': np.linalg.norm(self.rhs_gamma_tilde_sym6),
-                    'A': np.linalg.norm(self.rhs_A_sym6),
-                    'Z': np.linalg.norm(self.rhs_Z),
-                    'Z_i': np.linalg.norm(self.rhs_Z_i)
-                }
-                self.emit_stage_rhs_receipt(k+1, t_n + k * dt_used / num_stages, rhs_norms)
-                k_stages[k] = {
-                    'gamma_sym6': self.rhs_gamma_sym6.copy(),
-                    'K_sym6': self.rhs_K_sym6.copy(),
-                    'phi': self.rhs_phi.copy(),
-                    'gamma_tilde_sym6': self.rhs_gamma_tilde_sym6.copy(),
-                    'A_sym6': self.rhs_A_sym6.copy(),
-                    'Gamma_tilde': self.rhs_Gamma_tilde.copy(),
-                    'Z': self.rhs_Z.copy(),
-                    'Z_i': self.rhs_Z_i.copy()
-                }
-                # Provisional update
-                if k == 0:
-                    for field in Psi_auth:
-                        setattr(self.fields, field, Psi_auth[field] + (dt_used / 2) * k_stages[k][field])
-                elif k == 1:
-                    for field in Psi_auth:
-                        setattr(self.fields, field, Psi_auth[field] + (dt_used / 2) * k_stages[k][field])
-                elif k == 2:
-                    for field in Psi_auth:
-                        setattr(self.fields, field, Psi_auth[field] + dt_used * k_stages[k][field])
-                # Gauge update
-                self.gauge.evolve_lapse(dt_used / num_stages)
-                self.gauge.evolve_shift(dt_used / num_stages)
-                # Optional filter (placeholder)
-                # Coherence operators: K_proj, K_damp, K_bc
-                self.apply_projection()
-                self.apply_damping()
-                self.apply_boundary_conditions()
-                # Audit: compute eps, D, gates
-                self.constraints.compute_residuals()
-                dominance = self.compute_dominance()
-                gates_pass, reasons, margins = self.check_gates()
-                # Update eps_clk
-                stage_diff = self.constraints.compute_stage_difference_Linf({
-                    'gamma_sym6': self.fields.gamma_sym6,
-                    'K_sym6': self.fields.K_sym6,
-                    'phi': self.fields.phi,
-                    'gamma_tilde_sym6': self.fields.gamma_tilde_sym6,
-                    'A_sym6': self.fields.A_sym6,
-                    'Gamma_tilde': self.fields.Gamma_tilde,
-                    'Z': self.fields.Z,
-                    'Z_i': self.fields.Z_i
-                }, Psi_auth)
-                self.constraints.eps_clk = max(self.constraints.eps_clk, stage_diff)
-                # Response ladder
-                if not gates_pass:
-                    # Correct: actions dt_scale, damping_gain
-                    dt_scale *= 0.5
-                    damping_gain *= 2.0
-                    self.lambda_val *= damping_gain
-                    # Rollback: failed
-                    stage_failed = True
-                    rejection_reason = f"Stage {k+1} gates failed: {', '.join(reasons)}"
-                    break
-            if not stage_failed:
-                # Final update
-                for field in Psi_auth:
-                    final_increment = (dt_used / 6) * (k_stages[0][field] + 2*k_stages[1][field] + 2*k_stages[2][field] + k_stages[3][field])
-                    setattr(self.fields, field, Psi_auth[field] + final_increment)
-                # Coherence on final
-                self.apply_projection()
-                self.apply_damping()
-                self.apply_boundary_conditions()
-                self.constraints.compute_residuals()
-                dominance = self.compute_dominance()
-                gates_pass, reasons, margins = self.check_gates()
-                if gates_pass:
-                    # Accept
-                    self.geometry.compute_christoffels()
-                    self.geometry.compute_ricci()
-                    self.geometry.compute_scalar_curvature()
-                    final_ledgers = {
-                        'eps_H': float(self.constraints.eps_H),
-                        'eps_M': float(self.constraints.eps_M),
-                        'eps_proj': float(self.constraints.eps_proj),
-                        'eps_clk': float(self.constraints.eps_clk),
-                        'eps_H_norm': float(self.constraints.eps_H_norm),
-                        'eps_M_norm': float(self.constraints.eps_M_norm),
-                        'eps_proj_norm': float(self.constraints.eps_proj_norm),
-                        'spikes': {
-                            'alpha_max_grad': float(np.max(np.abs(np.gradient(self.fields.alpha)))),
-                            'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
-                        }
-                    }
-                    self.emit_ledger_eval_receipt(final_ledgers)
-                    self.emit_step_receipt(accepted=True)
-                    accepted = True
-                    self.step_count += 1
-                    logger.debug("Step accepted", extra={
-                        "extra_data": {
-                            "dt": dt_used,
-                            "eps_H_final": float(self.constraints.eps_H),
-                            "eps_M_final": float(self.constraints.eps_M)
-                        }
-                    })
-                else:
-                    # Correct for final
-                    dt_scale *= 0.5
-                    damping_gain *= 2.0
-                    self.lambda_val *= damping_gain
-                    stage_failed = True
-                    rejection_reason = f"Final gates failed: {', '.join(reasons)}"
-            if stage_failed:
-                # Rollback
-                for field in Psi_auth:
-                    setattr(self.fields, field, Psi_auth[field])
-                self.geometry.compute_christoffels()
-                self.geometry.compute_ricci()
-                self.geometry.compute_scalar_curvature()
-                self.emit_step_receipt(accepted=False, rejection_reason=rejection_reason)
-        if not accepted:
-            rejection_reason = f"Max attempts {self.max_attempts} reached"
-        return accepted, None, dt_used if accepted else dt_candidate * dt_scale, rejection_reason
+
+        # Attempt loop
+        for attempt in range(self.max_attempts):
+            # step_ufe performs one attempt
+            # It handles: clock decision, RHS, update, gauge (at end), gates, receipts
+            success, _, dt_new, reason, _ = self.step_ufe(dt, t_n)
+
+            if success:
+                return True, None, dt, None
+            else:
+                # Retry with new dt suggested by step_ufe
+                dt = dt_new
+                rejection_reason = reason
+
+        return False, None, dt, rejection_reason
 
     def attempt_receipt(self, X_n, t_n, dt_attempted, attempt_number):
         """Emit attempt receipt for every attempt."""
-        # Implementation is in step_ufe with emit_stage_rhs_receipt etc.
-        pass
+        # Log residuals and dt
+        eps_H = float(self.constraints.eps_H)
+        eps_M = float(self.constraints.eps_M)
+        logger.info("Attempt receipt", extra={
+            "extra_data": {
+                "attempt_number": attempt_number,
+                "t_n": t_n,
+                "dt_attempted": dt_attempted,
+                "eps_H": eps_H,
+                "eps_M": eps_M
+            }
+        })
+        # Does not advance τ
 
     def step_receipt(self, X_next, t_next, dt_used):
         """Emit step receipt only on acceptance."""
-        # Implementation is in step_ufe with emit_step_receipt
-        pass
+        # Advance audit time τ
+        if self.temporal_system:
+            self.temporal_system.audit_time()
+        logger.info("Step receipt: accepted", extra={
+            "extra_data": {
+                "t_next": t_next,
+                "dt_used": dt_used,
+                "tau": self.temporal_system.tau if self.temporal_system else None
+            }
+        })
 
     def compute_rhs(self, t=0.0, slow_update=True):
         """Compute full ADM RHS B with spatial derivatives."""
@@ -1016,6 +1021,33 @@ class GRStepper(StepperContract):
         with rhs_timer:
             # Check tensor layout compliance before RHS computation
             self.check_tensor_layout_compliance()
+
+            if self.rhs_func:
+                # Use Hadamard VM via rhs_func
+                fields_dict = {
+                    'gamma_sym6': self.fields.gamma_sym6,
+                    'K_sym6': self.fields.K_sym6,
+                    'alpha': self.fields.alpha,
+                    'beta': self.fields.beta,
+                    'phi': self.fields.phi,
+                    'gamma_tilde_sym6': self.fields.gamma_tilde_sym6,
+                    'A_sym6': self.fields.A_sym6,
+                    'Gamma_tilde': self.fields.Gamma_tilde,
+                    'Z': self.fields.Z,
+                    'Z_i': self.fields.Z_i,
+                    'dx': self.fields.dx, 'dy': self.fields.dy, 'dz': self.fields.dz
+                }
+                rhs_result = self.rhs_func(fields_dict, lambda_val=self.lambda_val, sources_enabled=self.sources_func is not None)
+                # Map to self.rhs_*
+                self.rhs_gamma_sym6[:] = rhs_result['rhs_gamma_sym6']
+                self.rhs_K_sym6[:] = rhs_result['rhs_K_sym6']
+                self.rhs_phi[:] = rhs_result['rhs_phi']
+                self.rhs_gamma_tilde_sym6[:] = rhs_result['rhs_gamma_tilde_sym6']
+                self.rhs_A_sym6[:] = rhs_result['rhs_A_sym6']
+                self.rhs_Gamma_tilde[:] = rhs_result['rhs_Gamma_tilde']
+                self.rhs_Z[:] = rhs_result['rhs_Z']
+                self.rhs_Z_i[:] = rhs_result['rhs_Z_i']
+                return
 
         if self.aeonic_mode:
             rhs_gamma_sym6 = self.rhs_gamma_sym6
@@ -1142,21 +1174,21 @@ class GRStepper(StepperContract):
 
         # BSSN ∂_0 φ = - (α/6) K + (1/6) ∂_k β^k
         # ∂_t φ = ∂_0 φ + β^k ∂_k φ
-        div_beta = np.gradient(self.fields.beta[..., 0], self.fields.dx, axis=0) + \
-                   np.gradient(self.fields.beta[..., 1], self.fields.dy, axis=1) + \
-                   np.gradient(self.fields.beta[..., 2], self.fields.dz, axis=2)
-        grad_beta = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-        for k in range(3):
-            grad_beta[..., k, 0] = np.gradient(self.fields.beta[..., k], self.fields.dx, axis=0)
-            grad_beta[..., k, 1] = np.gradient(self.fields.beta[..., k], self.fields.dy, axis=1)
-            grad_beta[..., k, 2] = np.gradient(self.fields.beta[..., k], self.fields.dz, axis=2)
-        rhs_phi[:] = - (self.fields.alpha / 6.0) * K_trace_scratch + (1.0 / 6.0) * div_beta
-        # Add advection term β^k ∂_k φ
-        grad_phi = np.array([np.gradient(self.fields.phi, self.fields.dx, axis=0),
-                             np.gradient(self.fields.phi, self.fields.dy, axis=1),
-                             np.gradient(self.fields.phi, self.fields.dz, axis=2)])
-        advection_phi = np.sum(self.fields.beta * grad_phi.transpose(1,2,3,0), axis=-1)
-        rhs_phi[:] += advection_phi
+        if slow_update:
+            div_beta = np.gradient(self.fields.beta[..., 0], self.fields.dx, axis=0) + \
+                       np.gradient(self.fields.beta[..., 1], self.fields.dy, axis=1) + \
+                       np.gradient(self.fields.beta[..., 2], self.fields.dz, axis=2)
+            rhs_phi[:] = - (self.fields.alpha / 6.0) * K_trace_scratch + (1.0 / 6.0) * div_beta
+            # Add advection term β^k ∂_k φ
+            grad_phi = np.array([np.gradient(self.fields.phi, self.fields.dx, axis=0),
+                                 np.gradient(self.fields.phi, self.fields.dy, axis=1),
+                                 np.gradient(self.fields.phi, self.fields.dz, axis=2)])
+            advection_phi = np.sum(self.fields.beta * grad_phi.transpose(1,2,3,0), axis=-1)
+            rhs_phi[:] += advection_phi
+            rhs_phi += S_phi
+        else:
+            rhs_phi[:] = 0.0
+
         # Full BSSN Gamma_tilde evolution: ∂_t \tilde Γ^i = A + B + C + D
 
 
@@ -1193,32 +1225,36 @@ class GRStepper(StepperContract):
 
         # RHS for constraint damping
         # For Z: ∂t Z = - kappa alpha H
-        self.constraints.compute_hamiltonian()
-        kappa = 1.0
-        rhs_Z[:] = -kappa * self.fields.alpha * self.constraints.H
-        # For Z_i: ∂t Z_i = - kappa alpha M_i
-        self.constraints.compute_momentum()
-        rhs_Z_i[:] = -kappa * self.fields.alpha[:, :, :, np.newaxis] * self.constraints.M
+        if slow_update:
+            self.constraints.compute_hamiltonian()
+            kappa = 1.0
+            rhs_Z[:] = -kappa * self.fields.alpha * self.constraints.H
+            # For Z_i: ∂t Z_i = - kappa alpha M_i
+            self.constraints.compute_momentum()
+            rhs_Z_i[:] = -kappa * self.fields.alpha[:, :, :, np.newaxis] * self.constraints.M
+            rhs_Z += S_Z
+            rhs_Z_i += S_Z_i
+        else:
+            rhs_Z[:] = 0.0
+            rhs_Z_i[:] = 0.0
 
         # Add sources
         rhs_gamma_tilde_sym6 += S_gamma_tilde_sym6
         rhs_A_sym6 += S_A_sym6
         rhs_Gamma_tilde += S_Gamma_tilde
-        rhs_phi += S_phi
-        rhs_Z += S_Z
-        rhs_Z_i += S_Z_i
 
         # Add LoC augmentation
         if self.lambda_val > 0:
             K_LoC_scaled = self.loc_operator.get_K_LoC_for_rhs()
             rhs_gamma_sym6 += K_LoC_scaled['gamma_sym6']
             rhs_K_sym6 += K_LoC_scaled['K_sym6']
-            rhs_phi += K_LoC_scaled['phi']
             rhs_gamma_tilde_sym6 += K_LoC_scaled['gamma_tilde_sym6']
             rhs_A_sym6 += K_LoC_scaled['A_sym6']
             rhs_Gamma_tilde += K_LoC_scaled['Gamma_tilde']
-            rhs_Z += K_LoC_scaled['Z']
-            rhs_Z_i += K_LoC_scaled['Z_i']
+            if slow_update:
+                rhs_phi += K_LoC_scaled['phi']
+                rhs_Z += K_LoC_scaled['Z']
+                rhs_Z_i += K_LoC_scaled['Z_i']
 
         logger.info("compute_rhs timing", extra={
             "extra_data": {
@@ -1278,4 +1314,40 @@ class GRStepper(StepperContract):
             }
         })
 
-
+    def apply_corrections(self, corrections):
+        """Apply bounded corrective actions for warn level violations."""
+        if 'reduce_dt' in corrections:
+            if hasattr(self, 'current_dt') and self.current_dt > 0:
+                old_dt = self.current_dt
+                self.current_dt = max(1e-6, 0.8 * self.current_dt)
+                logger.info("Corrective action: dt reduction", extra={
+                    "extra_data": {
+                        "action": "dt_reduction",
+                        "before": old_dt,
+                        "after": self.current_dt
+                    }
+                })
+        if 'increase_kappa_budget' in corrections:
+            old_kappa_H = self.loc_operator.kappa_H
+            old_kappa_M = self.loc_operator.kappa_M
+            self.loc_operator.kappa_H = min(1.0, self.loc_operator.kappa_H + 0.1)
+            self.loc_operator.kappa_M = min(1.0, self.loc_operator.kappa_M + 0.1)
+            logger.info("Corrective action: kappa increase", extra={
+                "extra_data": {
+                    "action": "kappa_increase",
+                    "kappa_H_before": old_kappa_H,
+                    "kappa_H_after": self.loc_operator.kappa_H,
+                    "kappa_M_before": old_kappa_M,
+                    "kappa_M_after": self.loc_operator.kappa_M
+                }
+            })
+        if 'increase_projection_freq' in corrections:
+            old_lambda = self.lambda_val
+            self.lambda_val = min(10.0, self.lambda_val * 2.0)
+            logger.info("Corrective action: projection frequency boost", extra={
+                "extra_data": {
+                    "action": "projection_freq_boost",
+                    "lambda_before": old_lambda,
+                    "lambda_after": self.lambda_val
+                }
+            })

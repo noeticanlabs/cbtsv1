@@ -1,0 +1,38 @@
+nsc.module gr_rhs.v0_1;
+
+op rhs_bssn_bundle {
+  lane: PHY.micro.act;
+  effects: read[S_PHY], write[S_PHY];
+  bc: periodic;
+  dim: 3;
+
+  in  fields : struct {
+    gamma_sym6: field<f64,3,6>,
+    K_sym6: field<f64,3,6>,
+    alpha: field<f64,3>,
+    beta: field<f64,3,3>,
+    phi: field<f64,3>,
+    gamma_tilde_sym6: field<f64,3,6>,
+    A_sym6: field<f64,3,6>,
+    Gamma_tilde: field<f64,3,3>,
+    Z: field<f64,3>,
+    Z_i: field<f64,3,3>,
+    dx: f64, dy: f64, dz: f64
+  } @S_PHY;
+
+  out rhs_bundle : struct {
+    rhs_gamma_sym6: field<f64,3,6>,
+    rhs_K_sym6: field<f64,3,6>,
+    rhs_phi: field<f64,3>,
+    rhs_gamma_tilde_sym6: field<f64,3,6>,
+    rhs_A_sym6: field<f64,3,6>,
+    rhs_Gamma_tilde: field<f64,3,3>,
+    rhs_Z: field<f64,3>,
+    rhs_Z_i: field<f64,3,3>
+  } @S_PHY;
+
+  param lambda_val : f64 = 0.0;
+  param sources_enabled : bool = false;
+
+  rhs_bundle = compute_gr_rhs(fields, lambda_val, sources_enabled);
+}

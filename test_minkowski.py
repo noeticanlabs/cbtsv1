@@ -6,6 +6,7 @@ Run GR solver on flat spacetime, check constraints remain ~0.
 
 import numpy as np
 import json
+import time
 from gr_solver.gr_solver import GRSolver
 from gr_solver.gr_core_fields import det_sym6, SYM6_IDX
 
@@ -210,7 +211,4 @@ def test_adversarial_overlap():
     print("Adversarial overlap test passed.")
 
 if __name__ == "__main__":
-    # test_minkowski_stability()
-    # test_phaseloom_minkowski_forever()
-    # test_three_kick_gauntlet()
-    test_adversarial_overlap()
+    test_minkowski_stability()

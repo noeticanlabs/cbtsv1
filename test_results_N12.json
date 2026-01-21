@@ -1,0 +1,58 @@
+{
+  "initialization": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "det_gamma_min": 0.9999937735496041
+  },
+  "memory_operations": {
+    "passed": true
+  },
+  "single_step": {
+    "passed": false,
+    "error": "'GRPhaseLoomOrchestrator' object has no attribute 'eps_H_target'",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/user/cbtsv1/tests/test_comprehensive_gr_solver.py\", line 103, in test_single_step\n    dt, dominant_thread, rail_violation = self.solver.orchestrator.run_step()\n                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/user/cbtsv1/gr_solver/phaseloom_gr_orchestrator.py\", line 384, in run_step\n    state = PhaseState(self)\n            ^^^^^^^^^^^^^^^^\n  File \"/home/user/cbtsv1/gr_solver/phases.py\", line 42, in __init__\n    self.eps_H_gate = orchestrator.eps_H_target\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'GRPhaseLoomOrchestrator' object has no attribute 'eps_H_target'\n"
+  },
+  "multi_step_evolution": {
+    "passed": false,
+    "error": "'GRPhaseLoomOrchestrator' object has no attribute 'eps_H_target'"
+  },
+  "rails_gates": {
+    "passed": true,
+    "gate_violation": null,
+    "margins": {
+      "eps_H": 0.0,
+      "eps_M": 0.0,
+      "R": 0.0,
+      "det": 0.20000124529783297,
+      "alpha": 1e-08,
+      "lambda": 1.0000054198764665e-08,
+      "kappa": 1.000008853887288e-12
+    },
+    "sem_ok": true,
+    "sem_reason": "ok"
+  },
+  "phaseloom_threads": {
+    "passed": true,
+    "num_residuals": 9,
+    "dt_min": 9.990009991007993e-05,
+    "dominant_thread": [
+      "PHY",
+      "H",
+      "R0"
+    ]
+  },
+  "constraints_geometry": {
+    "passed": true,
+    "eps_H": 0.0,
+    "eps_M": 0.0,
+    "R": 0.0
+  },
+  "summary": {
+    "overall_passed": false,
+    "tests_passed": 5,
+    "total_tests": 7,
+    "grid": "12x12x12",
+    "L": 4.0
+  }
+}
