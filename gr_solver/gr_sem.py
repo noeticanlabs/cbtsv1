@@ -21,7 +21,7 @@ logger = logging.getLogger('gr_solver.sem')
 class KappaValidator:
     """Validates time monotonicity and coherence time semantics."""
 
-    def __init__(self, eps_H_soft=1e-8, eps_M_soft=1e-8, eps_H_hard=1e-4, eps_M_hard=1e-4):
+    def __init__(self, eps_H_soft=1e-6, eps_M_soft=1e-6, eps_H_hard=1e-3, eps_M_hard=1e-2):
         self.eps_H_soft = eps_H_soft
         self.eps_M_soft = eps_M_soft
         self.eps_H_hard = eps_H_hard

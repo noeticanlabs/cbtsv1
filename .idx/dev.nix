@@ -5,17 +5,15 @@
   channel = "stable-24.05"; # or "unstable"
   # Use https://search.nixos.org/packages to find packages
   packages = [
-    # pkgs.go
-    (pkgs.python3.withPackages (ps: [ps.pip ps.numpy]))
-    # pkgs.nodejs_20
-    # pkgs.nodePackages.nodemon
+    (pkgs.python3.withPackages (ps: [ps.pip ps.numpy ps.pytest ps.numba ps.scipy]))
   ];
   # Sets environment variables in the workspace
-  env = {};
+  env = {
+    PYTHONPATH = ".";
+  };
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
-      # "vscodevim.vim"
       "ms-python.python"
     ];
     # Enable previews

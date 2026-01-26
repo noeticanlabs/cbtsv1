@@ -14,8 +14,8 @@ import logging
 from dataclasses import dataclass
 from .logging_config import setup_logging, Timer, array_stats
 from .gr_core_fields import GRCoreFields, SYM6_IDX, inv_sym6, trace_sym6
-from .gr_geometry import GRGeometry
-from .gr_constraints import GRConstraints
+from .gr_geometry import GRGeometry, ricci_tensor_kernel
+from .gr_constraints import GRConstraints, compute_constraints_kernel
 from .gr_gauge import GRGauge
 from .gr_scheduler import GRScheduler
 from .gr_stepper import GRStepper
@@ -87,7 +87,7 @@ class GRConfig:
 logger = logging.getLogger('gr_solver.solver')
 
 class GRSolver:
-    def __init__(self, Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0, c=1.0, Lambda=0.0, log_level=logging.WARNING, log_file=None):
+    def __init__(self, Nx, Ny, Nz, dx=1.0, dy=1.0, dz=1.0, c=1.0, Lambda=0.0, log_level=logging.WARNING, log_file=None, analysis_mode=False):
         # Setup structured logging
         setup_logging(level=log_level, log_file=log_file)
 
@@ -113,7 +113,8 @@ class GRSolver:
         self.memory_contract = AeonicMemoryContract(self.memory_bank, self.aeonic_receipts)
         self.phaseloom = PhaseLoom27()
 
-        self.stepper = GRStepper(self.fields, self.geometry, self.constraints, self.gauge, self.memory_contract, self.phaseloom)
+        self.analysis_mode = analysis_mode
+        self.stepper = GRStepper(self.fields, self.geometry, self.constraints, self.gauge, self.memory_contract, self.phaseloom, analysis_mode=self.analysis_mode)
         self.ledger = GRLedger()
         self.orchestrator = GRPhaseLoomOrchestrator(self.fields, self.geometry, self.constraints, self.gauge, self.stepper, self.ledger, self.memory_contract, self.phaseloom)
         self.t = 0.0

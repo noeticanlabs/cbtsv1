@@ -3,7 +3,6 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gr_solver.gr_solver import GRSolver
-from tests.test_gcat1_calibration_suite import Test1MmsLite
 
 def test_gamma_driver_shift_terms():
     """
@@ -33,14 +32,13 @@ def test_gamma_driver_shift_terms():
     
     expected_x = - (4.0/3.0) * np.sin(X)
     
-    # Instantiate test class to access the method
-    test_instance = Test1MmsLite(solver)
-    
-    # Compute RHS
-    rhs = test_instance.compute_full_gamma_driver_rhs(solver)
+    # Compute RHS using solver's stepper
+    solver.geometry.compute_all()
+    solver.stepper.rhs_computer.compute_rhs(0.0, slow_update=True)
+    rhs = solver.stepper.rhs_computer
     
     # Check error (finite difference approximation vs analytic)
-    err = np.max(np.abs(rhs[..., 0] - expected_x))
+    err = np.max(np.abs(rhs.rhs_Gamma_tilde[..., 0] - expected_x))
     print(f"Max error in Gamma^x RHS: {err:.2e}")
     
     assert err < 0.1, f"Gamma driver shift terms incorrect, error {err:.2e} too large"

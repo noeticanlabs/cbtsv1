@@ -1,0 +1,209 @@
+{
+  "description": "Flight mode E1 convergence test for monotone eps_H check",
+  "T_final": 1.0,
+  "resolutions": [
+    8,
+    12,
+    16
+  ],
+  "individual_results": [
+    {
+      "N": 8,
+      "dx": 0.5,
+      "dt": 0.5,
+      "T_final_target": 1.0,
+      "T_actual": 0.2,
+      "num_steps": 2,
+      "eps_H_final": 7.676426338359431e-05,
+      "eps_H_history": [
+        7.925192584569127e-05,
+        7.676426338359431e-05
+      ],
+      "stage_statistics": {
+        "cons": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 2
+        },
+        "filter": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 2
+        },
+        "gauge": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 2
+        },
+        "phys": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 2
+        }
+      },
+      "all_deltas": {
+        "phys": [
+          0.0,
+          0.0
+        ],
+        "cons": [
+          0.0,
+          0.0
+        ],
+        "gauge": [
+          0.0,
+          0.0
+        ],
+        "filter": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "N": 12,
+      "dx": 0.3333333333333333,
+      "dt": 0.3333333333333333,
+      "T_final_target": 1.0,
+      "T_actual": 5.9429731213062125e-08,
+      "num_steps": 3,
+      "eps_H_final": 0.00016153540907827123,
+      "eps_H_history": [
+        0.00016153540907827123,
+        0.00016153540907827123,
+        0.00016153540907827123
+      ],
+      "stage_statistics": {
+        "cons": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 3
+        },
+        "filter": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 3
+        },
+        "gauge": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 3
+        },
+        "phys": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 3
+        }
+      },
+      "all_deltas": {
+        "phys": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cons": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "gauge": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filter": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "N": 16,
+      "dx": 0.25,
+      "dt": 0.25,
+      "T_final_target": 1.0,
+      "T_actual": 4.5958714326241664e-08,
+      "num_steps": 4,
+      "eps_H_final": 0.00027851093711985946,
+      "eps_H_history": [
+        0.00027851093711985946,
+        0.00027851093711985946,
+        0.00027851093711985946,
+        0.00027851093711985946
+      ],
+      "stage_statistics": {
+        "cons": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 4
+        },
+        "filter": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 4
+        },
+        "gauge": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 4
+        },
+        "phys": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 4
+        }
+      },
+      "all_deltas": {
+        "phys": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cons": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "gauge": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filter": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  ]
+}

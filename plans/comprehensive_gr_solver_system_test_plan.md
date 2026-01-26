@@ -1,7 +1,9 @@
 # Comprehensive GR Solver System Function Test Plan
 
 ## Objective
-Create a standalone, comprehensive system function test that exercises all major functions in the GR solver system, including memory, rails, and gates. The test should initialize the solver with Minkowski spacetime, run key methods (geometry, constraints, stepping, memory operations, rails checks, gate interactions), verify outputs without errors, and handle dependencies properly.
+Create a standalone, comprehensive system function test that exercises all major functions in the GR solver system, including memory, rails, gates, and the UnifiedClock architecture. The test should initialize the solver with Minkowski spacetime, run key methods (geometry, constraints, stepping, memory operations, clock operations, rails checks, gate interactions), verify outputs without errors, and handle dependencies properly.
+
+**Updated:** Reflects UnifiedClock architecture (`gr_solver/gr_clock.py`)
 
 ## System Components to Test
 Based on the codebase analysis, the following components must be exercised:
@@ -9,19 +11,24 @@ Based on the codebase analysis, the following components must be exercised:
 1. **GRSolver**: Main solver initialization and orchestration
 2. **GRPhaseLoomOrchestrator**: Step execution loop (Sense, Propose, Decide, Commit, Verify, Rail-enforce, Receipt, Render)
 3. **GRStepper**: UFE evolution via RK4 stepping
-4. **AeonicMemoryBank**: Memory operations, tiers, TTL, maintenance
-5. **PhaseLoom27**: Gate system with 27 threads (3 domains × 3 scales × 3 responses)
-6. **GRPhaseLoomRails**: Rail enforcement and gate checking
-7. **GRGeometry**: Christoffel symbols, Ricci tensor, scalar curvature computations
-8. **GRConstraints**: Hamiltonian and momentum constraint calculations
-9. **GRGauge**: Lapse and shift evolution
-10. **AeonicReceipts**: Event emission and logging
+4. **UnifiedClock**: Time management, band updates, regime detection
+5. **UnifiedClockState**: Single source of truth for time state
+6. **BandConfig**: Per-band cadence configuration
+7. **AeonicMemoryBank**: Memory operations, tiers, TTL, maintenance
+8. **PhaseLoom27**: Gate system with 27 threads (3 domains × 3 scales × 3 responses)
+9. **GRPhaseLoomRails**: Rail enforcement and gate checking
+10. **GRGeometry**: Christoffel symbols, Ricci tensor, scalar curvature computations
+11. **GRConstraints**: Hamiltonian and momentum constraint calculations
+12. **GRGauge**: Lapse and shift evolution
+13. **AeonicReceipts**: Event emission and logging
 
 ## Test Structure
 The test will be implemented as a Python class `ComprehensiveGRSolverTest` with the following methods:
 
 - `__init__`: Setup solver with small grid (e.g., N=16, L=4.0) for fast execution
 - `test_initialization`: Initialize with Minkowski and verify fields/geometry
+- `test_unified_clock`: Test UnifiedClock initialization, ticking, band updates
+- `test_clock_state_management`: Test snapshot/restore, regime detection
 - `test_memory_operations`: Test AeonicMemoryBank put/get/invalidation
 - `test_single_step`: Run one orchestrator step and verify all phases
 - `test_multi_step_evolution`: Run 10-20 steps to exercise steady-state behavior
@@ -32,16 +39,22 @@ The test will be implemented as a Python class `ComprehensiveGRSolverTest` with 
 
 ## Key Test Scenarios
 1. **Minkowski Initialization**: Start with flat spacetime + small perturbations to activate Loom
-2. **Evolution Steps**: Run multiple time steps to test stability and adaptation
-3. **Memory Tier Operations**: Put spectral cache, retrieve, test maintenance eviction
-4. **Gate Triggers**: Introduce minor violations to test rail enforcement
-5. **Loom Activation**: Ensure PhaseLoom activates for perturbations and updates controls
+2. **UnifiedClock Operations**: Test clock ticking, band cadences, regime detection
+3. **Clock State Management**: Test snapshot/restore for checkpoint/rollback
+4. **Evolution Steps**: Run multiple time steps to test stability and adaptation
+5. **Memory Tier Operations**: Put spectral cache, retrieve, test maintenance eviction
+6. **Gate Triggers**: Introduce minor violations to test rail enforcement
+7. **Loom Activation**: Ensure PhaseLoom activates for perturbations and updates controls
 
 ## Implementation Steps
 1. Create `tests/test_comprehensive_gr_solver.py`
 2. Implement test class with initialization (Nx=16, Ny=16, Nz=16, L=4.0)
 3. Minkowski init with high-k ripple to trigger Loom activity
 4. Test each component systematically:
+   - UnifiedClock initialization and ticking
+   - Band update masks via `get_bands_to_update()`
+   - Regime detection and cache invalidation
+   - Clock snapshot/restore for rollback
    - Geometry computations (finite, no NaN/Inf)
    - Constraint residuals (finite, decreasing over steps)
    - Memory operations (put/get successful, TTL respected)
@@ -49,10 +62,12 @@ The test will be implemented as a Python class `ComprehensiveGRSolverTest` with 
    - Phaseloom thread computations (residuals computed, dt arbitrated)
    - Stepper evolution (fields evolve without explosions)
    - Orchestrator phases (all complete without SEM failures)
-5. Collect metrics: eps_H/eps_M over steps, memory usage, dominant threads, rail violations
+5. Collect metrics: eps_H/eps_M over steps, memory usage, dominant threads, rail violations, clock state
 6. Output results to JSON with pass/fail status
 
 ## Verification Criteria
+- **UnifiedClock**: Clock state advances correctly, band updates follow cadence
+- **Clock State**: Snapshot/restore preserves state, regime detection triggers correctly
 - **Initialization**: All fields finite, det(gamma) > 0, alpha > 0
 - **Geometry**: Christoffels, Ricci, R computed without errors
 - **Constraints**: eps_H, eps_M < 1e-3 initially, remain bounded
@@ -86,15 +101,17 @@ The test will be implemented as a Python class `ComprehensiveGRSolverTest` with 
 ```mermaid
 graph TD
     A[Initialize Test] --> B[Minkowski Init + Perturbations]
-    B --> C[Test Initialization]
-    C --> D[Test Memory Operations]
-    D --> E[Test Single Step]
-    E --> F[Test Multi-Step Evolution]
-    F --> G[Test Rails/Gates]
-    G --> H[Test Phaseloom Threads]
-    H --> I[Test Geometry/Constraints]
-    I --> J[Collect Results]
-    J --> K[Save JSON Output]
+    B --> C[Test UnifiedClock]
+    C --> D[Test Clock State Management]
+    D --> E[Test Initialization]
+    E --> F[Test Memory Operations]
+    F --> G[Test Single Step]
+    G --> H[Test Multi-Step Evolution]
+    H --> I[Test Rails/Gates]
+    I --> J[Test Phaseloom Threads]
+    J --> K[Test Geometry/Constraints]
+    K --> L[Collect Results]
+    L --> M[Save JSON Output]
 ```
 
 This plan ensures comprehensive coverage of all system functions while maintaining test stability and reasonable execution time.

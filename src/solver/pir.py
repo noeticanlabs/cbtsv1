@@ -56,6 +56,18 @@ GR_OP_SIGNATURES = {
         determinism='writes',
         requires_audit_before_commit=False
     ),
+    'gauge_enforcement': EffectSignature(
+        read_compartments=['fields', 'geometry', 'gauge'],
+        write_compartments=['fields'],
+        determinism='writes',
+        requires_audit_before_commit=True  # Gauge enforcement modifies state, audit needed
+    ),
+    'dissipation': EffectSignature(
+        read_compartments=['fields'],
+        write_compartments=['fields'],
+        determinism='writes',
+        requires_audit_before_commit=False
+    ),
 }
 
 

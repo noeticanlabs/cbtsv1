@@ -7,38 +7,48 @@ Run the stability test using Python GR stepper directly.
 import numpy as np
 import time
 from gr_solver.gr_stepper import GRStepper
-from gr_solver.gr_core_fields import GRFields, SYM6_IDX
+from gr_solver.gr_core_fields import GRCoreFields, SYM6_IDX
+from gr_solver.gr_geometry import GRGeometry
 from gr_solver.gr_constraints import GRConstraints
+from gr_solver.gr_gauge import GRGauge
 
 def test_python_baseline():
     # Initialize Minkowski fields
     Nx, Ny, Nz = 10, 10, 10
     dx, dy, dz = 0.1, 0.1, 0.1
-    fields = GRFields(Nx, Ny, Nz, dx, dy, dz)
+    fields = GRCoreFields(Nx, Ny, Nz, dx, dy, dz)
     fields.init_minkowski()
 
-    stepper = GRStepper(fields)
-    constraints = GRConstraints(stepper.fields)
+    geometry = GRGeometry(fields)
+    constraints = GRConstraints(fields, geometry)
+    gauge = GRGauge(fields, geometry)
 
-    # Add perturbation ε=1e-6
-    epsilon = 1e-6
+    stepper = GRStepper(fields, geometry, constraints, gauge)
+
+    # Add perturbation ε=1e-8
+    epsilon = 1e-8
     k = 10.0
     x = np.arange(Nx) * dx - (Nx * dx) / 2
     y = np.arange(Ny) * dx - (Ny * dx) / 2
     z = np.arange(Nz) * dx - (Nz * dx) / 2
     X, Y, Z_mesh = np.meshgrid(x, y, z, indexing='ij')
-    fields.gamma_sym6[..., SYM6_IDX["xx"]] += epsilon * np.sin(k * X) * np.sin(k * Y) * Z_mesh
+    fields.gamma_sym6[..., SYM6_IDX["xx"]] += epsilon * np.sin(k * X) * np.sin(k * Y) * np.sin(k * Z_mesh)
     fields.gamma_sym6 += epsilon * np.random.randn(*fields.gamma_sym6.shape)
 
     # Initial constraints
-    constraints.compute()
+    geometry.compute_christoffels()
+    geometry.compute_ricci()
+    geometry.compute_scalar_curvature()
+    constraints.compute_hamiltonian()
+    constraints.compute_momentum()
+    constraints.compute_residuals()
     initial_eps_H = np.max(np.abs(constraints.eps_H))
     initial_eps_M = np.max(np.abs(constraints.eps_M))
     print(f"Initial eps_H_max: {initial_eps_H:.2e}, eps_M_max: {initial_eps_M:.2e}")
 
-    # Run 100 steps (T=1.0, dt=0.01)
-    dt = 0.01
-    T_max = 1.0
+    # Run 100 steps (T=0.1, dt=0.001)
+    dt = 0.001
+    T_max = 0.1
     t = 0.0
     step = 0
     max_eps_H = initial_eps_H
@@ -46,17 +56,30 @@ def test_python_baseline():
 
     start_time = time.time()
     while t < T_max:
-        rhs = stepper.step(dt, lambda_val=0.0, sources_enabled=False)
+        stepper.compute_rhs(t, slow_update=False)
 
-        for key in rhs:
-            if key in fields:
-                fields[key] += dt * rhs[key]
+        # Euler step
+        fields.gamma_sym6 += dt * stepper.rhs_gamma_sym6
+        fields.K_sym6 += dt * stepper.rhs_K_sym6
+        fields.phi += dt * stepper.rhs_phi
+        fields.gamma_tilde_sym6 += dt * stepper.rhs_gamma_tilde_sym6
+        fields.A_sym6 += dt * stepper.rhs_A_sym6
+        fields.Gamma_tilde += dt * stepper.rhs_Gamma_tilde
+        fields.Z += dt * stepper.rhs_Z
+        fields.Z_i += dt * stepper.rhs_Z_i
 
         step += 1
         t += dt
 
+        # Recompute geometry after update
+        geometry.compute_christoffels()
+        geometry.compute_ricci()
+        geometry.compute_scalar_curvature()
+
         # Compute constraints
-        constraints.compute()
+        constraints.compute_hamiltonian()
+        constraints.compute_momentum()
+        constraints.compute_residuals()
         eps_H_max = np.max(np.abs(constraints.eps_H))
         eps_M_max = np.max(np.abs(constraints.eps_M))
 

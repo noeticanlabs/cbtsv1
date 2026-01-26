@@ -1,6 +1,23 @@
+# Gate Policy for GR Solver - Audit-Grade Recovery Specification
+# Required for deterministic retry behavior and audit compliance
+
+# Constraint thresholds
 H_max = 1e-4
 M_max = 1e-4
 R_max = 1e6
+
+# Floor values
 alpha_floor = 1e-8
 lambda_floor = 1e-8
 kappa_max = 1e12
+
+# Retry policy for soft failures
+retry_count_max = 5
+dt_floor = 1e-10
+shrink_schedule = [0.7, 0.5, 0.3]  # geometric backoff factors
+escalation_after_max = "regime_investigation"
+
+# Gate kind classification for hard/soft fail determination
+# constraint, nonfinite, uninitialized: hard fail (abort)
+# state: soft by default, hard if no repair
+# rate: soft (retry)

@@ -1,93 +1,162 @@
-# Lexicon declarations per canon v1.2
-LEXICON_IMPORTS = [
-    "LoC_axiom",
-    "UFE_core",
-    "GR_dyn",
-    "CTL_time"
-]
-LEXICON_SYMBOLS = {
-    "Q_mass": "GR_obs.mass",
-    "Q_angular_momentum": "GR_obs.angular_momentum",
-    "\\mathcal{R}": "LoC_residual"
-}
-
+import hashlib
 import json
+import inspect
+from datetime import datetime
 import numpy as np
-from typing import Optional
-from dataclasses import asdict
-from receipt_schemas import OmegaReceipt
-from .gr_core_fields import inv_sym6, trace_sym6, norm2_sym6
-
-from src.triaxis.lexicon import GHLL, GML
-
-def min_active(values):
-    """Return min of active values; assumes all are active."""
-    return min(values) if values else float('inf')
 
 class GRLedger:
-    def __init__(self):
+    def __init__(self, receipts_file="aeonic_receipts.jsonl"):
+        self.receipts_file = receipts_file
+        self.prev_receipt_hash = "0" * 64
         self.receipts = []
-        self.last_id: Optional[str] = None
 
-    def emit_receipt(self, step, dt, eps_H, eps_M, eps_UFE, max_R, alpha_min, alpha_max, stability_class, thread_id="A:THREAD.PHY.L.R0", ops=None, dt_caps=None, eps=None, dominant_clock=None, argmin_margin=None, risk_gauge=None, margins=None, p_obs=None, fields=None):
-        """Emit unified Ω-receipt with hash chaining."""
-        # Compute invariant stamps
-        dt_consistent = None
-        if dt_caps is not None and eps is not None:
-            dt_consistent = dt <= min_active(dt_caps) + eps
+    def _emit(self, receipt):
+        # Hash and chain
+        receipt_str = json.dumps(receipt, sort_keys=True)
+        receipt_hash = hashlib.sha256(receipt_str.encode()).hexdigest()
+        receipt['receipt_hash'] = receipt_hash
+        receipt['prev_receipt_hash'] = self.prev_receipt_hash
+        self.prev_receipt_hash = receipt_hash
 
-        dominance_consistent = None
-        if dominant_clock is not None and argmin_margin is not None:
-            dominance_consistent = dominant_clock == argmin_margin
+        # Store in memory
+        self.receipts.append(receipt)
 
-        risk_consistent = None
-        if risk_gauge is not None and margins is not None:
-            risk_consistent = risk_gauge == min_active(margins)
+        # Write receipt
+        with open(self.receipts_file, 'a') as f:
+            f.write(json.dumps(receipt) + '\n')
 
-        # Compute ADM mass and angular momentum
-        Q_mass = 0.0
-        Q_angular_momentum = 0.0
-        if fields is not None:
-            gamma_inv = inv_sym6(fields.gamma_sym6)
-            K_trace = trace_sym6(fields.K_sym6, gamma_inv)
-            K2 = norm2_sym6(fields.K_sym6, gamma_inv)
-            energy_density = (1 / (16 * np.pi)) * (K2 - K_trace**2)
-            dV = fields.dx * fields.dy * fields.dz
-            Q_mass = np.sum(energy_density) * dV
-            # Placeholder for angular momentum; set to 0.0 as initial data often has J=0
-            Q_angular_momentum = 0.0
+    def emit_layout_violation_receipt(self, step, t, dt, fields, violations):
+        receipt = {
+            'run_id': 'gr_solver_run_001',
+            'step': step,
+            'event': 'LAYOUT_VIOLATION',
+            't': t,
+            'dt': dt,
+            'stage': None,
+            'grid': {
+                'Nx': fields.Nx,
+                'Ny': fields.Ny,
+                'Nz': fields.Nz,
+                'h': [fields.dx, fields.dy, fields.dz],
+                'domain': 'cartesian',
+                'periodic': False
+            },
+            'layout': {
+                'ok': False,
+                'violations': violations,
+                'first_bad_tensor': violations[0]['field'] if violations else None,
+                'got_shape': violations[0]['actual_shape'] if violations else None,
+                'expected_shape': violations[0]['expected_shape'] if violations else None
+            },
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }
+        self._emit(receipt)
 
-        record = {
-            "lexicon_terms_used": ["LoC_axiom", "UFE_core", "GR_dyn"],
-            "intent_id": GHLL.INV_PDE_DIV_FREE, # Primary intent
-            "thread": thread_id,
-            "ops": ops or [],
-            "step": step,
-            "dt": dt,
-            "eps_H": eps_H,
-            "eps_M": eps_M,
-            "eps_UFE": eps_UFE,
-            "max_curvature": max_R,
-            "gauge": {"alpha_min": alpha_min, "alpha_max": alpha_max},
-            "Q_mass": Q_mass,
-            "Q_angular_momentum": Q_angular_momentum,
-            "stability_class": stability_class,
-            "p_obs": p_obs,  # Scaling law convergence order
-            "invariants": {
-                "dt_consistent": dt_consistent,
-                "dominance_consistent": dominance_consistent,
-                "risk_consistent": risk_consistent
-            }
+    def emit_stage_rhs_receipt(self, step, t, dt, stage, stage_time, rhs_norms, fields, compute_rhs_method):
+        # Compute operator hash (simplified - hash of compute_rhs method source)
+        try:
+            operator_code = inspect.getsource(compute_rhs_method)
+        except (OSError, TypeError):
+            operator_code = "source_not_available"
+        operator_hash = hashlib.sha256(operator_code.encode()).hexdigest()
+
+        # State hash (simplified fingerprint)
+        state_str = f"{fields.alpha.sum():.6e}_{fields.gamma_sym6.sum():.6e}"
+        state_hash = hashlib.sha256(state_str.encode()).hexdigest()
+
+        receipt = {
+            'run_id': 'gr_solver_run_001',
+            'step': step,
+            'event': 'STAGE_RHS',
+            't': t,
+            'dt': dt,
+            'stage': stage,
+            'stage_time': stage_time,
+            'grid': {
+                'Nx': fields.Nx,
+                'Ny': fields.Ny,
+                'Nz': fields.Nz,
+                'h': [fields.dx, fields.dy, fields.dz],
+                'domain': 'cartesian',
+                'periodic': False
+            },
+            'hash': {
+                'state_before': state_hash,
+                'rhs': operator_hash,
+                'operators': operator_hash
+            },
+            'ledgers': {},
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
 
-        # Create unified receipt
-        omega_receipt = OmegaReceipt.create(prev=self.last_id, tier="gr_ledger", record=record)
+        # Add rhs norms
+        receipt['rhs_norms'] = rhs_norms
+        self._emit(receipt)
 
-        # Store and print
-        self.receipts.append(omega_receipt)
-        print(json.dumps(asdict(omega_receipt), indent=2))  # For now, print; later save
+    def emit_clock_decision_receipt(self, step, t, dt, fields, clocks):
+        receipt = {
+            'run_id': 'gr_solver_run_001',
+            'step': step,
+            'event': 'CLOCK_DECISION',
+            't': t,
+            'dt': dt,
+            'stage': None,
+            'grid': {
+                'Nx': fields.Nx,
+                'Ny': fields.Ny,
+                'Nz': fields.Nz,
+                'h': [fields.dx, fields.dy, fields.dz],
+                'domain': 'cartesian',
+                'periodic': False
+            },
+            'clocks': clocks,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }
+        self._emit(receipt)
 
-        # Update last_id
-        self.last_id = omega_receipt.id
+    def emit_ledger_eval_receipt(self, step, t, dt, fields, ledgers):
+        receipt = {
+            'run_id': 'gr_solver_run_001',
+            'step': step,
+            'event': 'LEDGER_EVAL',
+            't': t,
+            'dt': dt,
+            'stage': None,
+            'grid': {
+                'Nx': fields.Nx,
+                'Ny': fields.Ny,
+                'Nz': fields.Nz,
+                'h': [fields.dx, fields.dy, fields.dz],
+                'domain': 'cartesian',
+                'periodic': False
+            },
+            'ledgers': ledgers,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }
+        self._emit(receipt)
 
-        return omega_receipt
+    def emit_step_receipt(self, step, t, dt, fields, accepted, ledgers, gates, stage_eps_H=None, rejection_reason=None, corrections_applied=None):
+        event = 'STEP_ACCEPT' if accepted else 'STEP_REJECT'
+        receipt = {
+            'run_id': 'gr_solver_run_001',
+            'step': step,
+            'event': event,
+            't': t,
+            'dt': dt,
+            'stage': None,
+            'grid': {
+                'Nx': fields.Nx,
+                'Ny': fields.Ny,
+                'Nz': fields.Nz,
+                'h': [fields.dx, fields.dy, fields.dz],
+                'domain': 'cartesian',
+                'periodic': False
+            },
+            'ledgers': ledgers,
+            'gates': gates,
+            'stage_eps_H': stage_eps_H or {},
+            'rejection_reason': rejection_reason,
+            'corrections_applied': corrections_applied or {},
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }
+        self._emit(receipt)

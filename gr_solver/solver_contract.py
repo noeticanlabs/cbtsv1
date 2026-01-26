@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Union, Tuple
 import numpy as np
+from .contracts import enforce_solver_contract
 
 
 class SolverContract(ABC):
@@ -57,6 +58,7 @@ class GRSolverContract(SolverContract):
     def __init__(self, stepper):
         self.stepper = stepper
 
+    @enforce_solver_contract
     def compute_rhs(self, X, t, gauge_policy, sources_func) -> Union[Tuple[Any, Optional[Dict[str, Any]]], Tuple[str, str]]:
         """
         Compute RHS using the stepper's compute_rhs method.

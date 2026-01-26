@@ -22,6 +22,7 @@ GLYPH_TO_OPCODE = {
     "=": 16,
     "(": 17,
     ")": 18,
+    "𝔊": 0x23,
 }
 
 @dataclass

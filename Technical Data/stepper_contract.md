@@ -3,6 +3,8 @@
 ## Overview
 The stepper contract defines the mandatory interface and behavioral rules for the stepper component, which serves as the "court" that decides the evolution history in the temporal system. The stepper applies candidate time-steps to the state snapshot, validates coherence against the Law of Coherence (LoC), and either accepts or rejects the step. Acceptance advances physical time (t), audit time (τ), and immutable history; rejection triggers rollback with dt adjustment.
 
+**Updated:** Reflects UnifiedClock architecture (`gr_solver/gr_clock.py`)
+
 Violations of this contract constitute SEM-hard failures, halting the system and requiring manual intervention.
 
 ## Lexicon Declarations
@@ -14,12 +16,13 @@ This specification imports the following from the project lexicon (canon v1.2):
 
 ## Entities and Notations
 - **X_n**: State snapshot at step n, encompassing all UFE state variables (Ψ in UFE notation)
-- **t_n**: Physical time (coordinate time) at step n
+- **t_n**: Physical time (coordinate time) at step n (from [`UnifiedClockState.global_time`](gr_solver/gr_clock.py:29))
 - **τ_n**: Audit/coherence time at step n (monotone, rollback-safe)
 - **Δt**: Candidate time-step size
 - **rails_policy**: Constraint thresholds and gates (e.g., max ε_H, ε_M for Hamiltonian and momentum constraints)
 - **phaseloom_caps**: Operational limits (e.g., max_attempts, dt_floor)
 - **κ = (o, s, μ)**: Hierarchical indices for orchestration (o), stages (s), micro-steps (μ)
+- **[`UnifiedClock`](gr_solver/gr_clock.py:119)**: Shared clock interface for time management
 
 ## Inputs
 - `X_n`: Current state snapshot (UFE state Ψ_n)
@@ -77,6 +80,22 @@ A step is accepted iff:
 ## Operational Meaning
 The stepper enforces LoC by ensuring only coherent evolutions advance history. It integrates with PhaseLoom for multi-scale orchestration and provides rollback-safe audit trails via receipts.
 
+**UnifiedClock Integration:** The stepper should use [`UnifiedClock`](gr_solver/gr_clock.py:119) for time management:
+```python
+from gr_solver.gr_clock import UnifiedClock
+
+class GRStepper:
+    def __init__(self, fields, rails_policy, phaseloom_caps, base_dt=0.001):
+        self.clock = UnifiedClock(base_dt=base_dt)
+        # ... other initialization
+    
+    def step(self, X_n):
+        dt = self._compute_dt()
+        # ... perform step
+        self.clock.tick(dt)  # Advance unified clock
+        return X_{n+1}
+```
+
 ## Artifacts Generated
 - Attempt receipts: Logged per attempt (residuals, gates checked)
 - Step receipts: Immutable on acceptance (τ advance, Ω-ledger invariants)
@@ -84,19 +103,24 @@ The stepper enforces LoC by ensuring only coherent evolutions advance history. I
 
 ## Example Pseudocode
 ```python
-def stepper_court(X_n, t_n, Δt, rails_policy, phaseloom_caps):
+from gr_solver.gr_clock import UnifiedClock
+
+def stepper_court(X_n, clock: UnifiedClock, rails_policy, phaseloom_caps):
+    """Stepper with UnifiedClock integration."""
     attempts = 0
-    current_dt = Δt
+    current_dt = clock.get_dt()
+    
     while attempts < phaseloom_caps['max_attempts']:
         attempts += 1
-        emit_attempt_receipt(X_n, t_n, current_dt, attempts)
+        emit_attempt_receipt(X_n, clock.get_global_time(), current_dt, attempts)
         
-        X_trial = apply_step(X_n, t_n, current_dt)  # RK4 or similar
+        X_trial = apply_step(X_n, clock.get_global_time(), current_dt)  # RK4 or similar
         
         violations = check_violations(X_n, X_trial, current_dt, rails_policy)
         
         if not violations:
-            emit_step_receipt(X_trial, t_n + current_dt, current_dt)
+            emit_step_receipt(X_trial, clock.get_global_time() + current_dt, current_dt)
+            clock.tick(current_dt)  # Advance unified clock
             return True, X_trial, current_dt, None
         else:
             violation_type, reason = classify_violation(violations)

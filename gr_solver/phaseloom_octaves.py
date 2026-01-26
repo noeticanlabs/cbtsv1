@@ -96,6 +96,10 @@ class PhaseLoomOctaves:
         print(f"omega_band sum per band: {np.sum(np.abs(omega_band), axis=0)}")
         print(f"D_band: {D_band}")
 
+        # Compute dominant band (argmax of D_band) and amplitude
+        dominant_band = int(np.argmax(D_band))
+        amplitude = float(np.max(np.abs(omega_band)))
+
         # Global coherence C = C_0 or average
         C_global = np.mean(C_band[:4])  # Low bands
 
@@ -106,5 +110,7 @@ class PhaseLoomOctaves:
             'D_band': D_band,
             'D_max': D_max,
             'C_global': C_global,
-            'E_o': E_o
+            'E_o': E_o,
+            'dominant_band': dominant_band,
+            'amplitude': amplitude
         }

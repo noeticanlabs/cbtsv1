@@ -12,6 +12,7 @@ import logging
 from .logging_config import Timer
 from .phaseloom_threads_gr import compute_omega_current, compute_coherence_drop
 from receipt_schemas import Kappa
+from .gr_clock import UnifiedClockState
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,8 @@ class PhaseState:
         # Computed values
         self.eps_H = None
         self.eps_M = None
+        self.eps_H_pre = None
+        self.eps_M_pre = None
         self.m_det = None
         self.max_R = None
         self.proposals = None
@@ -47,6 +50,10 @@ class PhaseState:
         self.loom_data = None
         self.rail_margins = None
         self.final_success = None
+        self.kappa_before = 0.0
+        self.kappa_after = 0.0
+        self.E_tail_before = 0.0
+        self.E_tail_after = 0.0
 
         # Timers for profiling
         self.sense_timer = Timer("sense")
@@ -94,6 +101,8 @@ class SensePhase(OrchestratorPhase):
 
             state.eps_H = orch.constraints.eps_H
             state.eps_M = orch.constraints.eps_M
+            state.eps_H_pre = state.eps_H
+            state.eps_M_pre = state.eps_M
             state.eps_H_factor = state.eps_H / state.eps_H_gate if state.eps_H_gate > 0 else 1.0
 
             # Pre-step SEM validation
@@ -142,6 +151,16 @@ class ProposePhase(OrchestratorPhase):
             if 'PHY_step_observe' in state.proposals:
                 state.proposals['PHY_step_observe']['dt'] = dt_cfl
 
+            # Sync to PhaseLoom27 if available
+            if hasattr(orch, 'phaseloom') and orch.phaseloom:
+                for key, prop in state.proposals.items():
+                    # key format from GRPhaseLoomThreads: "DOMAIN_SCALE_RESPONSE"
+                    parts = key.split('_')
+                    if len(parts) == 3:
+                        d, s, r = parts
+                        if d in orch.phaseloom.DOMAINS and s in orch.phaseloom.SCALES and r in orch.phaseloom.RESPONSES:
+                            orch.phaseloom.update_thread_state(d, s, r, dt_cap=prop['dt'], active=prop.get('active', True))
+
         return state
 
 class DecidePhase(OrchestratorPhase):
@@ -157,7 +176,13 @@ class DecidePhase(OrchestratorPhase):
                 dt_target = min(dt_target, orch.dt_max)
             state.dt_target = dt_target
 
-            dt_cap = orch.threads.rho_target * min(p['dt'] for p in state.proposals.values())
+            # Use PhaseLoom27 arbitration if available, else fallback to simple min
+            if hasattr(orch, 'phaseloom') and orch.phaseloom:
+                dt_loom_min, dom_key = orch.phaseloom.arbitrate_dt()
+                dt_cap = orch.threads.rho_target * dt_loom_min
+            else:
+                dt_cap = orch.threads.rho_target * min(p['dt'] for p in state.proposals.values())
+
             if orch.loom_active and orch.dt_loom_prev is not None:
                 dt_cap = min(dt_cap, orch.dt_loom_prev)
 
@@ -167,11 +192,15 @@ class DecidePhase(OrchestratorPhase):
             state.dt = state.dt_commit
 
             # Dominant thread
-            thread_margins = {k: p['margin'] for k, p in state.proposals.items() if p['dt'] is not None}
-            if orch.dt_loom_prev is not None and orch.dt_loom_prev > 0:
-                loom_margin = 1 - (state.dt_commit / orch.dt_loom_prev) if orch.dt_loom_prev > 0 else 1.0
-                thread_margins['loom'] = loom_margin
-            state.dominant_thread = min(thread_margins, key=thread_margins.get) if thread_margins else 'none'
+            if hasattr(orch, 'phaseloom') and orch.phaseloom and dom_key:
+                state.dominant_thread = f"{dom_key[0]}_{dom_key[1]}_{dom_key[2]}"
+            else:
+                # Fallback logic
+                thread_margins = {k: p['margin'] for k, p in state.proposals.items() if p['dt'] is not None}
+                if orch.dt_loom_prev is not None and orch.dt_loom_prev > 0:
+                    loom_margin = 1 - (state.dt_commit / orch.dt_loom_prev) if orch.dt_loom_prev > 0 else 1.0
+                    thread_margins['loom'] = loom_margin
+                state.dominant_thread = min(thread_margins, key=thread_margins.get) if thread_margins else 'none'
 
         return state
 
@@ -211,71 +240,50 @@ class CommitPhase(OrchestratorPhase):
                 'K': orch.fields.K_sym6.copy(),
                 'alpha': orch.fields.alpha.copy(),
                 'beta': orch.fields.beta.copy(),
-                'phi': orch.fields.phi.copy()
+                'phi': orch.fields.phi.copy(),
+                # Backup UnifiedClockState for rollback
+                'clock_state': orch.clock.state.copy() if hasattr(orch, 'clock') and orch.clock is not None else None
             }
 
-            # Perform step using stepper (for test compatibility)
-            dt_target = orch.scheduler.compute_dt(state.eps_H, state.eps_M)
-            print(f"dt_target: {dt_target}, dt_commit: {state.dt_commit}")
-            if state.dt_commit < dt_target:
-                N = int(np.ceil(dt_target / state.dt_commit))
-                print(f"N substeps: {N}")
-                state.n_substeps = N
-                substep_cap = 100
-                state.substep_cap_hit = N > substep_cap
-                if state.substep_cap_hit:
-                    logger.info(f"Substep cap hit: n_substeps_requested={N}, n_substeps_executed={N}, substep_cap={substep_cap}, dt_target={dt_target}, dt_commit={state.dt_commit}, r={state.dt_ratio}")
-                if N > 100:
-                    # Cap substeps to prevent freeze
-                    accepted, _, dt_applied, reason, stage_eps_H = orch.stepper.step_ufe(dt_target, state.t)
-                    state.stage_eps_H = stage_eps_H
-                    state.step_accepted = accepted
-                    dt_applied = dt_target
-                    if accepted:
-                        orch.gauge.evolve_lapse(dt_target)
-                        orch.gauge.evolve_shift(dt_target)
-                        state.dt = dt_target
-                    else:
-                        orch.rollback_count += 1
-                        orch.rollback_reason = f"Stepper rejection: {reason}"
-                        # Restore state
-                        orch.fields.gamma_sym6[:] = state.state_backup['gamma']
-                        orch.fields.K_sym6[:] = state.state_backup['K']
-                        orch.fields.alpha[:] = state.state_backup['alpha']
-                        orch.fields.beta[:] = state.state_backup['beta']
-                        orch.fields.phi[:] = state.state_backup['phi']
-                else:
-                    dt_sub = dt_target / N
-                    substeps = N
-                    dt_applied = dt_sub
-                    t_sub = state.t
-                    # For substeps, we take the last stage_eps_H
-                    stage_eps_H = None
-                    for i_sub in range(N):
-                        accepted, _, _, reason, stage_eps_H = orch.stepper.step_ufe(dt_sub, t_sub)
-                        if not accepted:
-                            state.step_accepted = False
-                            break
-                        orch.gauge.evolve_lapse(dt_sub)
-                        orch.gauge.evolve_shift(dt_sub)
-                        t_sub += dt_sub
-                    state.stage_eps_H = stage_eps_H
-                    if state.step_accepted is not False:  # If not set to False
-                        state.step_accepted = True
-                    state.dt = dt_target  # advance by dt_target
+            # Construct rails_policy from orchestrator rails
+            rails_policy = None
+            if hasattr(orch, 'rails'):
+                rails_policy = {
+                    'eps_H_hard_max': orch.rails.H_max,
+                    'eps_M_hard_max': orch.rails.M_max,
+                    'eps_H_max': getattr(orch.rails, 'H_warn', orch.rails.H_max * 0.75),
+                }
+
+            state.kappa_before = orch.stepper.lambda_val
+            # Perform a single step with the committed dt.
+            # The previous substeping logic caused major performance degradation
+            # by forcing many small physical steps within a single orchestrator step.
+            # This was leading to hangs/interrupts in tests like test_gcat_gr_1.
+            # The correct behavior is for the orchestrator to take one stable step
+            # and let the external evolution loop handle advancing time to T_max.
+            accepted, _, dt_applied, reason, stage_eps_H = orch.stepper.step_ufe(state.dt_commit, state.t, rails_policy=rails_policy)
+            state.kappa_after = orch.stepper.lambda_val
+            state.stage_eps_H = stage_eps_H
+            state.step_accepted = accepted
+
+            if accepted:
+                # On success, the time advances by the step taken
+                orch.gauge.evolve_lapse(state.dt_commit)
+                orch.gauge.evolve_shift(state.dt_commit)
+                state.dt = state.dt_commit
             else:
-                # Single step
-                accepted, _, dt_applied, reason, stage_eps_H = orch.stepper.step_ufe(state.dt_commit, state.t)
-                state.stage_eps_H = stage_eps_H
-                if not accepted:
-                    orch.rollback_count += 1
-                    orch.rollback_reason = f"Stepper rejection: {reason}"
-                    # Restore state
-                    orch.fields.gamma_sym6[:] = state.state_backup['gamma']
-                    orch.fields.K_sym6[:] = state.state_backup['K']
-                    orch.fields.alpha[:] = state.state_backup['alpha']
-                    orch.fields.beta[:] = state.state_backup['beta']
-                    orch.fields.phi[:] = state.state_backup['phi']
+                # On failure, rollback and report. Time does not advance.
+                orch.rollback_count += 1
+                orch.rollback_reason = f"Stepper rejection: {reason}"
+                orch.fields.gamma_sym6[:] = state.state_backup['gamma']
+                orch.fields.K_sym6[:] = state.state_backup['K']
+                orch.fields.alpha[:] = state.state_backup['alpha']
+                orch.fields.beta[:] = state.state_backup['beta']
+                orch.fields.phi[:] = state.state_backup['phi']
+                # Restore UnifiedClockState
+                if state.state_backup.get('clock_state') is not None and hasattr(orch, 'clock') and orch.clock is not None:
+                    orch.clock.set_state(state.state_backup['clock_state'])
+                state.dt = 0.0 # No time advance on rejection
 
             # PhaseLoom computation if needed
             if state.step_accepted:
@@ -284,7 +292,7 @@ class CommitPhase(OrchestratorPhase):
                 gamma_current = orch.fields.gamma_sym6[..., 0]
                 residual_slope = state.eps_H
                 rollback_occurred = (state.rollback_count > orch.rollback_count)  # Rough check
-                should_compute = False  # Disable loom for test compatibility
+                should_compute = True  # Disable loom for test compatibility
 
                 if should_compute:
                     # Compute loom data
@@ -294,8 +302,16 @@ class CommitPhase(OrchestratorPhase):
                     C_o, coherence_drop = compute_coherence_drop(spectral_omega, orch.prev_omega_current, threshold=0.1)
                     state.loom_data = orch.octaves.process_sample(spectral_omega)
                     state.loom_data.update({'C_o': C_o, 'coherence_drop': coherence_drop})
+                    
+                    # Extract band metrics for clock system update
+                    dominant_band = state.loom_data.get('dominant_band', 0)
+                    amplitude = state.loom_data.get('amplitude', 0.0)
+                    
+                    # Update loom memory and clock system with band metrics
+                    orch.loom_memory.post_loom_update(state.loom_data, state.step)
+                    orch.loom_memory.update_clock_system_with_band_metrics(dominant_band, amplitude)
+                    
                     orch.controller.get_controls(state.loom_data)
-                    orch.loom_memory.post_loom_update(state.loom_data)
                 else:
                     state.loom_data = orch.loom_memory.summary
 
@@ -334,6 +350,9 @@ class VerifyPhase(OrchestratorPhase):
                 orch.fields.alpha[:] = state.state_backup['alpha']
                 orch.fields.beta[:] = state.state_backup['beta']
                 orch.fields.phi[:] = state.state_backup['phi']
+                # Restore UnifiedClockState
+                if state.state_backup.get('clock_state') is not None and hasattr(orch, 'clock') and orch.clock is not None:
+                    orch.clock.set_state(state.state_backup['clock_state'])
                 orch.rollback_count += 1
                 orch.rollback_reason = f"SEM post-step audit: {str(e)}"
                 state.final_success = False
@@ -342,6 +361,11 @@ class VerifyPhase(OrchestratorPhase):
             # Update state with post values
             state.eps_H = eps_H_post
             state.eps_M = eps_M_post
+            
+            # Update PhaseLoom27 with post-step residuals
+            if hasattr(orch, 'phaseloom') and orch.phaseloom:
+                # Map eps_H, eps_M to CONS domain (L scale)
+                orch.phaseloom.update_residual('CONS', 'L', max(eps_H_post, eps_M_post))
 
         return state
 
@@ -362,8 +386,26 @@ class RailEnforcePhase(OrchestratorPhase):
 
             state.rail_margins = orch.rails.compute_margins(state.eps_H, state.eps_M, orch.geometry, orch.fields, orch.threads.m_det_min)
 
-            # Apply repairs if needed (SPD repair logic here)
-            # Simplified for now
+            # Check PhaseLoom27 Gate_step
+            if hasattr(orch, 'phaseloom') and orch.phaseloom:
+                # Define thresholds from rails policy or defaults
+                thresholds = {
+                    'SEM': 0.0,
+                    'CONS': getattr(orch.rails, 'H_max', 1e-4),
+                    'PHY': 1e-2 
+                }
+                passed, reasons = orch.phaseloom.check_gate_step(thresholds)
+                if not passed:
+                    state.rail_violation = f"PhaseLoom Gate_step: {'; '.join(reasons)}"
+
+            # Apply rails from PhaseLoom if dominant_thread available
+            if state.dominant_thread and hasattr(orch, 'phaseloom'):
+                rails = orch.phaseloom.get_rails(state.dominant_thread)
+                for rail in rails:
+                    print(f"Applying rail: {rail}")
+                    # Implement rail application logic here
+                    # For example, if rail['type'] == 'dt_shrink', adjust dt
+                    # For now, just log
 
         return state
 
@@ -378,8 +420,51 @@ class ReceiptPhase(OrchestratorPhase):
             if state.substep_cap_hit or state.eps_H_factor > 1.0:
                 state.dominance_note = "CONS dominates: eps_H high; dt lowered; projection applied"
 
-            # Emit receipts (ledger.emit_receipt logic here)
-            # Simplified
+            # Emit M_step receipt if accepted
+            if state.step_accepted:
+                # Prepare threads summary
+                threads_summary = {}
+                if state.dominant_thread:
+                    threads_summary[state.dominant_thread] = {'dt': state.dt, 'active': True}
+                if state.proposals:
+                    for k, v in state.proposals.items():
+                        threads_summary[k] = {'dt': v.get('dt'), 'active': v.get('active', True)}
+
+                # Get E_tail values
+                if len(orch.receipts.omega_receipts) > 0:
+                    state.E_tail_before = orch.receipts.omega_receipts[-1].record.get("E_tail_after", 0.0)
+                
+                if state.loom_data and 'E_o' in state.loom_data:
+                    E_o = state.loom_data['E_o']
+                    state.E_tail_after = np.sum(E_o[4:])
+
+                orch.receipts.emit_m_step(
+                    step=state.step,
+                    t=state.t,
+                    dt=state.dt,
+                    dominant_thread=state.dominant_thread,
+                    threads=threads_summary,
+                    eps_pre_H=state.eps_H_pre,
+                    eps_pre_M=state.eps_M_pre,
+                    eps_post_H=state.eps_H,
+                    eps_post_M=state.eps_M,
+                    d_eps_H=state.eps_H - (state.eps_H_pre or 0.0),
+                    d_eps_M=state.eps_M - (state.eps_M_pre or 0.0),
+                    max_R=state.max_R,
+                    det_gamma_min=state.m_det,
+                    mu_H=orch.threads.mu_H,
+                    mu_M=orch.threads.mu_M,
+                    rollback_count=state.rollback_count,
+                    rollback_reason=state.rollback_reason,
+                    loom_data=state.loom_data,
+                    commit_ok=True,
+                    policy_hash=orch.policy_hash,
+                    dt_selected=state.dt_commit,
+                    kappa_before=state.kappa_before,
+                    kappa_after=state.kappa_after,
+                    E_tail_before=state.E_tail_before,
+                    E_tail_after=state.E_tail_after
+                )
 
         return state
 

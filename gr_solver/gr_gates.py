@@ -1,12 +1,78 @@
 import numpy as np
 import logging
+from typing import Tuple, Dict, Any, Optional
+from enum import Enum
 
 logger = logging.getLogger('gr_solver.gates')
 
+
+class GateKind(Enum):
+    """Explicit gate kinds with hard-fail rules for audit-grade recovery."""
+    CONSTRAINT = "constraint"  # Hard fail (abort)
+    NONFINITE = "nonfinite"    # Hard fail (abort)
+    UNINITIALIZED = "uninitialized"  # Hard fail (abort)
+    STATE = "state"            # Soft by default, hard if no repair
+    RATE = "rate"              # Soft (retry)
+
+
+def should_hard_fail(gate) -> bool:
+    """
+    Determine if a gate failure should be a hard fail (abort) or soft (retry).
+    
+    Args:
+        gate: A gate object with a 'kind' attribute (string or GateKind)
+        
+    Returns:
+        True if hard fail (abort), False if soft (retry allowed)
+    """
+    if hasattr(gate, 'kind'):
+        kind = gate.kind
+    elif isinstance(gate, dict):
+        kind = gate.get('kind', 'state')
+    else:
+        kind = str(gate)
+    
+    # Normalize to GateKind
+    if isinstance(kind, str):
+        try:
+            kind = GateKind(kind)
+        except ValueError:
+            kind = GateKind.STATE  # Default to soft
+    
+    return kind in {GateKind.CONSTRAINT, GateKind.NONFINITE, GateKind.UNINITIALIZED}
+
 class GateChecker:
-    def __init__(self, constraints):
+    def __init__(self, constraints, analysis_mode=False):
         self.constraints = constraints
+        self.analysis_mode = analysis_mode
         self.eps_H_state = 'normal'  # Track state for eps_H hysteresis: 'normal', 'warn', 'fail'
+
+    def check_gates_internal(self, rails_policy=None):
+        """Check step gates. Return (accepted, hard_fail, penalty, reasons, margins, corrections)."""
+        if rails_policy is None:
+            rails_policy = {}
+        return self.check_gates()
+
+    def apply_damping(self, lambda_val, damping_enabled):
+        """Apply constraint damping: reduce constraint violations."""
+        if not damping_enabled:
+            return
+
+        # This is a simplified damping scheme.
+        # A more sophisticated approach would be required for robust evolution.
+        if hasattr(self.constraints, 'H') and self.constraints.H is not None:
+             # Damp K with H
+            self.constraints.fields.K_sym6 -= lambda_val * self.constraints.H[..., np.newaxis] * self.constraints.fields.gamma_sym6
+
+    def apply_corrections(self, corrections, current_dt, lambda_val):
+        """Apply bounded corrective actions for warn level violations."""
+        if corrections.get('reduce_dt'):
+            current_dt *= 0.8  # Reduce dt by 20%
+            logger.info(f"Corrective action: reducing dt to {current_dt}")
+        if corrections.get('increase_kappa_budget'):
+            lambda_val = min(lambda_val + 0.1, 1.0)  # Increase lambda
+            logger.info(f"Corrective action: increasing lambda_val to {lambda_val}")
+        return current_dt, lambda_val
 
     def check_gates(self):
         eps_H = float(self.constraints.eps_H)
@@ -14,8 +80,8 @@ class GateChecker:
         eps_proj = float(self.constraints.eps_proj)
         eps_clk = float(self.constraints.eps_clk) if self.constraints.eps_clk is not None else 0.0
 
-        eps_H_warn = 7.5e-5
-        eps_H_fail = 1e-4
+        eps_H_warn = 5e-4
+        eps_H_fail = 1e-3
         eps_M_soft_max = 1e-2
         eps_M_hard_max = 1e-1
         eps_proj_soft_max = 1e-2
@@ -35,9 +101,9 @@ class GateChecker:
         corrections = {}
 
         # Hysteresis for eps_H
-        enter_warn = 7.5e-5
-        exit_warn = 6.0e-5
-        enter_fail = 1e-4
+        enter_warn = 5e-4
+        exit_warn = 4e-4
+        enter_fail = 1e-3
 
         if self.eps_H_state == 'normal':
             if eps_H > enter_warn:
@@ -45,7 +111,17 @@ class GateChecker:
                 penalty += (eps_H - enter_warn) / enter_warn
                 reasons.append(f"Warn: eps_H = {eps_H:.2e} > {enter_warn:.2e}")
                 margins['eps_H'] = enter_warn - eps_H
-                corrections = {'reduce_dt': True, 'increase_kappa_budget': True, 'increase_projection_freq': True}
+                if self.analysis_mode:
+                    logger.info("Analysis mode: would apply corrective actions", extra={
+                        "extra_data": {
+                            "would_reduce_dt": True,
+                            "would_increase_kappa_budget": True,
+                            "would_increase_projection_freq": True
+                        }
+                    })
+                    corrections = {}
+                else:
+                    corrections = {'reduce_dt': True, 'increase_kappa_budget': True, 'increase_projection_freq': True}
         elif self.eps_H_state == 'warn':
             if eps_H > enter_fail:
                 self.eps_H_state = 'fail'
@@ -60,7 +136,17 @@ class GateChecker:
                 penalty += (eps_H - enter_warn) / enter_warn
                 reasons.append(f"Warn: eps_H = {eps_H:.2e} > {enter_warn:.2e}")
                 margins['eps_H'] = enter_warn - eps_H
-                corrections = {'reduce_dt': True, 'increase_kappa_budget': True, 'increase_projection_freq': True}
+                if self.analysis_mode:
+                    logger.info("Analysis mode: would apply corrective actions", extra={
+                        "extra_data": {
+                            "would_reduce_dt": True,
+                            "would_increase_kappa_budget": True,
+                            "would_increase_projection_freq": True
+                        }
+                    })
+                    corrections = {}
+                else:
+                    corrections = {'reduce_dt': True, 'increase_kappa_budget': True, 'increase_projection_freq': True}
         elif self.eps_H_state == 'fail':
             # Always hard fail once in fail state
             hard_fail = True

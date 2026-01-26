@@ -1,344 +1,405 @@
 """
-Test 1 MMS Lite
-"""
+MMS Lite Test - Convergence test with controlled gauge modes.
 
+Two modes:
+1. CORE_MODE: Freeze gauge (α=1, β=0, no gauge evolution) - measures spatial convergence
+2. FULL_MODE: Include all dynamics - may have floor from unimproved terms
+"""
 import numpy as np
 import logging
-from gr_solver import GRSolver
-from gr_solver.gr_core_fields import SYM6_IDX
+import sys
+import os
 
-class Test1MmsLite:
-    def __init__(self, gr_solver):
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from gr_solver.gr_solver import GRSolver
+from gr_solver.gr_core_fields import det_sym6, inv_sym6, sym6_to_mat33, trace_sym6
+from tests.gr_test_utils import estimate_order
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Mode selection
+CORE_MODE = True  # Set False for full gauge evolution
+
+
+def exact_fields(N, L, t):
+    """Compute exact MMS fields at time t."""
+    dx = L / N
+    x = np.arange(N) * dx
+    y = np.arange(N) * dx
+    z = np.arange(N) * dx
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+    kx = 2.0 * np.pi / L
+    ky = 2.0 * np.pi / L
+    kz = 2.0 * np.pi / L
+    kdotx = kx * X + ky * Y + kz * Z
+    omega = 1.0
+    eps = 1e-5
+    
+    gamma = np.zeros((N, N, N, 6))
+    gamma[..., 0] = 1 + eps * np.sin(kdotx) * np.sin(omega * t)
+    gamma[..., 1] = eps * np.cos(kdotx) * np.cos(omega * t)
+    gamma[..., 3] = 1 + eps * np.sin(kdotx) * np.sin(omega * t)
+    gamma[..., 4] = eps * np.sin(kdotx) * np.sin(omega * t)
+    gamma[..., 5] = 1 + eps * np.cos(kdotx) * np.cos(omega * t)
+    
+    K = np.zeros((N, N, N, 6))
+    K[..., 0] = eps * np.cos(kdotx) * np.sin(omega * t)
+    K[..., 1] = eps * np.sin(kdotx) * np.cos(omega * t)
+    K[..., 3] = eps * np.cos(kdotx) * np.sin(omega * t)
+    K[..., 4] = eps * np.sin(kdotx) * np.sin(omega * t)
+    K[..., 5] = eps * np.cos(kdotx) * np.sin(omega * t)
+    
+    alpha = np.ones((N, N, N))  # Fixed lapse for MMS
+    beta = np.zeros((N, N, N, 3))  # Fixed shift for MMS
+    
+    return gamma, K, alpha, beta
+
+
+def exact_dt_fields(N, L, t):
+    """Compute exact time derivatives at time t."""
+    dx = L / N
+    x = np.arange(N) * dx
+    y = np.arange(N) * dx
+    z = np.arange(N) * dx
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+    kx = 2.0 * np.pi / L
+    ky = 2.0 * np.pi / L
+    kz = 2.0 * np.pi / L
+    kdotx = kx * X + ky * Y + kz * Z
+    omega = 1.0
+    eps = 1e-5
+    
+    dt_gamma = np.zeros((N, N, N, 6))
+    dt_gamma[..., 0] = eps * omega * np.cos(omega * t) * np.sin(kdotx)
+    dt_gamma[..., 1] = -eps * omega * np.cos(kdotx) * np.sin(omega * t)
+    dt_gamma[..., 3] = eps * omega * np.cos(omega * t) * np.sin(kdotx)
+    dt_gamma[..., 4] = eps * omega * np.sin(kdotx) * np.cos(omega * t)
+    dt_gamma[..., 5] = -eps * omega * np.cos(kdotx) * np.sin(omega * t)
+    
+    dt_K = np.zeros((N, N, N, 6))
+    dt_K[..., 0] = eps * omega * np.cos(omega * t) * np.cos(kdotx)
+    dt_K[..., 1] = eps * omega * np.sin(kdotx) * (-np.sin(omega * t))
+    dt_K[..., 3] = eps * omega * np.cos(omega * t) * np.cos(kdotx)
+    dt_K[..., 4] = eps * omega * np.sin(kdotx) * (-np.cos(omega * t))
+    dt_K[..., 5] = eps * omega * np.cos(omega * t) * np.cos(kdotx)
+    
+    # Gauge time derivatives (0 for fixed gauge)
+    dt_alpha = np.zeros((N, N, N))
+    dt_beta = np.zeros((N, N, N, 3))
+    
+    return dt_gamma, dt_K, dt_alpha, dt_beta
+
+
+def compute_bssn_dt(N, gamma, K, dt_gamma, dt_K):
+    """Compute BSSN time derivatives from physical ones."""
+    gamma_inv = inv_sym6(gamma)
+    
+    tr_dt_gamma = (
+        gamma_inv[..., 0] * dt_gamma[..., 0] +
+        2 * gamma_inv[..., 1] * dt_gamma[..., 1] +
+        2 * gamma_inv[..., 2] * dt_gamma[..., 2] +
+        gamma_inv[..., 3] * dt_gamma[..., 3] +
+        2 * gamma_inv[..., 4] * dt_gamma[..., 4] +
+        gamma_inv[..., 5] * dt_gamma[..., 5]
+    )
+    dt_phi = (1.0/12.0) * tr_dt_gamma
+    
+    det_g = det_sym6(gamma)
+    phi = (1.0/12.0) * np.log(det_g)
+    exp_minus_4phi = np.exp(-4.0 * phi)[..., np.newaxis]
+    gamma_tilde = gamma * exp_minus_4phi
+    dt_gamma_tilde = -4.0 * dt_phi[..., np.newaxis] * gamma_tilde + exp_minus_4phi * dt_gamma
+    
+    K_mat = sym6_to_mat33(K)
+    dt_K_mat = sym6_to_mat33(dt_K)
+    gamma_mat = sym6_to_mat33(gamma)
+    gamma_inv_mat = sym6_to_mat33(gamma_inv)
+    dt_gamma_mat = sym6_to_mat33(dt_gamma)
+    dt_gamma_inv_mat = - np.einsum('...ij,...jk,...kl->...il', gamma_inv_mat, dt_gamma_mat, gamma_inv_mat)
+    dt_K_trace = np.einsum('...ij,...ji->...', dt_gamma_inv_mat, K_mat) + np.einsum('...ij,...ji->...', gamma_inv_mat, dt_K_mat)
+    
+    K_trace = trace_sym6(K, gamma_inv)
+    A_physical = K - (1.0/3.0) * gamma * K_trace[..., np.newaxis]
+    A_tilde = A_physical * exp_minus_4phi
+    term_brackets = dt_K - (1.0/3.0) * (dt_gamma * K_trace[..., np.newaxis] + gamma * dt_K_trace[..., np.newaxis])
+    dt_A_tilde = -4.0 * dt_phi[..., np.newaxis] * A_tilde + exp_minus_4phi * term_brackets
+    
+    return dt_phi, dt_gamma_tilde, dt_K_trace, dt_A_tilde
+
+
+def init_bssn_fields(solver, gamma, K):
+    """Initialize BSSN fields from ADM data."""
+    det_g = det_sym6(gamma)
+    phi = (1.0/12.0) * np.log(det_g)
+    solver.fields.phi[:] = phi
+    
+    exp_minus_4phi = np.exp(-4.0 * phi)[..., np.newaxis]
+    solver.fields.gamma_tilde_sym6[:] = gamma * exp_minus_4phi
+    
+    gamma_inv = inv_sym6(gamma)
+    K_trace = trace_sym6(K, gamma_inv)
+    solver.fields.K_trace[:] = K_trace
+    
+    A_physical = K - (1.0/3.0) * gamma * K_trace[..., np.newaxis]
+    solver.fields.A_sym6[:] = A_physical * exp_minus_4phi
+    
+    solver.fields.Gamma_tilde[:] = 0.0
+    solver.fields.Z[:] = 0.0
+    solver.fields.Z_i[:] = 0.0
+
+
+class MmsLite:
+    """MMS convergence test with controlled gauge modes."""
+    
+    def __init__(self, L=16.0, core_mode=True, gr_solver=None):
+        self.L = L
+        self.core_mode = core_mode
+        self.mode_name = "CORE" if core_mode else "FULL"
         self.gr_solver = gr_solver
-        self.logger = logging.getLogger(__name__)
-
-    def set_mms(self, t, N, dx, dy, dz, L=16.0):
-        x = np.arange(N) * dx
-        y = np.arange(N) * dy
-        z = np.arange(N) * dz
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        kx = 2 * np.pi / L
-        ky = 2 * np.pi / L
-        kz = 2 * np.pi / L
-        kdotx = kx * X + ky * Y + kz * Z
-        omega = 1.0
-        eps = 1e-3
-        gamma_sym6 = np.zeros((N, N, N, 6))
-        gamma_sym6[..., 0] = 1 + eps * np.sin(kdotx) * np.sin(omega * t)  # xx
-        gamma_sym6[..., 3] = 1 + eps * np.sin(kdotx) * np.sin(omega * t)  # yy
-        gamma_sym6[..., 5] = 1 + eps * np.sin(kdotx) * np.sin(omega * t)  # zz
-        K_sym6 = np.zeros((N, N, N, 6))
-        K_sym6[..., 0] = eps * np.cos(kdotx) * np.sin(omega * t)
-        K_sym6[..., 3] = eps * np.cos(kdotx) * np.sin(omega * t)
-        K_sym6[..., 5] = eps * np.cos(kdotx) * np.sin(omega * t)
-        alpha = np.ones((N, N, N))
-        beta = np.zeros((N, N, N, 3))
-        return gamma_sym6, K_sym6, alpha, beta
-
-    def compute_dt_mms(self, t, N, dx, dy, dz, L=16.0):
-        x = np.arange(N) * dx
-        y = np.arange(N) * dy
-        z = np.arange(N) * dz
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        kx = 2 * np.pi / L
-        ky = 2 * np.pi / L
-        kz = 2 * np.pi / L
-        kdotx = kx * X + ky * Y + kz * Z
-        omega = 1.0
-        eps = 1e-3
-        dt_gamma_sym6 = np.zeros((N, N, N, 6))
-        dt_gamma_sym6[..., 0] = eps * omega * np.cos(omega * t) * np.sin(kdotx)
-        dt_gamma_sym6[..., 3] = eps * omega * np.cos(omega * t) * np.sin(kdotx)
-        dt_gamma_sym6[..., 5] = eps * omega * np.cos(omega * t) * np.sin(kdotx)
-        dt_K_sym6 = np.zeros((N, N, N, 6))
-        dt_K_sym6[..., 0] = eps * omega * np.cos(omega * t) * np.cos(kdotx)
-        dt_K_sym6[..., 3] = eps * omega * np.cos(omega * t) * np.cos(kdotx)
-        dt_K_sym6[..., 5] = eps * omega * np.cos(omega * t) * np.cos(kdotx)
-        dt_alpha = np.zeros((N, N, N))
-        dt_beta = np.zeros((N, N, N, 3))
-        return dt_gamma_sym6, dt_K_sym6, dt_alpha, dt_beta
-
-    def compute_Gamma_tilde_mms(self, t, N, dx, dy, dz, L=16.0):
-        x = np.arange(N) * dx
-        y = np.arange(N) * dy
-        z = np.arange(N) * dz
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        kx = 2 * np.pi / L
-        ky = 2 * np.pi / L
-        kz = 2 * np.pi / L
-        kdotx = kx * X + ky * Y + kz * Z
-        omega = 1.0
-        eps = 1e-3
+    
+    def defect_test(self, N=16):
+        """Test that sources cancel RHS defect at t=0."""
+        solver = GRSolver(N, N, N, dx=self.L/N)
         
-        sin_k = np.sin(kdotx)
-        cos_k = np.cos(kdotx)
-        sin_wt = np.sin(omega * t)
+        gamma0, K0, alpha0, beta0 = exact_fields(N, self.L, 0.0)
         
-        F = eps * sin_k * sin_wt
+        solver.fields.gamma_sym6[:] = gamma0
+        solver.fields.K_sym6[:] = K0
+        solver.fields.alpha[:] = alpha0
+        solver.fields.beta[:] = beta0
         
-        Gamma_tilde = np.zeros((N, N, N, 3))
-        ks = [kx, ky, kz]
-        for i in range(3):
-            ki = ks[i]
-            di_F = eps * ki * cos_k * sin_wt
-            # Gamma^i = -0.5 * (1+F)^-2 * di_F
-            Gamma_tilde[..., i] = -0.5 * (1 + F)**(-2) * di_F
+        init_bssn_fields(solver, gamma0, K0)
+        solver.geometry.compute_all()
+        
+        # RHS without sources
+        solver.stepper.rhs_computer.sources_func = None
+        solver.stepper.rhs_computer.compute_rhs(0.0, slow_update=True)
+        rhs_no_src = solver.stepper.rhs_computer
+        
+        # Exact dt
+        dt_gamma, dt_K, dt_alpha, dt_beta = exact_dt_fields(N, self.L, 0.0)
+        dt_phi, dt_gamma_tilde, dt_K_trace, dt_A_tilde = compute_bssn_dt(N, gamma0, K0, dt_gamma, dt_K)
+        
+        # Sources
+        sources = {
+            'S_gamma_sym6': dt_gamma - rhs_no_src.rhs_gamma_sym6,
+            'S_K_sym6': dt_K - rhs_no_src.rhs_K_sym6,
+            'S_gamma_tilde_sym6': dt_gamma_tilde - rhs_no_src.rhs_gamma_tilde_sym6,
+            'S_A_sym6': dt_A_tilde - rhs_no_src.rhs_A_sym6,
+            'S_phi': dt_phi - rhs_no_src.rhs_phi,
+            'S_Gamma_tilde': -rhs_no_src.rhs_Gamma_tilde,
+            'S_Z': -rhs_no_src.rhs_Z,
+            'S_Z_i': -rhs_no_src.rhs_Z_i
+        }
+        
+        # Apply and compute residual
+        solver.stepper.rhs_computer.sources_func = lambda t: sources
+        solver.stepper.rhs_computer.compute_rhs(0.0, slow_update=True)
+        rhs_with_src = solver.stepper.rhs_computer
+        
+        residual_gamma = rhs_with_src.rhs_gamma_sym6 - dt_gamma
+        residual_K = rhs_with_src.rhs_K_sym6 - dt_K
+        residual_gamma_tilde = rhs_with_src.rhs_gamma_tilde_sym6 - dt_gamma_tilde
+        residual_A = rhs_with_src.rhs_A_sym6 - dt_A_tilde
+        
+        max_residual = max(
+            np.max(np.abs(residual_gamma)),
+            np.max(np.abs(residual_K)),
+            np.max(np.abs(residual_gamma_tilde)),
+            np.max(np.abs(residual_A))
+        )
+        
+        passed = max_residual < 1e-10
+        
+        logger.info(f"[{self.mode_name}] DEFECT CANCELLATION: residual={max_residual:.2e} {'✅' if passed else '❌'}")
+        
+        return {
+            'passed': bool(passed),
+            'max_residual': float(max_residual)
+        }
+    
+    def evolution_test(self, N=16, T=0.0005):
+        """Run evolution test and compute error."""
+        solver = GRSolver(N, N, N, dx=self.L/N)
+        
+        gamma0, K0, alpha0, beta0 = exact_fields(N, self.L, 0.0)
+        
+        solver.fields.gamma_sym6[:] = gamma0
+        solver.fields.K_sym6[:] = K0
+        solver.fields.alpha[:] = alpha0
+        solver.fields.beta[:] = beta0
+        
+        init_bssn_fields(solver, gamma0, K0)
+        solver.geometry.compute_all()
+        
+        # Pure source oracle
+        def sources_func(t):
+            gamma_exact, K_exact, alpha_exact, beta_exact = exact_fields(N, self.L, t)
+            dt_gamma, dt_K, dt_alpha, dt_beta = exact_dt_fields(N, self.L, t)
+            dt_phi, dt_gamma_tilde, dt_K_trace, dt_A_tilde = compute_bssn_dt(N, gamma_exact, K_exact, dt_gamma, dt_K)
             
-        return Gamma_tilde
-
-    def compute_dt_Gamma_tilde_mms(self, t, N, dx, dy, dz, L=16.0):
-        x = np.arange(N) * dx
-        y = np.arange(N) * dy
-        z = np.arange(N) * dz
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        kx = 2 * np.pi / L
-        ky = 2 * np.pi / L
-        kz = 2 * np.pi / L
-        kdotx = kx * X + ky * Y + kz * Z
-        omega = 1.0
-        eps = 1e-3
+            return {
+                'S_gamma_sym6': dt_gamma,
+                'S_K_sym6': dt_K,
+                'S_gamma_tilde_sym6': dt_gamma_tilde,
+                'S_A_sym6': dt_A_tilde,
+                'S_phi': dt_phi,
+                'S_Gamma_tilde': np.zeros((N, N, N, 3)),
+                'S_Z': np.zeros((N, N, N)),
+                'S_Z_i': np.zeros((N, N, N, 3))
+            }
         
-        sin_k = np.sin(kdotx)
-        cos_k = np.cos(kdotx)
-        sin_wt = np.sin(omega * t)
-        cos_wt = np.cos(omega * t)
+        solver.stepper.rhs_computer.sources_func = sources_func
         
-        F = eps * sin_k * sin_wt
-        dt_F = eps * omega * sin_k * cos_wt
+        # RK4 integration
+        dx = self.L / N
+        dt = (dx**2) * 0.05
+        if self.core_mode:
+            # Smaller dt for core mode to isolate spatial error
+            dt = min(dt, dx**2 * 0.1)
         
-        dt_Gamma_tilde = np.zeros((N, N, N, 3))
-        ks = [kx, ky, kz]
-        for i in range(3):
-            ki = ks[i]
-            di_F = eps * ki * cos_k * sin_wt
-            dt_di_F = eps * ki * omega * cos_k * cos_wt
+        t = 0.0
+        
+        gamma = solver.fields.gamma_sym6.copy()
+        K = solver.fields.K_sym6.copy()
+        phi = solver.fields.phi.copy()
+        gamma_tilde = solver.fields.gamma_tilde_sym6.copy()
+        A = solver.fields.A_sym6.copy()
+        
+        def eval_rhs(gamma_state, K_state, phi_state, gamma_tilde_state, A_state, t_eval):
+            solver.fields.gamma_sym6[:] = gamma_state
+            solver.fields.K_sym6[:] = K_state
+            solver.fields.phi[:] = phi_state
+            solver.fields.gamma_tilde_sym6[:] = gamma_tilde_state
+            solver.fields.A_sym6[:] = A_state
             
-            # dt_Gamma^i = (1+F)^-3 * dt_F * di_F - 0.5 * (1+F)^-2 * dt_di_F
-            term1 = (1 + F)**(-3) * dt_F * di_F
-            term2 = 0.5 * (1 + F)**(-2) * dt_di_F
-            dt_Gamma_tilde[..., i] = term1 - term2
+            # CORE MODE: Keep gauge fixed at exact values
+            if self.core_mode:
+                gamma_exact, K_exact, alpha_exact, beta_exact = exact_fields(N, self.L, t_eval)
+                solver.fields.alpha[:] = alpha_exact
+                solver.fields.beta[:] = beta_exact
             
-        return dt_Gamma_tilde
-
-    def compute_full_gamma_driver_rhs(self, solver):
-        """
-        Implements the full BSSN evolution equation for Gamma_tilde:
-        dt_Gamma^i = -2*A^ij*dj_alpha + 2*alpha*(Gamma^i_jk*A^jk + 6*A^ij*dj_phi - (2/3)*gamma^ij*dj_K)
-                      + beta^j*dj_Gamma^i - Gamma^j*dj_beta^i + (2/3)*Gamma^i*dj_beta^j
-                      + gamma^jk*djk_beta^i + (1/3)*gamma^ij*djk_beta^k
-        """
-        from gr_solver.gr_core_fields import inv_sym6, sym6_to_mat33
-        fields = solver.fields
-        g_tilde = fields.gamma_tilde_sym6
-        A_tilde = fields.A_sym6
-        Gamma_tilde = fields.Gamma_tilde
-        alpha = fields.alpha
-        beta = fields.beta
-        phi = fields.phi
-        
-        # Grid spacing (assuming uniform cubic)
-        dx = fields.dx
-        
-        # Helper for central difference
-        def d_i(f, axis):
-            return (np.roll(f, -1, axis=axis) - np.roll(f, 1, axis=axis)) / (2 * dx)
+            solver.geometry.compute_all()
+            solver.stepper.rhs_computer.compute_rhs(t_eval, slow_update=True)
+            rhs = solver.stepper.rhs_computer
             
-        def d_ij(f, ax1, ax2):
-            # d_i (d_j f)
-            return d_i(d_i(f, ax2), ax1)
-
-        # 1. Inverse metric and Christoffels
-        g_inv_sym = inv_sym6(g_tilde)
-        g_inv = sym6_to_mat33(g_inv_sym) # (..., 3, 3)
-        g_mat = sym6_to_mat33(g_tilde)
+            return {
+                'gamma': rhs.rhs_gamma_sym6,
+                'K': rhs.rhs_K_sym6,
+                'phi': rhs.rhs_phi,
+                'gamma_tilde': rhs.rhs_gamma_tilde_sym6,
+                'A': rhs.rhs_A_sym6,
+            }
         
-        # Compute conformal Christoffel symbols Gamma^i_jk
-        # Gamma^i_jk = 0.5 * g^il * (d_j g_lk + d_k g_lj - d_l g_jk)
-        dg = np.zeros(g_mat.shape + (3,)) # (..., 3, 3, 3) last is deriv index
-        for k in range(3):
-            dg[..., k] = d_i(g_mat, k)
+        while t < T:
+            dt_step = min(dt, T - t)
             
-        Gamma_ijk = np.zeros(g_mat.shape + (3,)) # (..., 3, 3, 3) i, j, k
-        for i in range(3):
-            for j in range(3):
-                for k in range(3):
-                    term = 0.0
-                    for l in range(3):
-                        term += 0.5 * g_inv[..., i, l] * (dg[..., l, k, j] + dg[..., l, j, k] - dg[..., j, k, l])
-                    Gamma_ijk[..., i, j, k] = term
-
-        # 2. Raise A_tilde: A^ij = g^ik g^jl A_kl
-        A_mat = sym6_to_mat33(A_tilde)
-        A_up = np.einsum('...ik,...jl,...kl->...ij', g_inv, g_inv, A_mat)
-        
-        # 3. Derivatives
-        d_alpha = np.stack([d_i(alpha, k) for k in range(3)], axis=-1)
-        d_phi = np.stack([d_i(phi, k) for k in range(3)], axis=-1)
-        
-        # K is trace of extrinsic curvature. Here we approximate K=0 or compute from K_sym6 if available.
-        # In this test setup, K_sym6 is set. K = tr(K_ij) / e^4phi approx? 
-        # For MMS, let's assume K=0 as phi=0 and A is traceless part of K.
-        d_K = np.zeros_like(d_phi) 
-
-        # 4. Advection terms (Lie derivative part 1)
-        # beta^j dj_Gamma^i
-        advect = np.zeros_like(Gamma_tilde)
-        for j in range(3):
-            advect += beta[..., j:j+1] * d_i(Gamma_tilde, j)
+            k1 = eval_rhs(gamma, K, phi, gamma_tilde, A, t)
             
-        # - Gamma^j dj_beta^i
-        d_beta = np.zeros(beta.shape + (3,)) # (..., i, j) -> dj beta^i
-        for j in range(3):
-            d_beta[..., j] = d_i(beta, j) # deriv index is last
+            gamma2 = gamma + 0.5 * dt_step * k1['gamma']
+            K2 = K + 0.5 * dt_step * k1['K']
+            phi2 = phi + 0.5 * dt_step * k1['phi']
+            gamma_tilde2 = gamma_tilde + 0.5 * dt_step * k1['gamma_tilde']
+            A2 = A + 0.5 * dt_step * k1['A']
+            k2 = eval_rhs(gamma2, K2, phi2, gamma_tilde2, A2, t + 0.5 * dt_step)
             
-        twist = np.einsum('...j,...ji->...i', Gamma_tilde, d_beta)
+            gamma3 = gamma + 0.5 * dt_step * k2['gamma']
+            K3 = K + 0.5 * dt_step * k2['K']
+            phi3 = phi + 0.5 * dt_step * k2['phi']
+            gamma_tilde3 = gamma_tilde + 0.5 * dt_step * k2['gamma_tilde']
+            A3 = A + 0.5 * dt_step * k2['A']
+            k3 = eval_rhs(gamma3, K3, phi3, gamma_tilde3, A3, t + 0.5 * dt_step)
+            
+            gamma4 = gamma + dt_step * k3['gamma']
+            K4 = K + dt_step * k3['K']
+            phi4 = phi + dt_step * k3['phi']
+            gamma_tilde4 = gamma_tilde + dt_step * k3['gamma_tilde']
+            A4 = A + dt_step * k3['A']
+            k4 = eval_rhs(gamma4, K4, phi4, gamma_tilde4, A4, t + dt_step)
+            
+            gamma = gamma + (dt_step / 6.0) * (k1['gamma'] + 2*k2['gamma'] + 2*k3['gamma'] + k4['gamma'])
+            K = K + (dt_step / 6.0) * (k1['K'] + 2*k2['K'] + 2*k3['K'] + k4['K'])
+            phi = phi + (dt_step / 6.0) * (k1['phi'] + 2*k2['phi'] + 2*k3['phi'] + k4['phi'])
+            gamma_tilde = gamma_tilde + (dt_step / 6.0) * (k1['gamma_tilde'] + 2*k2['gamma_tilde'] + 2*k3['gamma_tilde'] + k4['gamma_tilde'])
+            A = A + (dt_step / 6.0) * (k1['A'] + 2*k2['A'] + 2*k3['A'] + k4['A'])
+            
+            t += dt_step
         
-        # (2/3) Gamma^i dj_beta^j
-        div_beta = d_beta[..., 0, 0] + d_beta[..., 1, 1] + d_beta[..., 2, 2]
-        compress = (2.0/3.0) * Gamma_tilde * div_beta[..., None]
-
-        # 5. Second derivative terms of beta
-        dd_beta = np.zeros(beta.shape + (3, 3)) # (..., i, j, k) -> dj dk beta^i
-        for j in range(3):
-            for k in range(3):
-                dd_beta[..., j, k] = d_ij(beta, j, k)
-                
-        lap_shift = np.einsum('...jk,...ijk->...i', g_inv, dd_beta)
-        grad_div_shift = np.einsum('...ij,...kjk->...i', g_inv, dd_beta)
-
-        # 6. Assemble RHS
-        rhs = np.zeros_like(Gamma_tilde)
+        # Compute error
+        gamma_exact, K_exact, _, _ = exact_fields(N, self.L, T)
+        error_gamma = np.sqrt(np.mean((gamma - gamma_exact)**2))
+        error_K = np.sqrt(np.mean((K - K_exact)**2))
+        total_error = error_gamma + error_K
         
-        # Term: -2 A^ij dj_alpha
-        rhs += -2.0 * np.einsum('...ij,...j->...i', A_up, d_alpha)
+        return {
+            'error_gamma': float(error_gamma),
+            'error_K': float(error_K),
+            'total_error': float(total_error)
+        }
+    
+    def run(self, resolutions=[8, 12, 16, 24], T=0.0002):
+        """Run full MMS test suite."""
+        logger.info(f"=== MMS LITE [{self.mode_name} MODE] ===")
+        logger.info(f"CORE_MODE={self.core_mode}: Gauge {'FROZEN' if self.core_mode else 'EVOLVING'}")
         
-        # Term: 2 alpha ( Gamma^i_jk A^jk + 6 A^ij dj_phi - (2/3) g^ij dj_K )
-        term_paren = np.einsum('...ijk,...jk->...i', Gamma_ijk, A_up)
-        term_paren += 6.0 * np.einsum('...ij,...j->...i', A_up, d_phi)
-        term_paren -= (2.0/3.0) * np.einsum('...ij,...j->...i', g_inv, d_K)
-        rhs += 2.0 * alpha[..., None] * term_paren
+        results = {
+            'mode': self.mode_name,
+            'core_mode': self.core_mode
+        }
         
-        # Add Lie terms
-        rhs += advect - twist + compress
+        # 1. Defect cancellation
+        defect_result = self.defect_test(N=resolutions[-1])
+        results['defect_test'] = defect_result
         
-        # Add shift Laplacian terms
-        rhs += lap_shift + (1.0/3.0) * grad_div_shift
-        
-        return rhs
-
-    def run(self):
+        # 2. Evolution tests
         errors = []
-        L = 16.0
-        for N in [16, 32, 64]:
-            dx = L / N
-            dy = dx
-            dz = dx
-            solver = GRSolver(N, N, N, dx=dx, dy=dx, dz=dx)
-            gamma, K, alpha, beta = self.set_mms(0, N, dx, dy, dz, L)
-            solver.fields.gamma_sym6 = gamma
-            solver.fields.K_sym6 = K
-            solver.fields.alpha = alpha
-            solver.fields.beta = beta
-            solver.fields.phi = np.zeros((N, N, N))
-            solver.fields.gamma_tilde_sym6 = gamma.copy()
-            solver.fields.A_sym6 = K.copy()
-            solver.fields.Gamma_tilde = self.compute_Gamma_tilde_mms(0, N, dx, dy, dz, L)
-            solver.fields.Z = np.zeros((N, N, N))
-            solver.fields.Z_i = np.zeros((N, N, N, 3))
-            solver.geometry.compute_christoffels()
-            solver.geometry.compute_ricci()
-            solver.geometry.compute_scalar_curvature()
-            dt_gamma, dt_K, dt_alpha, dt_beta = self.compute_dt_mms(0, N, dx, dy, dz, L)
-            solver.stepper.compute_rhs()
-            # Compute initial constraints
-            solver.constraints.compute_hamiltonian()
-            solver.constraints.compute_momentum()
-            solver.constraints.compute_residuals()
-            eps_H_init = solver.constraints.eps_H
-            eps_M_init = solver.constraints.eps_M
-            logging.debug(f"Test1 MMS N={N}: initial eps_H={eps_H_init}, eps_M={eps_M_init}")
-            cfl = 0.01
-            cfl_ratio = cfl
-            logging.debug(f"Test1 MMS N={N}: CFL ratio dt/dx = {cfl_ratio}")
-            S_gamma = dt_gamma - solver.stepper.rhs_gamma_sym6
-            S_K = dt_K - solver.stepper.rhs_K_sym6
-            S_phi = -solver.stepper.rhs_phi
-            S_gamma_tilde = dt_gamma - solver.stepper.rhs_gamma_tilde_sym6
-            S_A = dt_K - solver.stepper.rhs_A_sym6
+        hs = []
+        
+        for N in resolutions:
+            err = self.evolution_test(N=N, T=T)
+            errors.append(err['total_error'])
+            hs.append(self.L / N)
+            logger.info(f"[{self.mode_name}] N={N}, dx={self.L/N:.4f}, Error={err['total_error']:.4e}")
+        
+        results['evolution'] = {
+            'errors': [float(e) for e in errors],
+            'resolutions': resolutions
+        }
+        
+        # 3. Convergence order
+        if len(errors) >= 2:
+            p_obs = estimate_order(errors, hs)
+            results['p_obs'] = float(p_obs)
+            p_target = 2.0
+            passed = p_obs > (p_target - 0.5)
+            results['passed'] = bool(passed)
             
-            # Compute S_Gamma_tilde
-            dt_Gamma_tilde = self.compute_dt_Gamma_tilde_mms(0, N, dx, dy, dz, L)
-            rhs_Gamma_full_init = self.compute_full_gamma_driver_rhs(solver)
-            S_Gamma_tilde = dt_Gamma_tilde - rhs_Gamma_full_init
-            
-            S_Z = -solver.stepper.rhs_Z
-            S_Z_i = -solver.stepper.rhs_Z_i
-            logging.debug(f"Test1 MMS N={N}: S_gamma_norm = {np.linalg.norm(S_gamma)}, S_K_norm = {np.linalg.norm(S_K)}, S_phi_norm = {np.linalg.norm(S_phi)}, S_gamma_tilde_norm = {np.linalg.norm(S_gamma_tilde)}, S_A_norm = {np.linalg.norm(S_A)}")
-            solver.stepper.S_gamma_sym6 = S_gamma
-            solver.stepper.S_K_sym6 = S_K
-            solver.stepper.S_phi = S_phi
-            solver.stepper.S_gamma_tilde_sym6 = S_gamma_tilde
-            solver.stepper.S_A_sym6 = S_A
-            solver.stepper.S_Gamma_tilde = S_Gamma_tilde
-            solver.stepper.S_Z = S_Z
-            solver.stepper.S_Z_i = S_Z_i
-            
-            original_compute_rhs = solver.stepper.compute_rhs
-            def compute_rhs_with_sources(stepper, t, slow_update):
-                original_compute_rhs(t, slow_update)
-                stepper.rhs_gamma_sym6 += stepper.S_gamma_sym6
-                stepper.rhs_K_sym6 += stepper.S_K_sym6
-                stepper.rhs_phi += stepper.S_phi
-                stepper.rhs_gamma_tilde_sym6 += stepper.S_gamma_tilde_sym6
-                stepper.rhs_A_sym6 += stepper.S_A_sym6
-                stepper.rhs_Z += stepper.S_Z
-                stepper.rhs_Z_i += stepper.S_Z_i
-                
-                # Patch: Compute full Gamma_tilde evolution
-                rhs_Gamma_full = self.compute_full_gamma_driver_rhs(solver)
-                # Apply source (S_Gamma is 0, so just set RHS)
-                stepper.rhs_Gamma_tilde = rhs_Gamma_full + stepper.S_Gamma_tilde
-                
-            solver.stepper.compute_rhs = lambda t, slow_update: compute_rhs_with_sources(solver.stepper, t, slow_update)
-            solver.stepper.damping_enabled = False
-            # Hold gauge fixed
-            solver.gauge.evolve_lapse = lambda dt: None
-            solver.gauge.evolve_shift = lambda dt: None
-            T = 0.001
-            # Use adaptive dt
-            solver.scheduler.compute_dt = solver.stepper.memory.suggest_dt
-            solver.orchestrator.t = 0.0
-            solver.orchestrator.step = 0
-            while solver.orchestrator.t < T:
-                dt_max = T - solver.orchestrator.t
-                dt, _, _ = solver.orchestrator.run_step(dt_max)
-            # Compute final constraints
-            solver.constraints.compute_residuals()
-            eps_H_final = solver.constraints.eps_H
-            logging.debug(f"Test1 MMS N={N}: final eps_H={eps_H_final}")
-            gamma_exact, K_exact, alpha_exact, beta_exact = self.set_mms(T, N, dx, dy, dz, L)
-            err_gamma = solver.fields.gamma_sym6 - gamma_exact
-            err_K = solver.fields.K_sym6 - K_exact
-            error_gamma = np.linalg.norm(err_gamma) / np.sqrt(err_gamma.size)
-            error_K = np.linalg.norm(err_K) / np.sqrt(err_K.size)
-            error = error_gamma + error_K
-            errors.append(error)
-            logging.debug(f"Test1 MMS N={N}: error_gamma={error_gamma:.2e}, error_K={error_K:.2e}, total error={error:.2e}")
-            # Log max sources
-            max_S_gamma = np.max(np.abs(S_gamma_tilde))
-            max_S_K = np.max(np.abs(S_K))
-            logging.debug(f"Test1 MMS N={N}: max_S_gamma={max_S_gamma:.2e}, max_S_K={max_S_K:.2e}")
-        e_N, e_2N, e_4N = errors
-        if e_2N == 0:
-            p_obs = np.inf
+            logger.info(f"[{self.mode_name}] p_obs={p_obs:.2f} (target ~{p_target}): {'✅ PASSED' if passed else '❌ FAILED'}")
         else:
-            p_obs = np.log2(e_N / e_2N)
-        passed = p_obs > 1.5
-        metrics = {'p_obs': p_obs, 'errors': [e_N, e_2N, e_4N]}
-        diagnosis = f"Observed order p_obs = {p_obs:.2f}, {'passed' if passed else 'failed'} convergence check (>1.5)"
-        return {'passed': passed, 'metrics': metrics, 'diagnosis': diagnosis}
+            results['p_obs'] = None
+            results['passed'] = False
+        
+        return results
+
 
 if __name__ == "__main__":
-    test = Test1MmsLite(None)
-    result = test.run()
-    print(result)
+    import json
+    
+    # Run CORE mode (gauge frozen) for proper convergence
+    test_core = MmsLite(L=16.0, core_mode=True)
+    result_core = test_core.run()
+    
+    print(f"\n=== CORE MODE RESULTS ===")
+    print(json.dumps(result_core, indent=2))
+    
+    # Also run FULL mode for comparison
+    test_full = MmsLite(L=16.0, core_mode=False)
+    result_full = test_full.run()
+    
+    print(f"\n=== FULL MODE RESULTS ===")
+    print(json.dumps(result_full, indent=2))
+
+# Backward compatibility alias
+Test1MmsLite = MmsLite

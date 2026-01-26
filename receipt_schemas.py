@@ -41,8 +41,22 @@ class MSolveReceipt:
     sem_ok: bool
     rollback_count: int
     perf: Dict[str, Any]
-
+    
+    # Forensic fields for audit-grade recovery
+    gate_kind: str = "state"  # constraint, state, rate, nonfinite, uninitialized
+    gate_reason: str = ""  # Specific failure reason
+    hard_fail: bool = False  # Whether this was a hard fail
+    retry_index: int = 0  # 0 for first attempt
+    dt_before: float = 0.0  # dt before this attempt
+    dt_after: float = 0.0  # dt after this attempt (may be reduced)
+    snapshot_id: str = ""  # Hash of (state, clock) snapshot
+    regime_hash: str = ""  # Current regime hash
+    repair_actions_allowed: List[str] = None  # List of allowed repair action names
+    repair_action_chosen: Optional[str] = None  # Chosen repair action
+    
     def __post_init__(self):
+        if self.repair_actions_allowed is None:
+            self.repair_actions_allowed = []
         if self.attempt_id < 0:
             raise SEMFailure(f"attempt_id must be non-negative, got {self.attempt_id}")
         if not np.isfinite(self.t):
@@ -61,6 +75,10 @@ class MSolveReceipt:
             raise SEMFailure("policy_hash cannot be empty")
         if not self.state_hash:
             raise SEMFailure("state_hash cannot be empty")
+        # Validate gate_kind
+        valid_kinds = {"constraint", "state", "rate", "nonfinite", "uninitialized"}
+        if self.gate_kind not in valid_kinds:
+            raise SEMFailure(f"gate_kind must be one of {valid_kinds}, got {self.gate_kind}")
         # Check residual_proxy
         for domain, scales in self.residual_proxy.items():
             if domain is None:
@@ -227,7 +245,7 @@ class OmegaReceipt:
     def __post_init__(self):
         if not self.tier:
             raise SEMFailure("tier cannot be empty")
-        if self.id != self.compute_id():
+        if self.id != self.compute_id(self.prev, self.tier, self.record):
             raise SEMFailure("id does not match computed hash")
         # Note: prev can be None for genesis
 

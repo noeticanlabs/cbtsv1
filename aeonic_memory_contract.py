@@ -1,6 +1,8 @@
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 from aeonic_memory_bank import AeonicMemoryBank
 from receipt_schemas import Kappa, MSolveReceipt, MStepReceipt, MOrchReceipt
+from gr_solver.gr_ttl_calculator import TTLCalculator, AdaptiveTTLs
+from gr_solver.gr_gates import should_hard_fail, GateKind
 import hashlib
 import json
 import numpy as np
@@ -12,11 +14,31 @@ class SEMFailure(Exception):
 class AeonicMemoryContract:
     """Contract-compliant interface mapping tiered memory to M_solve/M_step/M_orch."""
 
-    def __init__(self, memory_bank: AeonicMemoryBank, receipts_log=None):
+    # Static TTL fallback constants (for backward compatibility)
+    STATIC_TTL_M_SOLVE_S = 3600   # 1 hour
+    STATIC_TTL_M_SOLVE_L = 86400  # 1 day
+    STATIC_TTL_M_STEP_S = 36000   # 10 hours
+    STATIC_TTL_M_STEP_L = 604800  # 1 week
+    STATIC_TTL_M_ORCH_S = 2592000 # 30 days
+    STATIC_TTL_M_ORCH_L = 31536000 # 1 year
+
+    def __init__(self, memory_bank: AeonicMemoryBank, receipts_log=None, ttl_calculator: Optional[TTLCalculator] = None):
+        """
+        Initialize the AeonicMemoryContract.
+        
+        Args:
+            memory_bank: The AeonicMemoryBank instance
+            receipts_log: Optional receipts logger
+            ttl_calculator: Optional TTLCalculator for adaptive TTL computation
+        """
         self.memory_bank = memory_bank
         self.receipts_log = receipts_log
+        self.ttl_calculator = ttl_calculator
         self.attempt_counter = 0
         self.step_counter = 0
+        
+        # Cache for computed TTLs (lazily computed)
+        self._cached_ttls: Optional[AdaptiveTTLs] = None
 
         # Initialize and map tiers to contract memories
         for tier in [1, 2, 3]:
@@ -28,17 +50,43 @@ class AeonicMemoryContract:
         self.M_step = memory_bank.tiers[2]   # Only accepted steps
         self.M_orch = memory_bank.tiers[3]   # Canon promotions
 
+    def _get_ttls(self) -> AdaptiveTTLs:
+        """Get TTLs from calculator or compute cached value."""
+        if self.ttl_calculator is None:
+            # Return static TTLs as AdaptiveTTLs for backward compatibility
+            return AdaptiveTTLs(
+                msolve_ttl_s=self.STATIC_TTL_M_SOLVE_S,
+                msolve_ttl_l=self.STATIC_TTL_M_SOLVE_L,
+                mstep_ttl_s=self.STATIC_TTL_M_STEP_S,
+                mstep_ttl_l=self.STATIC_TTL_M_STEP_L,
+                morch_ttl_s=self.STATIC_TTL_M_ORCH_S,
+                morch_ttl_l=self.STATIC_TTL_M_ORCH_L
+            )
+        
+        if self._cached_ttls is None:
+            self._cached_ttls = self.ttl_calculator.compute_ttls()
+        return self._cached_ttls
+
+    def set_ttl_calculator(self, ttl_calculator: TTLCalculator):
+        """Set or replace the TTL calculator and invalidate cache."""
+        self.ttl_calculator = ttl_calculator
+        self._cached_ttls = None  # Invalidate cache
+
     def put_attempt_receipt(self, kappa: Kappa, receipt: MSolveReceipt):
         """Store attempt receipt in M_solve (ring buffer)."""
         self.attempt_counter += 1
         key = f"attempt_{kappa.o}_{kappa.s}_{kappa.mu}_{receipt.attempt_id}"
+        
+        # Get TTLs (adaptive or static)
+        ttls = self._get_ttls()
+        
         self.memory_bank.put(
             key=key,
             tier=1,
             payload=receipt,
             bytes=1024,  # Estimate
-            ttl_s=3600,  # 1 hour
-            ttl_l=86400,  # 1 day
+            ttl_s=ttls.msolve_ttl_s,
+            ttl_l=ttls.msolve_ttl_l,
             recompute_cost_est=100.0,
             risk_score=0.1,
             tainted=False,
@@ -56,13 +104,17 @@ class AeonicMemoryContract:
         """Store accepted step in M_step."""
         self.step_counter += 1
         key = f"step_{kappa.o}_{kappa.s}"
+        
+        # Get TTLs (adaptive or static)
+        ttls = self._get_ttls()
+        
         self.memory_bank.put(
             key=key,
             tier=2,
             payload=receipt,
             bytes=2048,  # Estimate
-            ttl_s=36000,  # 10 hours
-            ttl_l=604800,  # 1 week
+            ttl_s=ttls.mstep_ttl_s,
+            ttl_l=ttls.mstep_ttl_l,
             recompute_cost_est=1000.0,
             risk_score=0.05,
             tainted=False,
@@ -79,13 +131,17 @@ class AeonicMemoryContract:
     def put_orch_receipt(self, receipt: MOrchReceipt):
         """Store canon promotion in M_orch (append-only)."""
         key = f"orch_{receipt.o}"
+        
+        # Get TTLs (adaptive or static)
+        ttls = self._get_ttls()
+        
         self.memory_bank.put(
             key=key,
             tier=3,
             payload=receipt,
             bytes=4096,  # Estimate
-            ttl_s=2592000,  # 30 days
-            ttl_l=31536000,  # 1 year
+            ttl_s=ttls.morch_ttl_s,
+            ttl_l=ttls.morch_ttl_l,
             recompute_cost_est=10000.0,
             risk_score=0.01,
             tainted=False,
@@ -146,8 +202,25 @@ class AeonicMemoryContract:
         """Check minimum accepted history before verification."""
         return len([r for r in self.M_step.values() if not r.tainted]) >= min_steps
 
+    def abort_on_hard_fail(self, gate: Dict[str, Any], accepted: bool):
+        """
+        Fast-exit for hard gate failures.
+        
+        Args:
+            gate: Gate dictionary with 'kind' and 'reason' keys
+            accepted: Whether the gate was accepted (True) or rejected (False)
+            
+        Raises:
+            SEMFailure: If gate is hard-fail kind and not accepted
+        """
+        if not accepted and should_hard_fail(gate):
+            gate_kind = gate.get('kind', 'unknown')
+            gate_reason = gate.get('reason', 'no reason specified')
+            raise SEMFailure(f"Hard gate failure: kind={gate_kind}, reason={gate_reason}")
+        # Soft failure handling is delegated to retry policy in the caller
+
     def abort_on_state_gate_no_repair(self, gate: Dict[str, Any]):
-        """Fast-exit for state gate with no repair action."""
+        """Fast-exit for state gate with no repair action. Deprecated: use abort_on_hard_fail."""
         if gate.get('kind') == 'state' and not any(action.get('repair', False) for action in gate.get('actions_allowed', [])):
             raise SEMFailure("State gate violation with no repair action - abort immediately")
 

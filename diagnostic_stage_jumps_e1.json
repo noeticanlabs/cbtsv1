@@ -1,0 +1,66 @@
+{
+  "description": "Stage jump diagnostic for full E1 runs",
+  "T_final": 1.0,
+  "resolutions": [
+    8
+  ],
+  "individual_results": [
+    {
+      "N": 8,
+      "dx": 0.5,
+      "dt": 0.5,
+      "T_final_target": 1.0,
+      "T_actual": 0.2,
+      "num_steps": 2,
+      "eps_H_final": 7.134792118852748e-05,
+      "stage_statistics": {
+        "cons": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 2
+        },
+        "filter": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 2
+        },
+        "gauge": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 2
+        },
+        "phys": {
+          "mean": 0.0,
+          "median": 0.0,
+          "worst_1_percent": 0.0,
+          "fraction_positive": 0.0,
+          "num_samples": 2
+        }
+      },
+      "all_deltas": {
+        "phys": [
+          0.0,
+          0.0
+        ],
+        "cons": [
+          0.0,
+          0.0
+        ],
+        "gauge": [
+          0.0,
+          0.0
+        ],
+        "filter": [
+          0.0,
+          0.0
+        ]
+      }
+    }
+  ]
+}

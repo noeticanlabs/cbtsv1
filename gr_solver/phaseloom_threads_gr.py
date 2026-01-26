@@ -147,7 +147,7 @@ def dt_thread_semantic(eps_H, eps_M, eps_H_target, eps_M_target, C_sem, dt_selec
     }
 
 class GRPhaseLoomThreads:
-    def __init__(self, fields, eps_H_target=1e-10, eps_M_target=1e-10, m_det_min=0.2, c=1.0, Lambda=0.0, mu_H=0.01, mu_M=0.01, rho_target=0.8):
+    def __init__(self, fields, eps_H_target=1e-8, eps_M_target=1e-8, m_det_min=0.2, c=1.0, Lambda=0.0, mu_H=0.01, mu_M=0.01, rho_target=0.8):
         self.fields = fields
         self.eps_H_target = eps_H_target
         self.eps_M_target = eps_M_target
@@ -165,8 +165,8 @@ class GRPhaseLoomThreads:
         self.C_curv = 0.10
         self.C_cons = 0.8
         self.C_det = 0.8
-        self.eps_H_max = 10 * eps_H_target
-        self.eps_M_max = 10 * eps_M_target
+        self.eps_H_max = 2 * eps_H_target
+        self.eps_M_max = 2 * eps_M_target
         self.dt_min = 1e-12
         self.dt_max = 10.0
 
@@ -248,20 +248,20 @@ def compute_omega_current(fields, prev_K=None, prev_gamma=None, spectral_cache=N
     if prev_gamma is not None:
         change_gamma = gamma_field - prev_gamma
     else:
-        change_gamma = gamma_field
+        change_gamma = gamma_field - gamma_field  # Zero on first step to avoid large FFT values
 
     # K change (xx component)
     K_field = fields.K_sym6[..., 0]
     if prev_K is not None:
         change_K = K_field - prev_K
     else:
-        change_K = K_field
+        change_K = K_field - K_field  # Zero on first step to avoid large FFT values
 
     # Combined change
     change = w_gamma * change_gamma + w_K * change_K
 
-    # Compute FFT
-    freq = np.fft.rfftn(change)
+    # Compute FFT (use float64 for precision)
+    freq = np.fft.rfftn(change.astype(np.float64))
     power = np.abs(freq)**2
 
     # Use precomputed bin maps

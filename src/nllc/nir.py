@@ -68,6 +68,12 @@ class CallInst(Instruction):
     args: List[Value]
 
 @dataclass
+class IntrinsicCallInst(Instruction):
+    result: Optional[Value]  # None for void calls
+    func: str
+    args: List[Value]
+
+@dataclass
 class LoadInst(Instruction):
     result: Value
     ptr: Value  # for arrays or variables

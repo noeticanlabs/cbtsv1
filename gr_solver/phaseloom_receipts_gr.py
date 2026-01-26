@@ -167,7 +167,7 @@ class GRPhaseLoomReceipts:
         self.events.append(event)
         print(f"PhaseLoom Event: {event_type} - {data}")
 
-    def emit_m_step(self, step, t, dt, dominant_thread, threads, eps_pre_H, eps_pre_M, eps_post_H, eps_post_M, d_eps_H, d_eps_M, max_R, det_gamma_min, mu_H, mu_M, rollback_count, rollback_reason=None, loom_data=None, t_expected=0.0, t_err=0.0, dt_loom=None, risk_gauge=None, tight_threads=None, consistency_ok=None, rail_margins=None, lambda_min=None, lambda_max=None, cond_gamma=None, repair_applied=False, repair_type=None, lambda_min_pre=None, lambda_min_post=None, t_prev=None, t_next=None, dt_selected=None, dt_applied=None, substeps=None, commit_ok=None, policy_hash=None):
+    def emit_m_step(self, step, t, dt, dominant_thread, threads, eps_pre_H, eps_pre_M, eps_post_H, eps_post_M, d_eps_H, d_eps_M, max_R, det_gamma_min, mu_H, mu_M, rollback_count, rollback_reason=None, loom_data=None, t_expected=0.0, t_err=0.0, dt_loom=None, risk_gauge=None, tight_threads=None, consistency_ok=None, rail_margins=None, lambda_min=None, lambda_max=None, cond_gamma=None, repair_applied=False, repair_type=None, lambda_min_pre=None, lambda_min_post=None, t_prev=None, t_next=None, dt_selected=None, dt_applied=None, substeps=None, commit_ok=None, policy_hash=None, kappa_before=0.0, kappa_after=0.0, E_tail_before=0.0, E_tail_after=0.0):
         """Emit M_step receipt for sparse canonical data"""
         if not self.config.enable_M_step:
             return
@@ -217,6 +217,10 @@ class GRPhaseLoomReceipts:
             },
             "consistency_ok": consistency_ok,
             "policy_hash": policy_hash,
+            "kappa_before": kappa_before,
+            "kappa_after": kappa_after,
+            "E_tail_before": E_tail_before,
+            "E_tail_after": E_tail_after,
             "timestamp": datetime.utcnow().isoformat(),
             "lexicon": "canon_v1_2",
             "modules": ["gr_solver"]

@@ -170,6 +170,25 @@ class GLLL:
     R62 = "H64:r62"  # WARN
     R63 = "H64:r63"  # SAFE
 
+    # H128 Extensions for TGS Glyphs (r64-r73)
+    # Per GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md §8.1
+    R64 = "H128:r64"  # KCALL - Kernel call primitive
+    R65 = "H128:r65"  # STENCIL - Stencil operator
+    R66 = "H128:r66"  # DERIV - Derivative operator
+    R67 = "H128:r67"  # LAPLACE - Laplacian operator
+    R68 = "H128:r68"  # ADVECT - Advection operator
+    R69 = "H128:r69"  # DIFFUSE - Diffusion operator
+
+    # TGS-specific Hadamard glyphs (r70-r73)
+    # CCZ - Controlled-Controlled-Z gate
+    R70 = "H128:r70"  # CCZ - Controlled-Controlled-Z quantum gate
+    # CS - Controlled-S gate
+    R71 = "H128:r71"  # CS - Controlled-S quantum gate
+    # Lambda Laplacian operator
+    R72 = "H128:r72"  # LAMBDA_LAPLACIAN - Covariant Laplacian with coupling
+    # Connection coefficient computation
+    R73 = "H128:r73"  # CONNECTION_COEFF - Christoffel symbol computation
+
     # Convenience mappings with mnemonics
     NOP = R00
     HALT = R01
@@ -235,3 +254,15 @@ class GLLL:
     SEAL = R61
     WARN = R62
     SAFE = R63
+
+    # TGS-specific convenience mnemonics
+    KCALL = R64
+    STENCIL = R65
+    DERIV = R66
+    LAPLACE = R67
+    ADVECT = R68
+    DIFFUSE = R69
+    CCZ = R70  # Controlled-Controlled-Z gate
+    CS = R71   # Controlled-S gate
+    LAMBDA_LAPLACIAN = R72
+    CONNECTION_COEFF = R73

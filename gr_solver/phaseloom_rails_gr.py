@@ -17,13 +17,19 @@ import json
 from noetica_nsc_phase1 import nsc
 
 class GRPhaseLoomRails:
-    def __init__(self, fields, coupling_policy_path="coupling_policy_v0.1.json", alpha_floor=1e-8, H_max=1e-4, M_max=1e-4, R_max=1e6, warning_threshold=0.8, lambda_floor=1e-8, kappa_max=1e12):
+    def __init__(self, fields, nsc_policy_path="gr_gate_policy.nsc", alpha_floor=1e-8, H_max=1e-4, M_max=1e-4, R_max=1e6, warning_threshold=0.8, lambda_floor=1e-8, kappa_max=1e12):
         self.fields = fields
 
-        # Load coupling policy for configurable thresholds
-        with open(coupling_policy_path, 'r') as f:
-            self.policy = json.load(f)
-        self.gate_thresholds = self.policy.get('gate_thresholds', {})
+        # Load NSC policy script and execute to get thresholds
+        try:
+            with open(nsc_policy_path, 'r') as f:
+                nsc_code = f.read()
+            global_vars = {'np': np, 'fields': fields}  # Provide numpy and fields for dynamic policies
+            local_vars = {}
+            exec(nsc_code, global_vars, local_vars)
+            self.gate_thresholds = local_vars  # Use the executed variables as thresholds
+        except FileNotFoundError:
+            self.gate_thresholds = {}
 
         # Link to NSC glyph policies from gr_gates.py for dynamic gates
         from .gr_gates import GateChecker
@@ -32,13 +38,13 @@ class GRPhaseLoomRails:
 
         # Override defaults with policy if available
         self.alpha_floor = self.gate_thresholds.get('alpha_floor', alpha_floor)
-        self.H_max = self.gate_thresholds.get('eps_H_max', H_max)
-        self.H_warn = self.gate_thresholds.get('eps_H_warn', 7.5e-5)
-        self.M_max = self.gate_thresholds.get('eps_M_max', M_max)
-        self.R_max = R_max  # Not in policy, keep default
+        self.H_max = self.gate_thresholds.get('H_max', H_max)
+        self.H_warn = self.gate_thresholds.get('H_warn', 7.5e-5)
+        self.M_max = self.gate_thresholds.get('M_max', M_max)
+        self.R_max = self.gate_thresholds.get('R_max', R_max)
         self.warning_threshold = warning_threshold
-        self.lambda_floor = lambda_floor
-        self.kappa_max = kappa_max
+        self.lambda_floor = self.gate_thresholds.get('lambda_floor', lambda_floor)
+        self.kappa_max = self.gate_thresholds.get('kappa_max', kappa_max)
 
         # Incremental diagnostics cache
         self.prev_gamma = None
@@ -72,6 +78,11 @@ class GRPhaseLoomRails:
     def check_gates(self, eps_H, eps_M, geometry, fields):
         """Check coherence gates: return violation description or None"""
 
+        # If NSC defines a check_gates function, use it
+        if 'check_gates' in self.gate_thresholds and callable(self.gate_thresholds['check_gates']):
+            return self.gate_thresholds['check_gates'](eps_H, eps_M, geometry, fields, self)
+
+        # Fallback to default checks
         # Hard fail gates
         if np.any(np.isnan(fields.gamma_sym6)) or np.any(np.isinf(fields.gamma_sym6)):
             return "NaN or inf in gamma"

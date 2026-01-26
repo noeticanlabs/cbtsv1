@@ -1,12 +1,14 @@
 # Detailed Build Plan for Modular GR 3+1 Solver
 
 ## Overview
-Implement a CPU-safe, modular 3+1 General Relativity solver embedded in the UFE framework, enforcing constraints as first-class objects, using Aeonic multi-clock time stepping, and emitting Ω-ledger receipts. This builds on the NSE solver architecture for geometric coherence.
+Implement a CPU-safe, modular 3+1 General Relativity solver embedded in the UFE framework, enforcing constraints as first-class objects, using UnifiedClock-based multi-clock time stepping, and emitting Ω-ledger receipts. This builds on the NSE solver architecture for geometric coherence.
+
+**Updated:** Reflects UnifiedClock architecture (`gr_solver/gr_clock.py`)
 
 ## Architectural Principles
 - **Constraint-Aware**: Constraints measured, logged, and fed back.
 - **UFE Embedded**: Direct embedding into UFE canonical form: \(\partial_t \Psi = B(\Psi) + \lambda K(\Psi) + w\).
-- **Aeonic Scheduling**: Multi-clock timestep selection with \(\Delta t = \min_k \Delta t_k\) subject to residual bounds.
+- **UnifiedClock Scheduling**: Multi-clock timestep selection via [`UnifiedClock`](gr_solver/gr_clock.py:119) with \(\Delta t = \min_k \Delta t_k\) subject to residual bounds.
 - **Ledger Verified**: Every step emits auditable receipts with declared observables.
 - **CPU-Safe**: NumPy-based, finite differences, no GPU, FFT-free first pass.
 
@@ -20,7 +22,8 @@ gr_solver/
 ├── gr_geometry.py        # Geometric tensors (Christoffels, Ricci)
 ├── gr_constraints.py     # Constraint equations and residuals
 ├── gr_gauge.py           # Gauge conditions (lapse, shift)
-├── gr_scheduler.py       # Aeonic timestep selection
+├── gr_clock.py           # UnifiedClock architecture (NEW)
+├── gr_scheduler.py       # Scheduler that delegates to UnifiedClock
 ├── gr_stepper.py         # UFE evolution with damping
 └── gr_ledger.py          # Ω-receipt emission
 ```
@@ -30,16 +33,19 @@ Place in `/home/user/cbtsv1/` for consistency with project root.
 - Each module is a class with `compute_*` methods.
 - Inputs/Outputs: NumPy arrays for fields, scalars for residuals.
 - Lexicon declarations at top of each file.
+- **UnifiedClock Integration:** GRScheduler and MultiRateBandManager receive UnifiedClock instance.
 
 ## Orchestration
 The solver orchestrates modules in a loop:
-1. **Scheduler**: Compute Aeonic \(\Delta t\) from physical clocks (CFL, curvature, constraint, gauge).
-2. **Stepper**: Evolve \(\Psi\) via UFE: compute B (ADM), K (damping), update fields.
-3. **Constraints**: Compute residuals \(\varepsilon_H\), \(\varepsilon_M\).
-4. **Ledger**: Log receipts with observables (Q_mass, Q_angular_momentum, residuals).
-5. **Check**: If \(\varepsilon > \varepsilon_0\), rollback or halt.
-6. **Gauge**: Update lapse/shift if dynamic.
-7. Repeat until T_max or failure.
+1. **UnifiedClock**: Compute dt constraints from physical clocks (CFL, curvature, constraint, gauge) via [`compute_dt_constraints()`](gr_solver/gr_clock.py:291)
+2. **Scheduler**: Delegates to UnifiedClock for dt selection
+3. **Stepper**: Evolve \(\Psi\) via UFE: compute B (ADM), K (damping), update fields.
+4. **Constraints**: Compute residuals \(\varepsilon_H\), \(\varepsilon_M\).
+5. **Ledger**: Log receipts with observables (Q_mass, Q_angular_momentum, residuals).
+6. **Check**: If \(\varepsilon > \varepsilon_0\), rollback or halt.
+7. **Gauge**: Update lapse/shift if dynamic.
+8. **Clock**: Advance unified clock state via [`tick()`](gr_solver/gr_clock.py:174)
+9. Repeat until T_max or failure.
 
 ## Mathematical Backbone
 Using ADM 3+1 decomposition:
@@ -54,11 +60,12 @@ Evolution:
 \]
 With \(\varepsilon_{UFE} = \partial_t \Psi - \mathcal{L}_{ADM} - \lambda \mathcal{K}\) logged.
 
-Aeonic clocks for GR:
-- CFL: \(\Delta t_{CFL} = C \min(\Delta x / c)\)
-- Curvature: \(\Delta t_{curv} = C \min(1 / |R|)\)
-- Constraint: \(\Delta t_{constraint} = C / \max(|\partial_t \varepsilon_H|)\)
-- Gauge: \(\Delta t_{gauge} = C / \max(|\partial_t \alpha|)\)
+**UnifiedClock Constraints:** The [`UnifiedClock.compute_dt_constraints()`](gr_solver/gr_clock.py:291) method computes:
+- CFL constraint: \(\Delta t_{CFL} = C \min(\Delta x / c)\)
+- Curvature constraint: \(\Delta t_{curv} = C \min(1 / |R|)\)
+- Constraint clock: \(\Delta t_{constraint} = C / \max(|\partial_t \varepsilon_H|)\)
+- Gauge clock: \(\Delta t_{gauge} = C / \max(|\partial_t \alpha|)\)
+- Resolution clock: \(\Delta t_{res} = C \cdot h_{\min} / \sqrt{|K|}\)
 - Λ-clock: \(\Delta t_{\Lambda} = C \sqrt{3/|\Lambda| c^2}\)
 
 ## Module Structure
@@ -69,16 +76,25 @@ graph TD
     A --> C[gr_geometry.py]
     A --> D[gr_constraints.py]
     A --> E[gr_gauge.py]
-    A --> F[gr_scheduler.py]
-    A --> G[gr_stepper.py]
-    A --> H[gr_ledger.py]
-    F --> I[Aeonic dt selection]
-    G --> J[UFE \partial_t \Psi]
-    B --> K[Index ops on tensors]
-    C --> L[Finite diff derivatives]
-    D --> M[Norms in L2]
-    H --> N[JSON receipts]
+    A --> F[gr_clock.py]
+    A --> G[gr_scheduler.py]
+    A --> H[gr_stepper.py]
+    A --> I[gr_ledger.py]
+    
+    F --> J[UnifiedClock interface]
+    F --> K[UnifiedClockState]
+    F --> L[BandConfig]
+    
+    G --> F[Delegates to UnifiedClock]
+    H --> F[Uses UnifiedClock.tick]
+    I --> F[Reads clock state]
 ```
+
+### gr_clock.py
+- **[`UnifiedClockState`](gr_solver/gr_clock.py:21)**: Single source of truth for time state
+- **[`UnifiedClock`](gr_solver/gr_clock.py:119)**: Main interface for clock operations
+- **[`BandConfig`](gr_solver/gr_clock.py:70)**: Per-band update cadences (octave-based)
+- Methods: `tick()`, `get_bands_to_update()`, `compute_dt_constraints()`, `snapshot()`, `restore()`
 
 ### gr_core_fields.py
 - Storage for \(\gamma_{ij}\), \(K_{ij}\), \(\alpha\), \(\beta^i\) as 3D NumPy arrays.
@@ -102,8 +118,9 @@ graph TD
 - Extensible to 1+log: \(\partial_t \alpha = -2\alpha K\)
 
 ### gr_scheduler.py
-- Compute candidate \(\Delta t_k\) per Aeonic rule.
-- Select min, with rollback if residuals spike.
+- Delegates to [`UnifiedClock.compute_dt_constraints()`](gr_solver/gr_clock.py:291) for clock computation
+- Selects minimum dt, with rollback if residuals spike
+- Receives UnifiedClock instance in constructor
 
 ### gr_stepper.py
 - Time stepping: RK4 for stability.
@@ -149,9 +166,11 @@ symbols:
 2. **Core Fields**: Implement storage and basic ops.
 3. **Geometry**: Add tensor comps with finite diffs.
 4. **Constraints**: Residual calc.
-5. **Gauge & Scheduler**: Basic gauge, Aeonic dt.
-6. **Stepper & Ledger**: Evolution loop, receipts.
-7. **Testing**: Minkowski, linear waves, gauge waves.
+5. **UnifiedClock**: Implement clock architecture with band support.
+6. **Scheduler Integration**: Connect scheduler to UnifiedClock.
+7. **Gauge & Stepper**: Basic gauge, clock-driven stepping.
+8. **Ledger**: Evolution loop, receipts.
+9. **Testing**: Minkowski, linear waves, gauge waves.
 
 ## Validation Roadmap
 - **Phase 1**: Minkowski stability (flat space, no evolution).

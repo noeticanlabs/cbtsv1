@@ -13,6 +13,9 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional, Dict
 
+from .gr_clock import UnifiedClock, UnifiedClockState
+
+
 @dataclass
 class TimeState:
     """Typed time objects for LoC-Time management."""
@@ -21,8 +24,32 @@ class TimeState:
     tau: float = 0.0  # Coherence time
     stage_times: Optional[Dict[str, float]] = field(default_factory=dict)  # Per-stage or per-clock times for Level 5+
 
+
 class GRScheduler:
-    def __init__(self, fields, c=1.0, Lambda=0.0, rho_target=0.8):
+    """
+    Scheduler for GR timestep selection with unified clock support.
+    
+    The scheduler can use either:
+    1. A UnifiedClock for shared time state (recommended)
+    2. Internal state for backward compatibility
+    
+    When using UnifiedClock, dt constraint computation is delegated to
+    the clock's compute_dt_constraints() method, ensuring single source
+    of truth for time state.
+    """
+    
+    def __init__(self, fields, c=1.0, Lambda=0.0, rho_target=0.8, 
+                 unified_clock: Optional[UnifiedClock] = None):
+        """
+        Initialize the scheduler.
+        
+        Args:
+            fields: GR fields object
+            c: Speed of light (default: 1.0)
+            Lambda: Cosmological constant (default: 0.0)
+            rho_target: Target density for physical timestep (default: 0.8)
+            unified_clock: Optional UnifiedClock for shared time state
+        """
         self.fields = fields
         self.c = c
         self.Lambda = Lambda
@@ -30,7 +57,24 @@ class GRScheduler:
         self.max_dt = 0.1
         self.fixed_dt = None
         self.time_state = TimeState()  # Initialize time objects
-
+        
+        # Unified clock for shared state (optional for backward compatibility)
+        self._unified_clock = unified_clock
+        if unified_clock is not None:
+            self._use_unified = True
+        else:
+            self._use_unified = False
+    
+    @property
+    def unified_clock(self) -> Optional[UnifiedClock]:
+        """Get the unified clock if available."""
+        return self._unified_clock
+    
+    def set_unified_clock(self, clock: UnifiedClock):
+        """Set the unified clock for shared time state."""
+        self._unified_clock = clock
+        self._use_unified = clock is not None
+    
     def compute_dt(self, eps_H, eps_M):
         """Aeonic dt = min(CFL, curv, constraint, gauge, Lambda, phys). Stub."""
         if self.fixed_dt is not None:
@@ -39,7 +83,7 @@ class GRScheduler:
         dt_cfl = 0.5 * dx / self.c  # Assuming hyperbolic waves
         K_norm = np.max(np.linalg.norm(self.fields.K_sym6, axis=-1))
         dt_curv = self.fields.dx / max(np.sqrt(K_norm), 1e-6)  # Curvature clock based on extrinsic curvature norm
-        dt_constraint = 1.0 if eps_H < 1e-6 else 0.1
+        dt_constraint = 1.0 if eps_H < 1e-4 else 0.5
         dt_gauge = 1.0
         dt_lambda = np.sqrt(3 / abs(self.Lambda) / self.c**2) if self.Lambda != 0 else 1e10
         dt_phys = self.rho_target * dt_cfl  # dt_phys = rho_target * (C / v_max), with C=0.5, v_max=c
@@ -133,3 +177,60 @@ class GRScheduler:
             failure_mode = 'freeze_tau'  # Default
 
         return invariants_ok, failure_mode
+
+    def compute_clocks(self, dt_candidate, lambda_val=0.0):
+        """
+        Compute all clock constraints and choose dt.
+        
+        This method now delegates to UnifiedClock.compute_dt_constraints() when
+        a unified clock is available, ensuring single source of truth for time state.
+        
+        For backward compatibility, if no unified clock is set, it uses the
+        original internal computation logic.
+        
+        Args:
+            dt_candidate: Proposed timestep
+            lambda_val: Constraint damping coefficient
+            
+        Returns:
+            Tuple of (clocks_dict, dt_used)
+        """
+        # Use unified clock if available
+        if self._use_unified and self._unified_clock is not None:
+            return self._unified_clock.compute_dt_constraints(dt_candidate, self.fields, lambda_val)
+        
+        # Legacy computation for backward compatibility
+        # CFL: dt < dx / c, where c is characteristic speed
+        # Rough estimate: c ~ sqrt(alpha^2 + beta^2) for ADM
+        c_max = np.sqrt(np.max(self.fields.alpha)**2 + np.max(np.linalg.norm(self.fields.beta, axis=-1))**2)
+        h_min = min(self.fields.dx, self.fields.dy, self.fields.dz)
+        dt_CFL = h_min / c_max if c_max > 0 else float('inf')
+
+        # Gauge: dt < alpha * dx / |beta| or similar
+        # Simplified: dt < alpha * h_min / (1 + |beta|)
+        beta_norm = np.max(np.linalg.norm(self.fields.beta, axis=-1))
+        dt_gauge = self.fields.alpha.max() * h_min / (1 + beta_norm)
+
+        # Coherence (constraint damping): dt < 1 / lambda where lambda is damping rate
+        dt_coh = 1.0 / max(lambda_val, 1e-6) if lambda_val > 0 else float('inf')
+
+        # Resolution: dt < h_min / sqrt(K^2) or similar
+        K_norm = np.max(np.linalg.norm(self.fields.K_sym6, axis=-1))
+        dt_res = h_min / max(np.sqrt(K_norm), 1e-6)
+
+        # Sigma (shock capturing or similar): placeholder
+        dt_sigma = float('inf')  # Not implemented yet
+
+        # Choose minimum
+        dt_used = min(dt_candidate, dt_CFL, dt_gauge, dt_coh, dt_res, dt_sigma)
+
+        clocks = {
+            'dt_CFL': dt_CFL,
+            'dt_gauge': dt_gauge,
+            'dt_coh': dt_coh,
+            'dt_res': dt_res,
+            'dt_sigma': dt_sigma,
+            'dt_used': dt_used
+        }
+
+        return clocks, dt_used

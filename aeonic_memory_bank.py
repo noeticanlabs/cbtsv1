@@ -23,6 +23,7 @@ class Record:
     tainted: bool
     regime_hashes: List[str]
     demoted: bool
+    config_hash: str = None  # Optional config hash for scoped invalidation
 
 class AeonicMemoryBank:
     def __init__(self, clock: AeonicClockPack, receipts: AeonicReceipts = None):
@@ -34,7 +35,7 @@ class AeonicMemoryBank:
 
     def put(self, key: str, tier: int, payload: Any, bytes: int, ttl_s: int, ttl_l: int,
             recompute_cost_est: float, risk_score: float, tainted: bool, regime_hashes: List[str],
-            demoted: bool = False):
+            demoted: bool = False, config_hash: str = None):
         """Insert or update a record in the specified tier."""
         if tier not in self.tiers:
             self.tiers[tier] = {}
@@ -57,7 +58,8 @@ class AeonicMemoryBank:
             risk_score=risk_score,
             tainted=tainted,
             regime_hashes=regime_hashes,
-            demoted=demoted
+            demoted=demoted,
+            config_hash=config_hash
         )
 
         if key in self.tiers[tier]:
@@ -136,21 +138,31 @@ class AeonicMemoryBank:
                         "tau_l": self.clock.tau_l
                     })
 
-    def invalidate_by_regime(self, regime_hash: str):
-        """Mark all records containing the given regime_hash in their regime_hashes as tainted."""
+    def invalidate_by_regime(self, regime_hash: str, config_hash: str = None):
+        """
+        Mark all records containing the given regime_hash in their regime_hashes as tainted.
+        
+        Args:
+            regime_hash: The regime hash to invalidate
+            config_hash: Optional config hash for scoped invalidation (only invalidate records
+                        matching this config_hash, or all if None)
+        """
         for tier in self.tiers:
             for record in self.tiers[tier].values():
                 if regime_hash in record.regime_hashes:
-                    record.tainted = True
-                    if self.receipts:
-                        self.receipts.emit_event("TAINT", {
-                            "key": record.key,
-                            "tier": tier,
-                            "method": "invalidate_by_regime",
-                            "regime_hash": regime_hash,
-                            "tau_s": self.clock.tau_s,
-                            "tau_l": self.clock.tau_l
-                        })
+                    # Also match config_hash if provided
+                    if config_hash is None or record.config_hash == config_hash:
+                        record.tainted = True
+                        if self.receipts:
+                            self.receipts.emit_event("TAINT", {
+                                "key": record.key,
+                                "tier": tier,
+                                "method": "invalidate_by_regime",
+                                "regime_hash": regime_hash,
+                                "config_hash": config_hash,
+                                "tau_s": self.clock.tau_s,
+                                "tau_l": self.clock.tau_l
+                            })
 
     def _update_usage(self, record: Record):
         """Update last use times and reuse count."""

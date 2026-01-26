@@ -21,8 +21,8 @@ stepper = GRStepper(fields, geometry, constraints, gauge)
 print("Stepper created")
 
 # Call compute_rhs
-stepper.compute_rhs()
+stepper.rhs_computer.compute_rhs(0.0, slow_update=False)
 
 print("compute_rhs called successfully")
-print("rhs_gamma_sym6 shape:", stepper.rhs_gamma_sym6.shape)
-print("rhs_gamma_sym6 sum:", np.sum(stepper.rhs_gamma_sym6))
+print("rhs_gamma_sym6 shape:", stepper.rhs_computer.rhs_gamma_sym6.shape)
+print("rhs_gamma_sym6 sum:", np.sum(stepper.rhs_computer.rhs_gamma_sym6))

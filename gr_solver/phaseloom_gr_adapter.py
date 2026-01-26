@@ -67,13 +67,13 @@ class GRPhaseLoomAdapter:
             self.theta_phase_prev = theta_phase.copy()
             self.t_prev = t_current
             self.initialized = True
-            omega = np.zeros(self.N_threads)
+            omega_phase = np.zeros(self.N_threads)
         else:
             # Simple unwrap: if diff > pi, subtract 2pi
             theta_unwrapped = theta_phase.copy()
             diff = theta_phase - self.theta_phase_prev
             theta_unwrapped -= 2 * np.pi * np.round(diff / (2 * np.pi))
-            omega = (theta_unwrapped - self.theta_phase_prev) / (t_current - self.t_prev)
+            omega_phase = (theta_unwrapped - self.theta_phase_prev) / (t_current - self.t_prev)
             self.theta_phase_prev = theta_unwrapped.copy()
             self.t_prev = t_current
 

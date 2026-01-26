@@ -142,9 +142,21 @@ class Parser:
         while self.current().kind != TokenKind.RPAREN:
             param_tok = self.expect(TokenKind.IDENT)
             params.append(param_tok.value)
+            # Skip optional type annotation
+            if self.current().kind == TokenKind.COLON:
+                self.expect(TokenKind.COLON)
+                self.expect(TokenKind.IDENT)
             if self.current().kind == TokenKind.COMMA:
                 self.advance()
         self.expect(TokenKind.RPAREN)
+        # Optional return type annotation
+        if self.current().kind == TokenKind.MINUS:
+            # Look ahead for "->"
+            if self.peek().kind == TokenKind.GT:
+                self.advance()  # consume MINUS
+                self.expect(TokenKind.GT)  # consume GT (which is the -> operator)
+                # Skip the type identifier
+                self.expect(TokenKind.IDENT)
         self.expect(TokenKind.LBRACE)
         body = []
         while self.current().kind != TokenKind.RBRACE:

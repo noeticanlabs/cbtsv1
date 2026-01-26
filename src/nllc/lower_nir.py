@@ -240,7 +240,10 @@ class Lowerer:
     def lower_expr_stmt(self, stmt: ExprStmt, ast_path: str):
         if stmt.expr.__class__.__name__ == 'Call':
             args = [self.lower_expr(a, f"{ast_path}.expr.args[{i}]") for i, a in enumerate(stmt.expr.args)]
-            inst = CallInst(self.make_trace(stmt, ast_path), None, stmt.expr.func, args)
+            if stmt.expr.func in ['ricci_tensor', 'compute_constraints']:
+                inst = IntrinsicCallInst(self.make_trace(stmt, ast_path), None, stmt.expr.func, args)
+            else:
+                inst = CallInst(self.make_trace(stmt, ast_path), None, stmt.expr.func, args)
             self.add_instruction(inst)
         else:
             self.lower_expr(stmt.expr, f"{ast_path}.expr")
@@ -313,7 +316,10 @@ class Lowerer:
             args = [self.lower_expr(a, f"{ast_path}.args[{i}]") for i, a in enumerate(expr.args)]
             ty = IntType()  # assume
             result_val = self.fresh_value(ty)
-            inst = CallInst(self.make_trace(expr, ast_path), result_val, expr.func, args)
+            if expr.func in ['ricci_tensor', 'compute_constraints']:
+                inst = IntrinsicCallInst(self.make_trace(expr, ast_path), result_val, expr.func, args)
+            else:
+                inst = CallInst(self.make_trace(expr, ast_path), result_val, expr.func, args)
             self.add_instruction(inst)
             return result_val
         elif expr.__class__.__name__ == 'BinOp':

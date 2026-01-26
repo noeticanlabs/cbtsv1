@@ -117,6 +117,61 @@ def test_convergence_loop_fix():
         # errors.append(violation['error_norm'])
         pass
 
+
+def test_etd_factor_correctness():
+    """Test ETD factors are computed correctly for spectral diagonalization."""
+    from gr_solver.spectral.cache import SpectralCache, _phi1, _phi2
+    
+    # Create cache
+    cache = SpectralCache(8, 8, 8, 1.0, 1.0, 1.0)
+    
+    # Test parameters
+    viscosity = 0.01
+    damping_coef = 0.1
+    dt = 0.001
+    
+    # Compute ETD factors
+    factors = cache.compute_etd_factors(viscosity, damping_coef, dt)
+    
+    # Verify ETD1 coefficient properties: (e^z - 1) / z ≈ 1 + z/2 + ...
+    z_small = -1e-6
+    phi1_small = _phi1(z_small)
+    assert np.isclose(phi1_small, 1.0, rtol=1e-4), f"φ₁(0) should be 1, got {phi1_small}"
+    
+    phi2_small = _phi2(z_small)
+    assert np.isclose(phi2_small, 0.5, rtol=1e-4), f"φ₂(0) should be 0.5, got {phi2_small}"
+    
+    # Verify cache works (same key returns cached result)
+    factors2 = cache.compute_etd_factors(viscosity, damping_coef, dt)
+    assert factors is factors2, "ETD factors should be cached"
+    
+    # Verify factors have correct keys
+    expected_keys = ['visc_etd1', 'visc_etd2', 'damp_etd1', 'damp_etd2',
+                     'combined_etd1', 'combined_etd2', 'visc_exp', 'damp_exp', 
+                     'combined_exp', 'complex_etd1', 'complex_etd2', 'complex_exp']
+    for key in expected_keys:
+        assert key in factors, f"Missing factor key: {key}"
+    
+    # Verify get_etd_factor lookup works
+    k_test = 1.0
+    factor_val = cache.get_etd_factor(k_test, viscosity, damping_coef, dt, 'visc_etd1')
+    assert np.isfinite(factor_val), "ETD factor lookup should return finite value"
+    
+    # Verify damping factors are real (no imaginary component for pure damping)
+    assert np.isreal(factors['damp_etd1']).all(), "Gauge damping factors should be real"
+    assert np.isreal(factors['damp_etd2']).all()
+    
+    # Verify viscosity factors are real and decreasing with k²
+    visc_etd1 = factors['visc_etd1']
+    assert np.isreal(visc_etd1).all()
+    # High k should have stronger damping (smaller ETD coefficient)
+    k_flat = cache.k_mag.flatten()
+    sorted_idx = np.argsort(k_flat)
+    assert visc_etd1.flatten()[sorted_idx[-1]] <= visc_etd1.flatten()[sorted_idx[0]], \
+        "Higher k should have smaller ETD1 coefficient"
+    
+    print("ETD factor correctness test passed!")
+
 if __name__ == "__main__":
     test_zero_allocations_per_step()
     test_spectral_cache_correctness()
@@ -124,4 +179,5 @@ if __name__ == "__main__":
     test_mixed_precision_demotion()
     test_elliptic_solver_warm_start()
     test_convergence_loop_fix()
+    test_etd_factor_correctness()
     print("GCAT-1: All HPC integration tests passed!")

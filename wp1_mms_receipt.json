@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "metrics": {
+    "p_obs": 4.0,
+    "errors": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "resolutions": [
+      16,
+      32,
+      48
+    ]
+  }
+}

@@ -24,6 +24,7 @@ import json
 from aeonic_clocks import AeonicClockPack
 from aeonic_memory_bank import AeonicMemoryBank
 from aeonic_receipts import AeonicReceipts
+from aeonic_memory_contract import AeonicMemoryContract
 from .logging_config import Timer, array_stats
 from .phaseloom_threads_gr import GRPhaseLoomThreads, compute_omega_current
 from .phases import (
@@ -38,6 +39,8 @@ from .phaseloom_octaves import PhaseLoomOctaves
 from .phaseloom_gr_controller import GRPhaseLoomController
 from .gr_scheduler import GRScheduler
 from .gr_sem import SEMDomain
+from .phaseloom_memory import PhaseLoomMemory
+from .gr_ttl_calculator import TTLCalculator
 from receipt_schemas import Kappa
 from orchestrator_contract_memory import OrchestratorContractWithMemory
 from src.nllc.vm import VM
@@ -96,46 +99,6 @@ def load_module_from_json(path):
         functions.append(Function(f_data['name'], params, return_ty, blocks))
     return Module(functions)
 
-class PhaseLoomMemory:
-    def __init__(self, fields):
-        self.fields = fields
-        self.step_count = 0
-        self.last_loom_step = 0
-        self.prev_K = None
-        self.prev_gamma = None
-        self.prev_residual_slope = None
-        self.summary = {}
-        self.D_max_prev = 0.0
-        self.tainted = False
-
-    def should_compute_loom(self, step, K, gamma, residual_slope, rollback_occurred):
-        self.step_count = step
-        delta_K = np.max(np.abs(K - self.prev_K)) if self.prev_K is not None else 0.0
-        delta_gamma = np.max(np.abs(gamma - self.prev_gamma)) if self.prev_gamma is not None else 0.0
-        if step - self.last_loom_step >= 4:
-            # Cheap proxy gate: skip FFT if changes are tiny
-            if delta_K < 1e-4 and delta_gamma < 1e-4 and abs(residual_slope) < 1e-5:
-                return False
-            return True
-        if delta_K > 1e-3:
-            return True
-        if delta_gamma > 1e-3:
-            return True
-        if abs(residual_slope) > 1e-5:
-            return True
-        if rollback_occurred:
-            return True
-        return False
-
-    def post_loom_update(self, loom_data):
-        self.summary = loom_data
-        self.D_max_prev = loom_data.get('D_max', 0.0)
-        self.last_loom_step = self.step_count
-
-    def honesty_check(self, skipped):
-        if skipped and self.D_max_prev > 1e-2:
-            return True
-        return False
 
 class GRHostAPI:
     def __init__(self, orchestrator):
@@ -186,7 +149,7 @@ class GRHostAPI:
         print(*args)
 
 class GRPhaseLoomOrchestrator:
-    def __init__(self, fields, geometry, constraints, gauge, stepper, ledger, memory_contract=None, phaseloom=None, eps_H_target=1e-10, eps_M_target=1e-10, m_det_min=0.2, aeonic_mode=True):
+    def __init__(self, fields, geometry, constraints, gauge, stepper, ledger, memory_contract=None, phaseloom=None, eps_H_target=1e-8, eps_M_target=1e-8, m_det_min=0.2, aeonic_mode=True):
         self.fields = fields
         self.geometry = geometry
         self.constraints = constraints
@@ -213,15 +176,27 @@ class GRPhaseLoomOrchestrator:
             self.clocks = AeonicClockPack()
             self.aeonic_receipts = AeonicReceipts()
             self.memory_bank = AeonicMemoryBank(self.clocks, self.aeonic_receipts)
-            self.memory_contract = AeonicMemoryContract(self.memory_bank, self.aeonic_receipts)
+            
+            # Create TTL calculator with simulation parameters (can be updated later)
+            self.ttl_calculator = None  # Set via set_simulation_params()
+            
+            self.memory_contract = AeonicMemoryContract(
+                self.memory_bank, 
+                self.aeonic_receipts,
+                ttl_calculator=self.ttl_calculator
+            )
         else:
             self.memory_contract = memory_contract
             self.memory_bank = self.memory_contract.memory_bank  # for backward compatibility
             self.clocks = self.memory_bank.clock
             self.aeonic_receipts = self.memory_bank.receipts
+            self.ttl_calculator = getattr(self.memory_contract, 'ttl_calculator', None)
         self.memory = self.memory_bank  # alias for backward compatibility
         self.orchestrator_memory = OrchestratorContractWithMemory(self.memory_contract)
-        self.loom_memory = PhaseLoomMemory(self.fields)
+        
+        # Initialize clock system first, then pass to PhaseLoomMemory
+        self.clock_system = AeonicClockPack()
+        self.loom_memory = PhaseLoomMemory(self.fields, clock_system=self.clock_system, base_dt=0.001)
 
         # SEM Domain
         self.sem_domain = SEMDomain()
@@ -236,9 +211,14 @@ class GRPhaseLoomOrchestrator:
         self.memory.put("spectral_cache", 3, self.spectral_cache, bytes_est, ttl_l=1000000, ttl_s=1000000, recompute_cost_est=1000.0, risk_score=0.0, tainted=False, regime_hashes=[])
 
         # Load NLLC NIR module and instantiate VM
-        self.nir_module = load_module_from_json('compiled_nir.json')
-        self.gr_host_api = GRHostAPI(self)
-        self.vm = VM(self.nir_module, module_id='gr_solver_nllc', dep_closure_hash='dep_hash', gr_host_api=self.gr_host_api)
+        try:
+            self.nir_module = load_module_from_json('compiled_nir.json')
+            self.gr_host_api = GRHostAPI(self)
+            self.vm = VM(self.nir_module, module_id='gr_solver_nllc', dep_closure_hash='dep_hash', gr_host_api=self.gr_host_api)
+        except (FileNotFoundError, json.JSONDecodeError, ImportError, Exception) as e:
+            logger.warning(f"Could not load compiled_nir.json or VM dependencies, VM disabled: {e}")
+            self.nir_module = None
+            self.vm = None
 
         self.t = 0.0
         self.step = 0
@@ -250,6 +230,11 @@ class GRPhaseLoomOrchestrator:
         self.accepted_step_count = 0
         self.constraint_eval_count_h = 0
         self.constraint_eval_count_m = 0
+
+        # Simulation parameters for adaptive TTL
+        self.t_end = None  # Final simulation time
+        self.dt_avg = None  # Average timestep
+        self.N = None  # Grid size
 
         # Aeonic counters
         self.attempt_id = 0
@@ -303,66 +288,38 @@ class GRPhaseLoomOrchestrator:
 
         return float(eps_H), float(eps_M), True, "ok"
 
-    def make_attempt_receipt(self, *, dt, eps_H, eps_M, sem_ok, sem_reason,
-                             gate_reason, rail_margins, dominant_thread,
-                             accepted, action, extra=None):
-        prev_residual = (self.eps_H_prev + self.eps_M_prev) if self.eps_H_prev is not None else 0.0
-        current_residual = eps_H + eps_M
-        delta_residual = current_residual - prev_residual
-        rel_delta = current_residual / prev_residual if prev_residual > 0 else float('inf')
-        r = {
-            "kappa": {"o": getattr(self, "orch_id", 0), "s": self.step_id, "mu": None},
-            "attempt_id": self.attempt_id,
-            "step_id": self.step_id,
-            "t": float(self.t),
-            "tau": float(self.tau),
-            "dt": float(dt),
-            "eps_H": float(eps_H),
-            "eps_M": float(eps_M),
-            "sem_ok": bool(sem_ok),
-            "sem_reason": sem_reason,
-            "gate_reason": gate_reason,
-            "rail_margins": rail_margins,
-            "dominant_thread": dominant_thread,
-            "accepted": bool(accepted),
-            "action": action,
-            "policy_hash": self.policy_hash,
-            "dominant_clock": dominant_thread,
-            "attempt_idx": self.attempt_id,
-            "delta_residual": float(delta_residual),
-            "rel_delta": float(rel_delta),
-        }
-        if extra:
-            r.update(extra)
-        return r
-
-    def make_step_receipt(self, *, dt, eps_H_before, eps_M_before, eps_H_after, eps_M_after,
-                          dominant_thread, rail_margins_after, perf=None, extra=None):
-        before_residual = eps_H_before + eps_M_before
-        after_residual = eps_H_after + eps_M_after
-        delta_residual = after_residual - before_residual
-        rel_delta = after_residual / before_residual if before_residual > 0 else float('inf')
-        r = {
-            "kappa": {"o": getattr(self, "orch_id", 0), "s": self.step_id, "mu": None},
-            "step_id": self.step_id,
-            "t": float(self.t),
-            "tau": float(self.tau),
-            "dt": float(dt),
-            "eps_before": {"H": float(eps_H_before), "M": float(eps_M_before)},
-            "eps_after": {"H": float(eps_H_after), "M": float(eps_M_after)},
-            "dominant_thread": dominant_thread,
-            "rail_margins": rail_margins_after,
-            "policy_hash": self.policy_hash,
-            "dominant_clock": dominant_thread,
-            "attempt_idx": self.attempt_id,
-            "delta_residual": float(delta_residual),
-            "rel_delta": float(rel_delta),
-        }
-        if perf:
-            r["perf"] = perf
-        if extra:
-            r.update(extra)
-        return r
+    def set_simulation_params(self, t_end: float, dt_avg: float, problem_type: str = 'standard'):
+        """
+        Set simulation parameters for adaptive TTL calculation.
+        
+        Args:
+            t_end: Final simulation time
+            dt_avg: Average timestep
+            problem_type: Type of simulation ('standard', 'long_run', 'high_frequency', 'critical', 'transient')
+        """
+        self.t_end = t_end
+        self.dt_avg = dt_avg
+        self.problem_type = problem_type
+        
+        # Compute effective grid size (Nx * Ny * Nz or max dimension)
+        if hasattr(self.fields, 'Nx') and hasattr(self.fields, 'Ny') and hasattr(self.fields, 'Nz'):
+            self.N = max(self.fields.Nx, self.fields.Ny, self.fields.Nz)
+        else:
+            self.N = 64  # Default fallback
+        
+        # Create and set the TTL calculator
+        self.ttl_calculator = TTLCalculator(
+            t_end=t_end,
+            dt_avg=dt_avg,
+            N=self.N,
+            problem_type=problem_type
+        )
+        
+        # Update the memory contract's TTL calculator
+        if self.memory_contract is not None:
+            self.memory_contract.set_ttl_calculator(self.ttl_calculator)
+        
+        logger.info(f"Simulation params set: t_end={t_end}, dt_avg={dt_avg}, N={self.N}, problem_type={problem_type}")
 
     def run_step(self, dt_max=None):
         """Execute one PhaseLoom step: Sense, Propose, Decide, Predict, Commit, Verify, Rail-enforce, Receipt, Render"""

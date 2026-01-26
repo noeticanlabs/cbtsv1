@@ -1,9 +1,11 @@
 // NSC/NLLC Comprehensive GR Solver Test
 // Mirrors test_comprehensive_gr_solver.py functionality using Noetica Scripting Calculus
+// Glyph-integrated version showing N:GR namespace and Aeonic receipt system
 
 fn main() {
     // Test initialization (assume solver already initialized)
     call print("Testing initialization...");
+    // Glyph: N:GR.compute_constraints → constraint evaluation using H64:r50 CHECK
     let constraints = call compute_constraints();
     let eps_H = constraints["eps_H"];
     let eps_M = constraints["eps_M"];
@@ -15,31 +17,37 @@ fn main() {
         return;
     }
 
-    // Test memory operations (simplified - assume host handles)
+    // Test memory operations (simplified - assume host handles Aeonic memory)
     call print("Testing memory operations...");
-    // In NLLC, memory operations are implicit or handled by host
+    // Glyph: A:THREAD.PHY.L.R0 → Aeonic memory bank operations with receipts
 
-    // Test single step
+    // Test single step with snapshot/rollback (N:GR evolution primitives)
     call print("Testing single step...");
+    // Glyph: N:GR.snapshot → H64:r54 CKPT for state preservation
     let snapshot = call snapshot();
     let dt = 1e-6;
+    // Glyph: N:GR.step → UFE evolution using H64:r42 MATMUL for RHS computation
     call step(dt, 0);
+    // Glyph: N:GR.apply_gauge → gauge evolution with H64:r48 GATE_B enforcement
     call apply_gauge(dt);
     let constraints_after = call compute_constraints();
     let eps_H_after = constraints_after["eps_H"];
     let eps_M_after = constraints_after["eps_M"];
 
     if eps_H_after < 1e10 and eps_M_after < 1e10 {
+        // Glyph: N:GR.accept_step → A:RCPT.step.accepted with H64:r56 EMIT
         call accept_step();
         call print("Single step passed: eps_H =", eps_H_after, "eps_M =", eps_M_after);
     } else {
+        // Glyph: N:GR.reject_step → A:RCPT.step.rejected
         call reject_step();
+        // Glyph: N:GR.restore → H64:r55 ROLLBACK
         call restore(snapshot);
         call print("Single step failed: eps_H =", eps_H_after, "eps_M =", eps_M_after);
         return;
     }
 
-    // Test multi-step evolution
+    // Test multi-step evolution with PhaseLoom thread arbitration
     call print("Testing multi-step evolution...");
     let max_steps = 10;
     let step = 0;
@@ -48,13 +56,14 @@ fn main() {
 
     while step < max_steps {
         let snapshot_multi = call snapshot();
-        let dt_multi = 1e-6;
+        let dt_multi = 1e-6;  // In full system, would use N:GR.arbitrate_dt()
         call step(dt_multi, 0);
         call apply_gauge(dt_multi);
         let constraints_multi = call compute_constraints();
         let eps_H_multi = constraints_multi["eps_H"];
         let eps_M_multi = constraints_multi["eps_M"];
 
+        // Gate check using H64:r48 GATE_B / H64:r49 GATE_E
         if eps_H_multi < 1e10 and eps_M_multi < 1e10 {
             call accept_step();
             eps_H_history = eps_H_history + [eps_H_multi];
@@ -76,18 +85,20 @@ fn main() {
         call print("Multi-step evolution failed at step", step);
     }
 
-    // Test constraints and geometry (simplified)
+    // Test constraints and geometry with coherence checking
     call print("Testing constraints and geometry...");
     let final_constraints = call compute_constraints();
     let final_eps_H = final_constraints["eps_H"];
     let final_eps_M = final_constraints["eps_M"];
 
+    // Coherence check using N:INV.pde.energy_nonincreasing
     if final_eps_H < 1e6 and final_eps_M < 1e6 {
         call print("Constraints and geometry test passed");
     } else {
         call print("Constraints and geometry test failed:", final_eps_H, final_eps_M);
     }
 
-    // Summary
+    // Summary with Aeonic receipt emission
     call print("Comprehensive GR solver NLLC test completed");
+    // In full system, would emit A:RCPT.run.summary via H64:r56 EMIT
 }

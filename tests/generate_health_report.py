@@ -11,15 +11,23 @@ import os
 def load_receipt(filename):
     if os.path.exists(filename):
         with open(filename, 'r') as f:
-            return json.load(f)
-    return {}
+            return json.load(f), True
+    return {}, False
+
+def get_status(receipt, loaded, key='passed'):
+    if not loaded:
+        return "MISSING"
+    return "PASS" if receipt.get(key) else "FAIL"
 
 def main():
     # Load all receipts
-    gcat05 = load_receipt('receipts_gcat0_5_lie_detector.json')
-    gcat1 = load_receipt('receipts_gcat1_test1.json')
-    gcat2_s2 = load_receipt('receipts_gcat2_s2_summary.json')
-    gcat2_s3 = load_receipt('receipts_gcat2_s3_summary.json')
+    gcat05, gcat05_loaded = load_receipt('receipts_gcat0_5_lie_detector.json')
+    gcat1, gcat1_loaded = load_receipt('receipts_gcat1_test1.json')
+    gcat2_s2, gcat2_s2_loaded = load_receipt('receipts_gcat2_s2_summary.json')
+    gcat2_s3, gcat2_s3_loaded = load_receipt('receipts_gcat2_s3_summary.json')
+
+    # Check if GCAT-2 overall is loaded (requires both scenarios to be present to judge)
+    gcat2_loaded = gcat2_s2_loaded and gcat2_s3_loaded
 
     # Determine overall status
     checks = [
@@ -36,9 +44,9 @@ def main():
         "timestamp": datetime.datetime.now().isoformat(),
         "status": "HEALTHY" if overall_passed else "UNHEALTHY",
         "summary": {
-            "GCAT-0.5 (Lie Detector)": "PASS" if gcat05.get('passed') else "FAIL",
-            "GCAT-1 (Convergence)": "PASS" if gcat1.get('passed') else "FAIL",
-            "GCAT-2 (Scenarios)": "PASS" if (gcat2_s2.get('passed') and gcat2_s3.get('passed')) else "FAIL"
+            "GCAT-0.5 (Lie Detector)": get_status(gcat05, gcat05_loaded),
+            "GCAT-1 (Convergence)": get_status(gcat1, gcat1_loaded),
+            "GCAT-2 (Scenarios)": "PASS" if (gcat2_loaded and gcat2_s2.get('passed') and gcat2_s3.get('passed')) else ("MISSING" if not gcat2_loaded else "FAIL")
         },
         "details": {
             "GCAT-0.5": {

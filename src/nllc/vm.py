@@ -3,6 +3,7 @@ import json
 import dataclasses
 from typing import Dict, List, Any, Optional
 from src.nllc.nir import *
+from src.nllc.intrinsic_binder import IntrinsicBinder
 from src.common.receipt import create_run_receipt
 from gr_solver.gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6, norm2_sym6
 
@@ -17,6 +18,7 @@ class VM:
         self.step_counter = 0
         self.state_snapshots: List[Dict[str, Any]] = []  # For rollback
         self.gr_host_api = gr_host_api  # GR integration
+        self.binder = IntrinsicBinder()
 
     def run(self) -> Any:
         # Start with main function
@@ -131,6 +133,18 @@ class VM:
                 result = self.call_function(func, args)
             if inst.result:
                 env[inst.result.name] = result
+        elif isinstance(inst, IntrinsicCallInst):
+            func_name = inst.func
+            if self.binder.is_bound(func_name):
+                kernel = self.binder.get_kernel(func_name)
+                args = [env[arg.name] for arg in inst.args]
+                result = kernel(*args)
+            else:
+                # Fallback to builtin or error
+                args = [env[arg.name] for arg in inst.args]
+                result = self.call_builtin(func_name, args)
+            if inst.result:
+                env[inst.result.name] = result
         elif isinstance(inst, LoadInst):
             # For now, assume variables are direct
             env[inst.result.name] = env[inst.ptr.name]
@@ -165,6 +179,8 @@ class VM:
             return None
         elif name == 'len':
             return len(args[0])
+        elif name == 'str':
+            return str(args[0]) if args else ""
         elif name == 'inv_sym6':
             return inv_sym6(*args)
         elif name == 'trace_sym6':

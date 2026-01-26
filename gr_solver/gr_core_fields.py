@@ -23,6 +23,14 @@ SYM6_IDX = {
     "zz": 5,
 }
 
+def aligned_zeros(shape, dtype=float, order='C', align=64):
+    """Allocate aligned memory for HPC contracts."""
+    dtype = np.dtype(dtype)
+    nbytes = np.prod(shape) * dtype.itemsize
+    buffer = np.zeros(nbytes + align, dtype=np.uint8)
+    start_index = -buffer.ctypes.data % align
+    return buffer[start_index : start_index + nbytes].view(dtype).reshape(shape, order=order)
+
 def sym6_to_mat33(sym6: np.ndarray) -> np.ndarray:
     """
     Convert symmetric 3x3 tensor stored as sym6 into full 3x3 matrix.
@@ -190,32 +198,80 @@ class GRCoreFields:
         self.dx, self.dy, self.dz = dx, dy, dz
         # Cosmological constant
         self.Lambda = Lambda
-        # Spatial metric \gamma_{ij}, shape (Nx, Ny, Nz, 6) in sym6 form
-        self.gamma_sym6 = np.zeros((Nx, Ny, Nz, 6))
-        # Extrinsic curvature K_{ij}, shape (Nx, Ny, Nz, 6) in sym6 form
-        self.K_sym6 = np.zeros((Nx, Ny, Nz, 6))
-        # Trace of extrinsic curvature K
-        self.K_trace = np.zeros((Nx, Ny, Nz))
-        # Lapse \alpha
-        self.alpha = np.ones((Nx, Ny, Nz))
-        # Shift \beta^i, vector
-        self.beta = np.zeros((Nx, Ny, Nz, 3))
+        
+        # Memory Contract: SoA Layout (Component, X, Y, Z)
+        # We allocate aligned memory for all fields to support future HPC/C extensions.
+        # The internal storage is SoA (e.g., (6, Nx, Ny, Nz)), but we expose AoS views
+        # (e.g., (Nx, Ny, Nz, 6)) via properties for backward compatibility with existing kernels.
+
+        # Spatial metric \gamma_{ij}
+        self._gamma_soa = aligned_zeros((6, Nx, Ny, Nz))
+        # Extrinsic curvature K_{ij}
+        self._K_soa = aligned_zeros((6, Nx, Ny, Nz))
+        
+        # Trace of extrinsic curvature K (Scalar)
+        self.K_trace = aligned_zeros((Nx, Ny, Nz))
+        
+        # Lapse \alpha (Scalar)
+        self.alpha = aligned_zeros((Nx, Ny, Nz))
+        
+        # Shift \beta^i (Vector)
+        self._beta_soa = aligned_zeros((3, Nx, Ny, Nz))
+        
         # Active constraint fields
-        # Conformal factor phi (for BSSN)
-        self.phi = np.zeros((Nx, Ny, Nz))
-        # Z scalar (Hamiltonian constraint evolution)
-        self.Z = np.zeros((Nx, Ny, Nz))
-        # Z_i vector (momentum constraint evolution)
-        self.Z_i = np.zeros((Nx, Ny, Nz, 3))
+        self.phi = aligned_zeros((Nx, Ny, Nz))
+        self.Z = aligned_zeros((Nx, Ny, Nz))
+        self._Z_i_soa = aligned_zeros((3, Nx, Ny, Nz))
+        
         # BSSN fields
-        # Conformal metric γ̃_ij
-        self.gamma_tilde_sym6 = np.zeros((Nx, Ny, Nz, 6))
-        # Trace-free extrinsic curvature A_ij
-        self.A_sym6 = np.zeros((Nx, Ny, Nz, 6))
-        # BSSN Gamma_tilde^i
-        self.Gamma_tilde = np.zeros((Nx, Ny, Nz, 3))
-        # BSSN gauge variables (optional, for Gamma-driver)
-        self.lambda_i = np.zeros((Nx, Ny, Nz, 3))
+        self._gamma_tilde_soa = aligned_zeros((6, Nx, Ny, Nz))
+        self._A_soa = aligned_zeros((6, Nx, Ny, Nz))
+        self._Gamma_tilde_soa = aligned_zeros((3, Nx, Ny, Nz))
+        self._lambda_i_soa = aligned_zeros((3, Nx, Ny, Nz))
+
+    # Properties for AoS views (Backward Compatibility)
+    # These return transposed views of the underlying SoA data.
+    # Modifications to these views update the underlying aligned memory.
+
+    @property
+    def gamma_sym6(self): return self._gamma_soa.transpose(1, 2, 3, 0)
+    @gamma_sym6.setter
+    def gamma_sym6(self, val): self._gamma_soa.transpose(1, 2, 3, 0)[:] = val
+
+    @property
+    def K_sym6(self): return self._K_soa.transpose(1, 2, 3, 0)
+    @K_sym6.setter
+    def K_sym6(self, val): self._K_soa.transpose(1, 2, 3, 0)[:] = val
+
+    @property
+    def beta(self): return self._beta_soa.transpose(1, 2, 3, 0)
+    @beta.setter
+    def beta(self, val): self._beta_soa.transpose(1, 2, 3, 0)[:] = val
+
+    @property
+    def Z_i(self): return self._Z_i_soa.transpose(1, 2, 3, 0)
+    @Z_i.setter
+    def Z_i(self, val): self._Z_i_soa.transpose(1, 2, 3, 0)[:] = val
+
+    @property
+    def gamma_tilde_sym6(self): return self._gamma_tilde_soa.transpose(1, 2, 3, 0)
+    @gamma_tilde_sym6.setter
+    def gamma_tilde_sym6(self, val): self._gamma_tilde_soa.transpose(1, 2, 3, 0)[:] = val
+
+    @property
+    def A_sym6(self): return self._A_soa.transpose(1, 2, 3, 0)
+    @A_sym6.setter
+    def A_sym6(self, val): self._A_soa.transpose(1, 2, 3, 0)[:] = val
+
+    @property
+    def Gamma_tilde(self): return self._Gamma_tilde_soa.transpose(1, 2, 3, 0)
+    @Gamma_tilde.setter
+    def Gamma_tilde(self, val): self._Gamma_tilde_soa.transpose(1, 2, 3, 0)[:] = val
+
+    @property
+    def lambda_i(self): return self._lambda_i_soa.transpose(1, 2, 3, 0)
+    @lambda_i.setter
+    def lambda_i(self, val): self._lambda_i_soa.transpose(1, 2, 3, 0)[:] = val
 
     def init_minkowski(self):
         """Initialize to Minkowski spacetime."""
@@ -233,7 +289,7 @@ class GRCoreFields:
         self.Z.fill(0.0)
         self.Z_i.fill(0.0)
         # Initialize BSSN fields
-        self.gamma_tilde_sym6 = self.gamma_sym6.copy()  # γ̃_ij = γ_ij
+        self.gamma_tilde_sym6[:] = self.gamma_sym6  # γ̃_ij = γ_ij
         self.A_sym6.fill(0.0)  # A_ij = 0
         self.Gamma_tilde.fill(0.0)  # Gamma_tilde^i = 0
         self.lambda_i.fill(0.0)
@@ -258,20 +314,11 @@ class GRCoreFields:
         self.K_trace = K_trace
 
         # A_ij = K_ij - (1/3) γ_ij trK
-        A_full = np.zeros((self.Nx, self.Ny, self.Nz, 3, 3))
-        gamma_full = np.zeros_like(A_full)
-        K_full = np.zeros_like(A_full)
-        for i in range(self.Nx):
-            for j in range(self.Ny):
-                for k in range(self.Nz):
-                    gamma_full[i,j,k] = sym6_to_tensor(self.gamma_sym6[i,j,k])
-                    K_full[i,j,k] = sym6_to_tensor(self.K_sym6[i,j,k])
-
-        for ii in range(self.Nx):
-            for jj in range(self.Ny):
-                for kk in range(self.Nz):
-                    A_full[ii,jj,kk] = K_full[ii,jj,kk] - (1/3) * K_trace[ii,jj,kk] * gamma_full[ii,jj,kk]
-
+        # Vectorized implementation
+        gamma_full = sym6_to_mat33(self.gamma_sym6)
+        K_full = sym6_to_mat33(self.K_sym6)
+        
+        A_full = K_full - (1.0/3.0) * K_trace[..., np.newaxis, np.newaxis] * gamma_full
         self.A_sym6 = mat33_to_sym6(A_full)
 
     def bssn_recompose(self):
@@ -282,5 +329,19 @@ class GRCoreFields:
 
         # K_ij = e^{4χ} (A_ij + (1/3) γ̃_ij K_trace)
         self.K_sym6 = psi4_expanded * (self.A_sym6 + (1.0/3.0) * self.gamma_tilde_sym6 * self.K_trace[..., np.newaxis])
+
+    def check_memory_contract(self):
+        """Verify memory layout and alignment."""
+        arrays = [
+            self._gamma_soa, self._K_soa, self.K_trace, self.alpha, self._beta_soa,
+            self.phi, self.Z, self._Z_i_soa, self._gamma_tilde_soa, self._A_soa,
+            self._Gamma_tilde_soa, self._lambda_i_soa
+        ]
+        for arr in arrays:
+            if arr.ctypes.data % 64 != 0:
+                return False, "Misaligned array detected"
+            if not arr.flags['C_CONTIGUOUS']:
+                return False, "Non-contiguous array detected"
+        return True, "Memory contract satisfied"
 
     # Other methods as needed

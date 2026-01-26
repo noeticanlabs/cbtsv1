@@ -6,7 +6,7 @@ def tokenize(nsc: str) -> list[str]:
     if normalized != nsc:
         raise ValueError("Non-canonical Unicode")  # Adapted from nsc_diag.NSCError(nsc_diag.E_NONCANONICAL_UNICODE, ...)
     # Pattern to match operators and identifiers/numbers
-    pattern = r'(\+|\-|\*|/|∂|∇²|∇|=|\(|\)|\[|\]|φ|⊕|↻|∆|◯|⊖|⇒|□|\w+|\d+\.?\d*)'
+    pattern = r'(\+|\-|\*|/|∂|∇²|∇|=|\(|\)|\[|\]|φ|⊕|↻|∆|◯|⊖|⇒|□|𝔊|𝔇|𝔅|\w+|\d+\.?\d*)'
     tokens = re.findall(pattern, normalized)
     tokens = [t for t in tokens if t.strip()]  # remove empty
     if not tokens:

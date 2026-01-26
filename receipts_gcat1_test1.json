@@ -1,12 +1,17 @@
 {
   "passed": false,
   "metrics": {
-    "p_obs": 6.345987904055956e-13,
+    "p_obs": 0.07023325001961309,
     "errors": [
-      9.999833334169364e-06,
-      9.999833334164964e-06,
-      9.999833334156252e-06
+      1.9013762888176614e-13,
+      1.758266799891016e-13,
+      1.724977536394922e-13
+    ],
+    "resolutions": [
+      8,
+      16,
+      32
     ]
   },
-  "diagnosis": "Observed order p_obs = 0.00, failed convergence check (>1.5)"
+  "diagnosis": "Observed convergence order p_obs = 0.07. Expected ~2.0. FAILED"
 }

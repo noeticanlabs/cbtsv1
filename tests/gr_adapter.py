@@ -61,9 +61,9 @@ def create_gr_adapter():
         y = np.arange(N) * dy
         z = np.arange(N) * dz
         X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        kx = 0.1
-        ky = 0.1
-        kz = 0.1
+        kx = 2.0 * np.pi / L
+        ky = 2.0 * np.pi / L
+        kz = 2.0 * np.pi / L
         kdotx = kx * X + ky * Y + kz * Z
         omega = 1.0
         eps = 1e-4
@@ -88,9 +88,9 @@ def create_gr_adapter():
         y = np.arange(N) * dy
         z = np.arange(N) * dz
         X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        kx = 0.1
-        ky = 0.1
-        kz = 0.1
+        kx = 2.0 * np.pi / L
+        ky = 2.0 * np.pi / L
+        kz = 2.0 * np.pi / L
         kdotx = kx * X + ky * Y + kz * Z
         omega = 1.0
         eps = 1e-4
@@ -118,16 +118,31 @@ def create_gr_adapter():
         N = solver.fields.Nx
         dx = solver.fields.dx
         gamma, K, alpha, beta = set_mms(t, N, dx, dx, dx, L=16.0)
+        
+        # Compute BSSN variables from physical metric
+        det_g = det_sym6(gamma)
+        phi = (1.0/12.0) * np.log(det_g)
+        exp_minus_4phi = np.exp(-4.0 * phi)[..., np.newaxis]
+        gamma_tilde = gamma * exp_minus_4phi
+        
+        gamma_inv = inv_sym6(gamma)
+        K_trace = (gamma_inv[..., 0] * K[..., 0] + 2 * gamma_inv[..., 1] * K[..., 1] + 
+                   2 * gamma_inv[..., 2] * K[..., 2] + gamma_inv[..., 3] * K[..., 3] + 
+                   2 * gamma_inv[..., 4] * K[..., 4] + gamma_inv[..., 5] * K[..., 5])
+        A_physical = K - (1.0/3.0) * gamma * K_trace[..., np.newaxis]
+        A_sym6 = A_physical * exp_minus_4phi
+        
         solver.fields.gamma_sym6 = gamma.copy()
         solver.fields.K_sym6 = K.copy()
-        solver.fields.gamma_tilde_sym6 = gamma.copy()
-        solver.fields.A_sym6 = K.copy()
+        solver.fields.gamma_tilde_sym6 = gamma_tilde
+        solver.fields.A_sym6 = A_sym6
+        solver.fields.phi = phi
         solver.fields.alpha = alpha.copy()
         solver.fields.beta = beta.copy()
-        solver.fields.phi = np.zeros((N, N, N))
         solver.fields.Gamma_tilde = np.zeros((N, N, N, 3))
         solver.fields.Z = np.zeros((N, N, N))
         solver.fields.Z_i = np.zeros((N, N, N, 3))
+        solver.fields.K = K_trace
         # Compute geometry
         solver.geometry.compute_christoffels()
         solver.geometry.compute_ricci()
@@ -148,17 +163,31 @@ def create_gr_adapter():
     def exact_state_arrays(N, L, t):
         dx = L / N
         gamma, K, alpha, beta = set_mms(t, N, dx, dx, dx, L)
-        phi = np.zeros((N, N, N))
+        
+        # Compute BSSN variables from physical metric (for reference)
+        det_g = det_sym6(gamma)
+        phi = (1.0/12.0) * np.log(det_g)
+        exp_minus_4phi = np.exp(-4.0 * phi)[..., np.newaxis]
+        gamma_tilde = gamma * exp_minus_4phi
+        
+        gamma_inv = inv_sym6(gamma)
+        K_trace = (gamma_inv[..., 0] * K[..., 0] + 2 * gamma_inv[..., 1] * K[..., 1] + 
+                   2 * gamma_inv[..., 2] * K[..., 2] + gamma_inv[..., 3] * K[..., 3] + 
+                   2 * gamma_inv[..., 4] * K[..., 4] + gamma_inv[..., 5] * K[..., 5])
+        A_physical = K - (1.0/3.0) * gamma * K_trace[..., np.newaxis]
+        A_sym6 = A_physical * exp_minus_4phi
+        
         Gamma_tilde = np.zeros((N, N, N, 3))
         Z = np.zeros((N, N, N))
         Z_i = np.zeros((N, N, N, 3))
         return {
-            'gamma_tilde_sym6': gamma,
-            'A_sym6': K,
+            'gamma_tilde_sym6': gamma_tilde,
+            'A_sym6': A_sym6,
             'phi': phi,
             'Gamma_tilde': Gamma_tilde,
             'Z': Z,
             'Z_i': Z_i,
+            'K': K_trace,
             'alpha': alpha,
             'beta': beta,
         }
@@ -171,10 +200,13 @@ def create_gr_adapter():
         if sources is not None:
             if callable(sources):
                 solver.stepper.sources_func = sources  # sources is a function t -> dict
+                solver.stepper.rhs_computer.sources_func = sources
             else:
                 solver.stepper.sources_func = lambda t: sources  # fixed dict
+                solver.stepper.rhs_computer.sources_func = lambda t: sources
         else:
             solver.stepper.sources_func = None
+            solver.stepper.rhs_computer.sources_func = None
             N = solver.fields.Nx
             solver.stepper.S_gamma_tilde_sym6 = np.zeros((N, N, N, 6))
             solver.stepper.S_A_sym6 = np.zeros((N, N, N, 6))
@@ -188,24 +220,102 @@ def create_gr_adapter():
         # Run step
         dt_actual, _, _ = solver.orchestrator.run_step()
         solver.stepper.sources_func = None  # reset
+        solver.stepper.rhs_computer.sources_func = None  # reset
         return solver
 
+    def compute_bssn_mms_sources(N, L, t):
+        """
+        Compute BSSN MMS sources from physical metric time derivatives.
+        
+        BSSN relations:
+        - phi = (1/12) ln(det_gamma)
+        - gamma_tilde = e^(-4phi) * gamma
+        - A = e^(-4phi) * (K - 1/3 * gamma * K_trace)
+        """
+        dx = L / N
+        
+        # Physical quantities
+        gamma, K, alpha, beta = set_mms(t, N, dx, dx, dx, L)
+        dt_gamma, dt_K, dt_alpha, dt_beta = compute_dt_mms(t, N, dx, dx, dx, L)
+        
+        # BSSN variables at time t
+        det_g = det_sym6(gamma)
+        phi = (1.0/12.0) * np.log(det_g)
+        exp_minus_4phi = np.exp(-4.0 * phi)[..., np.newaxis]
+        gamma_tilde = gamma * exp_minus_4phi
+        
+        gamma_inv = inv_sym6(gamma)
+        K_trace = (gamma_inv[..., 0] * K[..., 0] + 2 * gamma_inv[..., 1] * K[..., 1] + 
+                   2 * gamma_inv[..., 2] * K[..., 2] + gamma_inv[..., 3] * K[..., 3] + 
+                   2 * gamma_inv[..., 4] * K[..., 4] + gamma_inv[..., 5] * K[..., 5])
+        A_physical = K - (1.0/3.0) * gamma * K_trace[..., np.newaxis]
+        A_sym6 = A_physical * exp_minus_4phi
+        
+        # Time derivatives of BSSN variables
+        # dt_phi = (1/12) * gamma^{ij} * dt_gamma_ij
+        tr_dt_gamma = (gamma_inv[..., 0] * dt_gamma[..., 0] + 2 * gamma_inv[..., 1] * dt_gamma[..., 1] + 
+                       2 * gamma_inv[..., 2] * dt_gamma[..., 2] + gamma_inv[..., 3] * dt_gamma[..., 3] + 
+                       2 * gamma_inv[..., 4] * dt_gamma[..., 4] + gamma_inv[..., 5] * dt_gamma[..., 5])
+        dt_phi = (1.0/12.0) * tr_dt_gamma
+        
+        # dt_gamma_tilde = e^(-4phi) * dt_gamma - 4 * dt_phi * gamma_tilde
+        dt_gamma_tilde = exp_minus_4phi * dt_gamma - 4.0 * dt_phi[..., np.newaxis] * gamma_tilde
+        
+        # dt_gamma_inv = -gamma_inv * dt_gamma * gamma_inv (matrix form)
+        gamma_mat = sym6_to_mat33(gamma)
+        dt_gamma_mat = sym6_to_mat33(dt_gamma)
+        gamma_inv_mat = sym6_to_mat33(gamma_inv)
+        dt_gamma_inv_mat = -np.einsum('...ij,...jk,...kl->...il', gamma_inv_mat, dt_gamma_mat, gamma_inv_mat)
+        
+        # dt_K_trace = tr(dt_gamma_inv * K + gamma_inv * dt_K)
+        K_mat = sym6_to_mat33(K)
+        dt_K_mat = sym6_to_mat33(dt_K)
+        dt_K_trace = np.einsum('...ij,...ji->...', dt_gamma_inv_mat, K_mat) + np.einsum('...ij,...ji->...', gamma_inv_mat, dt_K_mat)
+        
+        # dt_A = e^(-4phi) * dt_K - 4 * dt_phi * A - (1/3) * dt_gamma * K + (1/3) * gamma * dt_K_trace
+        term1 = exp_minus_4phi * dt_K
+        term2 = -4.0 * dt_phi[..., np.newaxis] * A_sym6
+        term3 = -(1.0/3.0) * dt_gamma * K_trace[..., np.newaxis]
+        term4 = (1.0/3.0) * gamma * dt_K_trace[..., np.newaxis]
+        dt_A = term1 + term2 + term3 + term4
+        
+        # dt_Gamma_tilde: for our MMS with zero Gamma_tilde, dt is 0 (simplified)
+        dt_Gamma_tilde = np.zeros((N, N, N, 3))
+        
+        # dt_Z, dt_Z_i: 0 for constraint damping
+        dt_Z = np.zeros((N, N, N))
+        dt_Z_i = np.zeros((N, N, N, 3))
+        
+        return {
+            'dt_gamma_tilde_sym6': dt_gamma_tilde,
+            'dt_A_sym6': dt_A,
+            'dt_phi': dt_phi,
+            'dt_Gamma_tilde': dt_Gamma_tilde,
+            'dt_Z': dt_Z,
+            'dt_Z_i': dt_Z_i,
+            'dt_K': K_trace,  # Return K_trace for comparison
+        }
+    
     def make_mms_sources(N, L, t):
         dx = L / N
         # Create temp solver
         solver = make_fields(N, L)
         set_exact_solution(solver, t)
         # Compute rhs
-        solver.stepper.compute_rhs()
-        # Compute exact dt
-        dt_gamma, dt_K, dt_alpha, dt_beta = compute_dt_mms(t, N, dx, dx, dx, L)
-        # Sources
-        S_gamma_tilde = dt_gamma - solver.stepper.rhs_gamma_tilde_sym6
-        S_A = dt_K - solver.stepper.rhs_A_sym6
-        S_phi = np.zeros((N, N, N)) - solver.stepper.rhs_phi  # exact phi=0, dt_phi=0
-        S_Gamma_tilde = np.zeros((N, N, N, 3))  # assuming not evolved or 0
-        S_Z = np.zeros((N, N, N)) - solver.stepper.rhs_Z
-        S_Z_i = np.zeros((N, N, N, 3)) - solver.stepper.rhs_Z_i
+        solver.stepper.rhs_computer.compute_rhs(t, slow_update=False)
+        rhs_computer = solver.stepper.rhs_computer
+        
+        # Compute BSSN time derivatives
+        bssn_dt = compute_bssn_mms_sources(N, L, t)
+        
+        # Sources = exact BSSN dt - computed RHS
+        S_gamma_tilde = bssn_dt['dt_gamma_tilde_sym6'] - rhs_computer.rhs_gamma_tilde_sym6
+        S_A = bssn_dt['dt_A_sym6'] - rhs_computer.rhs_A_sym6
+        S_phi = bssn_dt['dt_phi'] - rhs_computer.rhs_phi
+        S_Gamma_tilde = bssn_dt['dt_Gamma_tilde'] - rhs_computer.rhs_Gamma_tilde
+        S_Z = bssn_dt['dt_Z'] - rhs_computer.rhs_Z
+        S_Z_i = bssn_dt['dt_Z_i'] - rhs_computer.rhs_Z_i
+        
         return {
             'S_gamma_tilde_sym6': S_gamma_tilde,
             'S_A_sym6': S_A,

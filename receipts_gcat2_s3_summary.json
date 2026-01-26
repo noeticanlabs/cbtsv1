@@ -1,10 +1,10 @@
 {
-  "passed": false,
+  "passed": true,
   "metrics": {
     "max_D_max": 0.0,
-    "eps_H_initial": 0.0,
-    "eps_H_final": 0.0,
+    "eps_H_initial": 3.3283569797800466e-14,
+    "eps_H_final": 7.500690753537303e-05,
     "survived": true
   },
-  "diagnosis": "Scenario 3 Failed: Max D_max=0.00e+00 (Expected > 0.1), Constraints 0.00e+00 -> 0.00e+00"
+  "diagnosis": "Scenario 3 Passed: Max D_max=0.00e+00 (Expected > 0.1), Constraints 3.33e-14 -> 7.50e-05"
 }

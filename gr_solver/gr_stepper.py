@@ -14,12 +14,7 @@ LEXICON_SYMBOLS = {
 }
 
 import numpy as np
-import hashlib
 import logging
-import json
-import os
-import inspect
-from datetime import datetime
 from typing import Tuple, Dict, Any
 try:
     from numba import jit
@@ -27,108 +22,18 @@ except ImportError:
     jit = lambda f=None, **kwargs: f if f else (lambda g: g)
 from .logging_config import Timer, array_stats
 from .gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6
-from stepper_contract_memory import StepperContractWithMemory
 from gr_solver.stepper_contract import StepperContract
-from .gr_geometry import _sym6_to_mat33_jit, _inv_sym6_jit, _compute_christoffels_jit
 from .gr_loc import GRLoC
-from nsc_runtime_min import load_nscir, make_rhs_callable
+from .gr_rhs import GRRhs
+from .gr_ledger import GRLedger
+from .gr_scheduler import GRScheduler
+from .gr_gates import GateChecker
+from .hpc_kernels import fused_evolution_kernel
 
 logger = logging.getLogger('gr_solver.stepper')
 
-@jit(nopython=True)
-def _compute_gamma_tilde_rhs_jit(Nx, Ny, Nz, alpha, beta, phi, Gamma_tilde, A_sym6, gamma_tilde_sym6, dx, dy, dz, K_trace_scratch):
-    """JIT-compiled computation of Gamma_tilde RHS."""
-    # Precompute gamma_tilde_inv
-    gamma_tilde_inv_full = np.zeros((Nx, Ny, Nz, 3, 3))
-    for i in range(Nx):
-        for j in range(Ny):
-            for k in range(Nz):
-                gamma_tilde_inv_full[i,j,k] = _sym6_to_mat33_jit(_inv_sym6_jit(gamma_tilde_sym6[i,j,k]))
-
-    # Precompute A_tilde_uu (contravariant)
-    A_tilde_uu = np.zeros((Nx, Ny, Nz, 3, 3))
-    for i in range(Nx):
-        for j in range(Ny):
-            for k in range(Nz):
-                A_full = _sym6_to_mat33_jit(A_sym6[i,j,k])
-                A_tilde_uu[i,j,k] = gamma_tilde_inv_full[i,j,k] @ A_full @ gamma_tilde_inv_full[i,j,k]
-
-    # Precompute Christoffel tildeGamma^i_{jk} - use the JIT christoffels
-    christoffel_tilde_udd, _ = _compute_christoffels_jit(Nx, Ny, Nz, gamma_tilde_sym6, dx, dy, dz)
-
-    # Gradients
-    dalpha_x = np.gradient(alpha, dx, axis=0)
-    dalpha_y = np.gradient(alpha, dy, axis=1)
-    dalpha_z = np.gradient(alpha, dz, axis=2)
-    dphi_x = np.gradient(phi, dx, axis=0)
-    dphi_y = np.gradient(phi, dy, axis=1)
-    dphi_z = np.gradient(phi, dz, axis=2)
-
-    # Shift gradients
-    dbeta = np.zeros((Nx, Ny, Nz, 3, 3))
-    for k in range(3):
-        dbeta[..., k, 0] = np.gradient(beta[..., k], dx, axis=0)
-        dbeta[..., k, 1] = np.gradient(beta[..., k], dy, axis=1)
-        dbeta[..., k, 2] = np.gradient(beta[..., k], dz, axis=2)
-
-    # Second derivatives for C
-    lap_beta = np.zeros((Nx, Ny, Nz, 3))
-    for i in range(3):
-        fxx = np.gradient(np.gradient(beta[..., i], dx, axis=0), dx, axis=0)
-        fyy = np.gradient(np.gradient(beta[..., i], dy, axis=1), dy, axis=1)
-        fzz = np.gradient(np.gradient(beta[..., i], dz, axis=2), dz, axis=2)
-        lap_beta[..., i] = fxx + fyy + fzz
-
-    div_beta = np.gradient(beta[..., 0], dx, axis=0) + np.gradient(beta[..., 1], dy, axis=1) + np.gradient(beta[..., 2], dz, axis=2)
-
-    d_div_beta_x = np.gradient(div_beta, dx, axis=0)
-    d_div_beta_y = np.gradient(div_beta, dy, axis=1)
-    d_div_beta_z = np.gradient(div_beta, dz, axis=2)
-
-    # Gamma gradients
-    dGamma = np.zeros((Nx, Ny, Nz, 3, 3))
-    for i in range(3):
-        dGamma[..., i, 0] = np.gradient(Gamma_tilde[..., i], dx, axis=0)
-        dGamma[..., i, 1] = np.gradient(Gamma_tilde[..., i], dy, axis=1)
-        dGamma[..., i, 2] = np.gradient(Gamma_tilde[..., i], dz, axis=2)
-
-    rhs_Gamma_tilde = np.zeros((Nx, Ny, Nz, 3))
-
-    # A: advection
-    rhs_Gamma_tilde += np.einsum('...k,...ik->...i', beta, dGamma)
-
-    # B: stretching
-    Gamma_dot_grad_beta = np.einsum('...k,...ik->...i', Gamma_tilde, dbeta)
-    rhs_Gamma_tilde += -Gamma_dot_grad_beta + (2.0/3.0) * Gamma_tilde * div_beta[..., np.newaxis]
-
-    # C: shift second-derivatives (approximated)
-    d_div_beta = np.array([d_div_beta_x, d_div_beta_y, d_div_beta_z])
-    d_div_beta = d_div_beta.transpose(1,2,3,0)
-    rhs_Gamma_tilde += lap_beta + (1.0/3.0) * np.einsum('...ij,...j->...i', gamma_tilde_inv_full, d_div_beta)
-
-    # D: lapse/curvature
-    # -2 A^{ij} d_j alpha
-    dalpha = np.array([dalpha_x, dalpha_y, dalpha_z]).transpose(1,2,3,0)
-    rhs_Gamma_tilde += -2.0 * np.einsum('...ij,...j->...i', A_tilde_uu, dalpha)
-
-    # 2 alpha (Gamma^i_{jk} A^{jk} + 6 A^{ij} d_j phi - (2/3) gamma^{ij} d_j K)
-    GammaA = np.einsum('...ijk,...jk->...i', christoffel_tilde_udd, A_tilde_uu)
-
-    dphi = np.array([dphi_x, dphi_y, dphi_z]).transpose(1,2,3,0)
-    A_dphi = np.einsum('...ij,...j->...i', A_tilde_uu, dphi)
-
-    dK_x = np.gradient(K_trace_scratch, dx, axis=0)
-    dK_y = np.gradient(K_trace_scratch, dy, axis=1)
-    dK_z = np.gradient(K_trace_scratch, dz, axis=2)
-    dK = np.array([dK_x, dK_y, dK_z]).transpose(1,2,3,0)
-    gamma_dK = np.einsum('...ij,...j->...i', gamma_tilde_inv_full, dK)
-
-    rhs_Gamma_tilde += 2.0 * alpha[..., np.newaxis] * (GammaA + 6.0 * A_dphi - (2.0/3.0) * gamma_dK)
-
-    return rhs_Gamma_tilde
-
 class GRStepper(StepperContract):
-    def __init__(self, fields, geometry, constraints, gauge, memory_contract=None, phaseloom=None, aeonic_mode=True, max_attempts=20, dt_floor=1e-10, temporal_system=None):
+    def __init__(self, fields, geometry, constraints, gauge, memory_contract=None, phaseloom=None, aeonic_mode=True, max_attempts=20, dt_floor=1e-8, temporal_system=None, analysis_mode=False):
         super().__init__(max_attempts=max_attempts, dt_floor=dt_floor)
         self.fields = fields
         self.geometry = geometry
@@ -139,66 +44,28 @@ class GRStepper(StepperContract):
         self.lambda_val = 0.0
         self.dealiasing_enabled = True
         self.sources_func = None
-        self.memory = StepperContractWithMemory(memory_contract, phaseloom, max_attempts=max_attempts, dt_floor=dt_floor) if memory_contract and phaseloom else None
         self.aeonic_mode = aeonic_mode
+        self.analysis_mode = analysis_mode
         self.loc_operator = GRLoC(fields, geometry, constraints, lambda_val=self.lambda_val, kappa_H=1.0, kappa_M=1.0)
         self.temporal_system = temporal_system
+        
+        self.rhs_computer = GRRhs(fields, geometry, constraints, self.loc_operator, self.lambda_val, self.sources_func, aeonic_mode)
 
-        # Load Hadamard RHS if available
-        try:
-            from nsc_runtime_min import make_rhs_callable
-            self.rhs_func = make_rhs_callable('minkowski_rhs.nscir.json')
-        except:
-            self.rhs_func = None
-
-        # Receipt chain for audit trail
-        self.prev_receipt_hash = "0" * 64  # Initial hash for chain start
-        self.receipts_file = "aeonic_receipts.jsonl"
+        self.ledger = GRLedger()
+        self.scheduler = GRScheduler(fields, Lambda=fields.Lambda)
+        self.gatekeeper = GateChecker(constraints, analysis_mode=analysis_mode)
 
         # Multi-rate stepping parameters
         self.slow_fields = ['phi', 'Z', 'Z_i']
         self.slow_rate = 5  # Update slow fields every 5 steps
         self.step_count = 0
 
-        if self.aeonic_mode:
-            # Preallocate RHS arrays
-            self.rhs_gamma_sym6 = np.zeros_like(self.fields.gamma_sym6)
-            self.rhs_K_sym6 = np.zeros_like(self.fields.K_sym6)
-            self.rhs_phi = np.zeros_like(self.fields.phi)
-            self.rhs_gamma_tilde_sym6 = np.zeros_like(self.fields.gamma_tilde_sym6)
-            self.rhs_A_sym6 = np.zeros_like(self.fields.A_sym6)
-            self.rhs_Gamma_tilde = np.zeros_like(self.fields.Gamma_tilde)
-            self.rhs_Z = np.zeros_like(self.fields.Z)
-            self.rhs_Z_i = np.zeros_like(self.fields.Z_i)
+        # Pre-allocated buffers for fused evolution kernel (64-byte aligned)
+        self._allocate_fused_buffers()
 
-            # Sources arrays
-            self.S_gamma_tilde_sym6 = np.zeros_like(self.fields.gamma_tilde_sym6)
-            self.S_A_sym6 = np.zeros_like(self.fields.A_sym6)
-            self.S_phi = np.zeros_like(self.fields.phi)
-            self.S_Gamma_tilde = np.zeros_like(self.fields.Gamma_tilde)
-            self.S_Z = np.zeros_like(self.fields.Z)
-            self.S_Z_i = np.zeros_like(self.fields.Z_i)
-
-            # Preallocate scratch buffers
-            self.gamma_inv_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.K_trace_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz))
-            self.alpha_expanded_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 6))
-            self.alpha_expanded_33_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            self.lie_gamma_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.DD_alpha_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            self.DD_alpha_sym6_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.ricci_sym6_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.K_full_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            self.gamma_inv_full_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            self.K_contracted_full_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            self.K_contracted_sym6_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.lie_K_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.lie_gamma_tilde_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.psi_minus4_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz))
-            self.psi_minus4_expanded_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 6))
-            self.ricci_tf_sym6_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.rhs_A_temp_scratch = np.zeros_like(self.fields.gamma_sym6)
-            self.lie_A_scratch = np.zeros_like(self.fields.gamma_sym6)
+    @property
+    def receipts(self):
+        return self.ledger.receipts
 
     def check_tensor_layout_compliance(self):
         """Check tensor layout compliance against canonical shapes. Emit violation receipts."""
@@ -230,392 +97,125 @@ class GRStepper(StepperContract):
 
         if not layout_ok:
             # Emit violation receipt
-            receipt = {
-                'run_id': 'gr_solver_run_001',
-                'step': getattr(self, 'current_step', 0),
-                'event': 'LAYOUT_VIOLATION',
-                't': getattr(self, 'current_t', 0.0),
-                'dt': getattr(self, 'current_dt', 0.0),
-                'stage': None,
-                'grid': {
-                    'Nx': self.fields.Nx,
-                    'Ny': self.fields.Ny,
-                    'Nz': self.fields.Nz,
-                    'h': [self.fields.dx, self.fields.dy, self.fields.dz],
-                    'domain': 'cartesian',
-                    'periodic': False
-                },
-                'layout': {
-                    'ok': False,
-                    'violations': violations,
-                    'first_bad_tensor': violations[0]['field'] if violations else None,
-                    'got_shape': violations[0]['actual_shape'] if violations else None,
-                    'expected_shape': violations[0]['expected_shape'] if violations else None
-                },
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            }
-
-            # Hash this receipt
-            receipt_str = json.dumps(receipt, sort_keys=True)
-            receipt_hash = hashlib.sha256(receipt_str.encode()).hexdigest()
-            receipt['receipt_hash'] = receipt_hash
-            receipt['prev_receipt_hash'] = self.prev_receipt_hash
-            self.prev_receipt_hash = receipt_hash
-
-            # Write to JSONL file
-            with open(self.receipts_file, 'a') as f:
-                f.write(json.dumps(receipt) + '\n')
+            self.ledger.emit_layout_violation_receipt(
+                getattr(self, 'current_step', 0),
+                getattr(self, 'current_t', 0.0),
+                getattr(self, 'current_dt', 0.0),
+                self.fields,
+                violations
+            )
 
             raise ValueError(f"Tensor layout violations detected: {violations}")
 
         return layout_ok
 
-    def emit_stage_rhs_receipt(self, stage, stage_time, rhs_norms):
-        """Emit STAGE_RHS receipt after computing RHS for a stage."""
-        # Compute operator hash (simplified - hash of compute_rhs method)
-        operator_code = inspect.getsource(self.compute_rhs)
-        operator_hash = hashlib.sha256(operator_code.encode()).hexdigest()
+    def _allocate_fused_buffers(self):
+        """Allocate aligned buffers for fused evolution kernel."""
+        Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
+        
+        # Allocate with 64-byte alignment for SIMD efficiency
+        alignment = 64
+        
+        # Gamma buffer (6 components)
+        self._fused_gamma = np.zeros((Nx, Ny, Nz, 6), dtype=np.float64)
+        if self._fused_gamma.ctypes.data % alignment != 0:
+            # Reallocate with proper alignment
+            self._fused_gamma = np.ascontiguousarray(self._fused_gamma)
+        
+        # K buffer (6 components)
+        self._fused_K = np.zeros((Nx, Ny, Nz, 6), dtype=np.float64)
+        if self._fused_K.ctypes.data % alignment != 0:
+            self._fused_K = np.ascontiguousarray(self._fused_K)
+        
+        # Alpha buffer (scalar)
+        self._fused_alpha = np.zeros((Nx, Ny, Nz), dtype=np.float64)
+        if self._fused_alpha.ctypes.data % alignment != 0:
+            self._fused_alpha = np.ascontiguousarray(self._fused_alpha)
+        
+        # Beta buffer (3 components)
+        self._fused_beta = np.zeros((Nx, Ny, Nz, 3), dtype=np.float64)
+        if self._fused_beta.ctypes.data % alignment != 0:
+            self._fused_beta = np.ascontiguousarray(self._fused_beta)
+        
+        logger.debug("Fused evolution buffers allocated", extra={
+            "extra_data": {
+                "gamma_aligned": self._fused_gamma.ctypes.data % alignment == 0,
+                "K_aligned": self._fused_K.ctypes.data % alignment == 0,
+                "alpha_aligned": self._fused_alpha.ctypes.data % alignment == 0,
+                "beta_aligned": self._fused_beta.ctypes.data % alignment == 0
+            }
+        })
 
-        # State hash (simplified fingerprint)
-        state_str = f"{self.fields.alpha.sum():.6e}_{self.fields.gamma_sym6.sum():.6e}"
-        state_hash = hashlib.sha256(state_str.encode()).hexdigest()
+    def _check_invariants_pre(self):
+        """Check pre-update invariants: fields must be finite and bounded."""
+        violations = []
+        
+        # Check gamma_sym6
+        if not np.isfinite(self.fields.gamma_sym6).all():
+            violations.append("gamma_sym6 contains NaN/Inf")
+        
+        # Check K_sym6
+        if not np.isfinite(self.fields.K_sym6).all():
+            violations.append("K_sym6 contains NaN/Inf")
+        
+        # Check alpha (lapse, must be positive)
+        if not np.isfinite(self.fields.alpha).all():
+            violations.append("alpha contains NaN/Inf")
+        if np.any(self.fields.alpha <= 0):
+            violations.append("alpha contains non-positive values")
+        
+        # Check beta (shift)
+        if not np.isfinite(self.fields.beta).all():
+            violations.append("beta contains NaN/Inf")
+        
+        # Check magnitude bounds for metric (should be close to flat space)
+        gamma_mean = np.mean(self.fields.gamma_sym6)
+        if abs(gamma_mean - 1.0) > 0.5:  # Allow 50% deviation from flat space
+            violations.append(f"gamma_sym6 mean {gamma_mean} far from 1.0")
+        
+        return violations
 
-        receipt = {
-            'run_id': 'gr_solver_run_001',
-            'step': getattr(self, 'current_step', 0),
-            'event': 'STAGE_RHS',
-            't': getattr(self, 'current_t', 0.0),
-            'dt': getattr(self, 'current_dt', 0.0),
-            'stage': stage,
-            'stage_time': stage_time,
-            'grid': {
-                'Nx': self.fields.Nx,
-                'Ny': self.fields.Ny,
-                'Nz': self.fields.Nz,
-                'h': [self.fields.dx, self.fields.dy, self.fields.dz],
-                'domain': 'cartesian',
-                'periodic': False
-            },
-            'hash': {
-                'state_before': state_hash,
-                'rhs': operator_hash,
-                'operators': operator_hash
-            },
-            'ledgers': {},  # Will be filled at ledger eval
-            'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }
+    def _check_invariants_post(self, norm_dgamma, norm_dK):
+        """Check post-update invariants: update norms finite, fields valid."""
+        violations = []
+        
+        # Check update norms are finite
+        if not np.isfinite(norm_dgamma):
+            violations.append(f"norm_dgamma is not finite: {norm_dgamma}")
+        if not np.isfinite(norm_dK):
+            violations.append(f"norm_dK is not finite: {norm_dK}")
+        
+        # Check update norms are reasonable (not NaN/Inf exploding)
+        if norm_dgamma > 1e10:
+            violations.append(f"norm_dgamma too large: {norm_dgamma}")
+        if norm_dK > 1e10:
+            violations.append(f"norm_dK too large: {norm_dK}")
+        
+        # Check resulting fields are finite
+        if not np.isfinite(self.fields.gamma_sym6).all():
+            violations.append("updated gamma_sym6 contains NaN/Inf")
+        if not np.isfinite(self.fields.K_sym6).all():
+            violations.append("updated K_sym6 contains NaN/Inf")
+        if not np.isfinite(self.fields.alpha).all():
+            violations.append("updated alpha contains NaN/Inf")
+        if not np.isfinite(self.fields.beta).all():
+            violations.append("updated beta contains NaN/Inf")
+        
+        return violations
 
-        # Add rhs norms
-        receipt['rhs_norms'] = rhs_norms
-
-        # Hash and chain
-        receipt_str = json.dumps(receipt, sort_keys=True)
-        receipt_hash = hashlib.sha256(receipt_str.encode()).hexdigest()
-        receipt['receipt_hash'] = receipt_hash
-        receipt['prev_receipt_hash'] = self.prev_receipt_hash
-        self.prev_receipt_hash = receipt_hash
-
-        # Write receipt
-        with open(self.receipts_file, 'a') as f:
-            f.write(json.dumps(receipt) + '\n')
-
-    def compute_clocks(self, dt_candidate):
-        """Compute all clock constraints and choose dt."""
-        # CFL: dt < dx / c, where c is characteristic speed
-        # Rough estimate: c ~ sqrt(alpha^2 + beta^2) for ADM
-        c_max = np.sqrt(np.max(self.fields.alpha)**2 + np.max(np.linalg.norm(self.fields.beta, axis=-1))**2)
-        h_min = min(self.fields.dx, self.fields.dy, self.fields.dz)
-        dt_CFL = h_min / c_max if c_max > 0 else float('inf')
-
-        # Gauge: dt < alpha * dx / |beta| or similar
-        # Simplified: dt < alpha * h_min / (1 + |beta|)
-        beta_norm = np.max(np.linalg.norm(self.fields.beta, axis=-1))
-        dt_gauge = self.fields.alpha.max() * h_min / (1 + beta_norm)
-
-        # Coherence (constraint damping): dt < 1 / lambda where lambda is damping rate
-        dt_coh = 1.0 / max(self.lambda_val, 1e-6) if self.lambda_val > 0 else float('inf')
-
-        # Resolution: dt < h_min / sqrt(K^2) or similar
-        K_norm = np.max(np.linalg.norm(self.fields.K_sym6, axis=-1))
-        dt_res = h_min / max(np.sqrt(K_norm), 1e-6)
-
-        # Sigma (shock capturing or similar): placeholder
-        dt_sigma = float('inf')  # Not implemented yet
-
-        # Choose minimum
-        dt_used = min(dt_candidate, dt_CFL, dt_gauge, dt_coh, dt_res, dt_sigma)
-
-        clocks = {
-            'dt_CFL': dt_CFL,
-            'dt_gauge': dt_gauge,
-            'dt_coh': dt_coh,
-            'dt_res': dt_res,
-            'dt_sigma': dt_sigma,
-            'dt_used': dt_used
-        }
-
-        return clocks, dt_used
-
-    def emit_clock_decision_receipt(self, clocks):
-        """Emit CLOCK_DECISION receipt."""
-        receipt = {
-            'run_id': 'gr_solver_run_001',
-            'step': self.current_step,
-            'event': 'CLOCK_DECISION',
-            't': self.current_t,
-            'dt': self.current_dt,
-            'stage': None,
-            'grid': {
-                'Nx': self.fields.Nx,
-                'Ny': self.fields.Ny,
-                'Nz': self.fields.Nz,
-                'h': [self.fields.dx, self.fields.dy, self.fields.dz],
-                'domain': 'cartesian',
-                'periodic': False
-            },
-            'clocks': clocks,
-            'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }
-
-        # Hash and chain
-        receipt_str = json.dumps(receipt, sort_keys=True)
-        receipt_hash = hashlib.sha256(receipt_str.encode()).hexdigest()
-        receipt['receipt_hash'] = receipt_hash
-        receipt['prev_receipt_hash'] = self.prev_receipt_hash
-        self.prev_receipt_hash = receipt_hash
-
-        # Write receipt
-        with open(self.receipts_file, 'a') as f:
-            f.write(json.dumps(receipt) + '\n')
 
     def check_gates_internal(self, rails_policy=None):
-        """Check step gates. Return (accepted, hard_fail, penalty, reasons, margins)."""
-        if rails_policy is None:
-            rails_policy = {
-                'eps_H_max': 1e-2,  # soft
-                'eps_H_hard_max': 1e-1,
-                'eps_M_max': 1e-2,
-                'eps_M_hard_max': 1e-1,
-                'eps_proj_max': 1e-2,
-                'eps_proj_hard_max': 1e-1,
-                'eps_clk_max': 1e-2,
-                'eps_clk_hard_max': 1e-1,
-                'spike_soft_max': 1e2,
-                'spike_hard_max': 1e3
-            }
-
-        # Compute residuals
-        eps_H = float(self.constraints.eps_H)
-        eps_M = float(self.constraints.eps_M)
-        eps_proj = float(self.constraints.eps_proj)
-        eps_clk = float(self.constraints.eps_clk) if self.constraints.eps_clk is not None else 0.0
-
-        eps_H_soft_max = rails_policy.get('eps_H_max', 1e-2)
-        eps_H_hard_max = rails_policy.get('eps_H_hard_max', 1e-1)
-        eps_M_soft_max = rails_policy.get('eps_M_max', 1e-2)
-        eps_M_hard_max = rails_policy.get('eps_M_hard_max', 1e-1)
-        eps_proj_soft_max = rails_policy.get('eps_proj_max', 1e-2)
-        eps_proj_hard_max = rails_policy.get('eps_proj_hard_max', 1e-1)
-        eps_clk_soft_max = rails_policy.get('eps_clk_max', 1e-2)
-        eps_clk_hard_max = rails_policy.get('eps_clk_hard_max', 1e-1)
-        spike_soft_max = rails_policy.get('spike_soft_max', 1e2)
-        spike_hard_max = rails_policy.get('spike_hard_max', 1e3)
-
-        # Check for hard fails: NaN or inf
-        if np.isnan(eps_H) or np.isinf(eps_H) or np.isnan(eps_M) or np.isinf(eps_M) or np.isnan(eps_proj) or np.isinf(eps_proj) or np.isnan(eps_clk) or np.isinf(eps_clk):
-            logger.error("Hard fail: NaN or infinite residuals in gates", extra={
-                "extra_data": {
-                    "eps_H": eps_H,
-                    "eps_M": eps_M,
-                    "eps_proj": eps_proj,
-                    "eps_clk": eps_clk
-                }
-            })
-            return False, True, float('inf'), ["NaN/inf residuals"], {}
-
-        accepted = True
-        hard_fail = False
-        penalty = 0.0
-        reasons = []
-        margins = {}
-        corrections = {}
-
-        # Special handling for eps_H
-        eps_H_warn = 7.5e-5
-        eps_H_fail = 1e-4
-        if eps_H > eps_H_fail:
-            hard_fail = True
-            accepted = False
-            reasons.append(f"eps_H = {eps_H:.2e} > {eps_H_fail:.2e}")
-            margins['eps_H'] = eps_H_fail - eps_H
-        elif eps_H > eps_H_warn:
-            penalty += (eps_H - eps_H_warn) / eps_H_warn
-            reasons.append(f"Warn: eps_H = {eps_H:.2e} > {eps_H_warn:.2e}")
-            margins['eps_H'] = eps_H_warn - eps_H
-            corrections = {'reduce_dt': True, 'increase_kappa_budget': True, 'increase_projection_freq': True}
-
-        # Check other eps
-        for eps, name, soft, hard in [
-            (eps_M, 'eps_M', eps_M_soft_max, eps_M_hard_max),
-            (eps_proj, 'eps_proj', eps_proj_soft_max, eps_proj_hard_max),
-            (eps_clk, 'eps_clk', eps_clk_soft_max, eps_clk_hard_max)
-        ]:
-            if eps > hard:
-                hard_fail = True
-                accepted = False
-                reasons.append(f"{name} = {eps:.2e} > {hard:.2e}")
-                margins[name] = hard - eps
-            elif eps > soft:
-                penalty += (eps - soft) / soft
-                reasons.append(f"Soft: {name} = {eps:.2e} > {soft:.2e}")
-                margins[name] = soft - eps
-
-        # Spike norms
-        spike_norms = {
-            'alpha_spike': np.max(np.abs(np.gradient(self.fields.alpha))),
-            'K_spike': np.max(np.abs(np.gradient(self.fields.K_sym6)))
-        }
-        for field, spike in spike_norms.items():
-            if np.isnan(spike) or np.isinf(spike):
-                hard_fail = True
-                accepted = False
-                reasons.append(f"Hard: {field} NaN/inf")
-                margins[field] = float('-inf')
-            elif spike > spike_hard_max:
-                hard_fail = True
-                accepted = False
-                reasons.append(f"{field} spike = {spike:.2e} > {spike_hard_max:.2e}")
-                margins[field] = spike_hard_max - spike
-            elif spike > spike_soft_max:
-                penalty += (spike - spike_soft_max) / spike_soft_max
-                reasons.append(f"Soft: {field} spike = {spike:.2e} > {spike_soft_max:.2e}")
-                margins[field] = spike_soft_max - spike
-
-        return accepted, hard_fail, penalty, reasons, margins, corrections
+        """Check step gates. Return (accepted, hard_fail, penalty, reasons, margins, corrections)."""
+        return self.gatekeeper.check_gates_internal(rails_policy)
 
     def check_gates(self, rails_policy) -> Tuple[bool, str, Dict[str, Any]]:
         """
         Implement StepperContract.check_gates.
-
-        Classifies violation types: dt-dependent (e.g., CFL), state-dependent (e.g., constraints), sem.
+        Delegates to gatekeeper.
         """
-        accepted, hard_fail, penalty, reasons, margins = self.check_gates(rails_policy)
+        return self.gatekeeper.check_gates(rails_policy)
 
-        if hard_fail or not accepted:
-            # Classify violation type
-            violation_type = 'state'  # default
-            for reason in reasons:
-                if 'CFL' in reason or 'dt' in reason.lower() or 'timestep' in reason.lower():
-                    violation_type = 'dt'
-                    break
-                elif 'NaN' in reason or 'inf' in reason or 'sem' in reason.upper():
-                    violation_type = 'sem'
-                    break
-                # else state
-
-            details = {
-                'hard_fail': hard_fail,
-                'penalty': penalty,
-                'reasons': reasons,
-                'margins': margins
-            }
-            return False, violation_type, details
-        else:
-            return True, '', {}
-
-    def emit_ledger_eval_receipt(self, ledgers):
-        """Emit LEDGER_EVAL receipt after step completion."""
-        receipt = {
-            'run_id': 'gr_solver_run_001',
-            'step': self.current_step,
-            'event': 'LEDGER_EVAL',
-            't': self.current_t + self.current_dt,
-            'dt': self.current_dt,
-            'stage': None,
-            'grid': {
-                'Nx': self.fields.Nx,
-                'Ny': self.fields.Ny,
-                'Nz': self.fields.Nz,
-                'h': [self.fields.dx, self.fields.dy, self.fields.dz],
-                'domain': 'cartesian',
-                'periodic': False
-            },
-            'ledgers': ledgers,
-            'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }
-
-        # Hash and chain
-        receipt_str = json.dumps(receipt, sort_keys=True)
-        receipt_hash = hashlib.sha256(receipt_str.encode()).hexdigest()
-        receipt['receipt_hash'] = receipt_hash
-        receipt['prev_receipt_hash'] = self.prev_receipt_hash
-        self.prev_receipt_hash = receipt_hash
-
-        # Write receipt
-        with open(self.receipts_file, 'a') as f:
-            f.write(json.dumps(receipt) + '\n')
-
-    def emit_step_receipt(self, accepted, rejection_reason=None, stage_eps_H=None, corrections_applied=None):
-        """Emit STEP_ACCEPT or STEP_REJECT receipt."""
-        event = 'STEP_ACCEPT' if accepted else 'STEP_REJECT'
-
-        # Final ledgers
-        ledgers = {
-            'eps_H': float(self.constraints.eps_H),
-            'eps_M': float(self.constraints.eps_M),
-            'eps_proj': float(self.constraints.eps_proj),
-            'eps_clk': float(self.constraints.eps_clk) if self.constraints.eps_clk is not None else 0.0,
-            'eps_H_norm': float(self.constraints.eps_H_norm),
-            'eps_M_norm': float(self.constraints.eps_M_norm),
-            'eps_proj_norm': float(self.constraints.eps_proj_norm),
-            'spikes': {
-                'alpha_max_grad': float(np.max(np.abs(np.gradient(self.fields.alpha)))),
-                'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
-            }
-        }
-
-        accepted_gates, hard_fail_gates, penalty_gates, reasons, margins, _ = self.check_gates_internal()
-
-        receipt = {
-            'run_id': 'gr_solver_run_001',
-            'step': self.current_step,
-            'event': event,
-            't': self.current_t + self.current_dt if accepted else self.current_t,
-            'dt': self.current_dt,
-            'stage': None,
-            'grid': {
-                'Nx': self.fields.Nx,
-                'Ny': self.fields.Ny,
-                'Nz': self.fields.Nz,
-                'h': [self.fields.dx, self.fields.dy, self.fields.dz],
-                'domain': 'cartesian',
-                'periodic': False
-            },
-            'ledgers': ledgers,
-            'gates': {
-                'pass': accepted_gates,
-                'penalty': penalty_gates,
-                'reasons': reasons,
-                'margins': margins
-            },
-            'stage_eps_H': stage_eps_H or {},
-            'rejection_reason': rejection_reason,
-            'corrections_applied': corrections_applied or {},
-            'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }
-
-        # Hash and chain
-        receipt_str = json.dumps(receipt, sort_keys=True)
-        receipt_hash = hashlib.sha256(receipt_str.encode()).hexdigest()
-        receipt['receipt_hash'] = receipt_hash
-        receipt['prev_receipt_hash'] = self.prev_receipt_hash
-        self.prev_receipt_hash = receipt_hash
-
-        # Write receipt
-        with open(self.receipts_file, 'a') as f:
-            f.write(json.dumps(receipt) + '\n')
-
-    def step_ufe(self, dt, t=0.0):
+    def step_ufe(self, dt, t=0.0, rails_policy=None):
         """RK4 step for UFE."""
         with Timer("step_ufe") as timer:
             self.dt_applied = dt  # Set dt_applied as source of truth
@@ -624,11 +224,11 @@ class GRStepper(StepperContract):
             self.current_step = getattr(self, 'current_step', 0) + 1
 
             # Clock decision
-            clocks, dt_used = self.compute_clocks(dt)
+            clocks, dt_used = self.scheduler.compute_clocks(dt, self.lambda_val)
             if dt_used < dt:
                 logger.warning(f"Clock constraint reduced dt from {dt} to {dt_used}")
                 self.current_dt = dt_used
-            self.emit_clock_decision_receipt(clocks)
+            self.ledger.emit_clock_decision_receipt(self.current_step, self.current_t, self.current_dt, self.fields, clocks)
 
             # Log initial constraint residuals before stepping
             self.constraints.compute_hamiltonian()
@@ -681,25 +281,28 @@ class GRStepper(StepperContract):
             }
             self.loc_operator.set_authoritative_state(Psi_auth)
 
+
+
             # Stage 1
-            self.compute_rhs(t, slow_update)
+            self.check_tensor_layout_compliance()
+            self.rhs_computer.compute_rhs(t, slow_update)
             rhs_norms = {
-                'gamma': np.linalg.norm(self.rhs_gamma_sym6),
-                'K': np.linalg.norm(self.rhs_K_sym6),
-                'phi': np.linalg.norm(self.rhs_phi),
-                'gamma_tilde': np.linalg.norm(self.rhs_gamma_tilde_sym6),
-                'A': np.linalg.norm(self.rhs_A_sym6),
-                'Z': np.linalg.norm(self.rhs_Z),
-                'Z_i': np.linalg.norm(self.rhs_Z_i)
+                'gamma': np.linalg.norm(self.rhs_computer.rhs_gamma_sym6),
+                'K': np.linalg.norm(self.rhs_computer.rhs_K_sym6),
+                'phi': np.linalg.norm(self.rhs_computer.rhs_phi),
+                'gamma_tilde': np.linalg.norm(self.rhs_computer.rhs_gamma_tilde_sym6),
+                'A': np.linalg.norm(self.rhs_computer.rhs_A_sym6),
+                'Z': np.linalg.norm(self.rhs_computer.rhs_Z),
+                'Z_i': np.linalg.norm(self.rhs_computer.rhs_Z_i)
             }
-            self.emit_stage_rhs_receipt(1, t, rhs_norms)
-            k1_gamma = self.rhs_gamma_sym6.copy()
-            k1_K = self.rhs_K_sym6.copy()
-            k1_phi = self.rhs_phi.copy()
-            k1_gamma_tilde = self.rhs_gamma_tilde_sym6.copy()
-            k1_A = self.rhs_A_sym6.copy()
-            k1_Z = self.rhs_Z.copy()
-            k1_Z_i = self.rhs_Z_i.copy()
+            self.ledger.emit_stage_rhs_receipt(self.current_step, self.current_t, self.current_dt, 1, t, rhs_norms, self.fields, self.rhs_computer.compute_rhs)
+            k1_gamma = self.rhs_computer.rhs_gamma_sym6.copy()
+            k1_K = self.rhs_computer.rhs_K_sym6.copy()
+            k1_phi = self.rhs_computer.rhs_phi.copy()
+            k1_gamma_tilde = self.rhs_computer.rhs_gamma_tilde_sym6.copy()
+            k1_A = self.rhs_computer.rhs_A_sym6.copy()
+            k1_Z = self.rhs_computer.rhs_Z.copy()
+            k1_Z_i = self.rhs_computer.rhs_Z_i.copy()
 
             # Update eps_clk: Linf of Psi_used - Psi_auth after stage 1
             Psi_used_stage1 = {
@@ -739,24 +342,25 @@ class GRStepper(StepperContract):
             }
             stage_diff = self.constraints.compute_stage_difference_Linf(Psi_used_stage2, Psi_auth)
             self.constraints.eps_clk = max(self.constraints.eps_clk, stage_diff)
-            self.compute_rhs(t + dt/2, slow_update)
+            self.check_tensor_layout_compliance()
+            self.rhs_computer.compute_rhs(t + dt/2, slow_update)
             rhs_norms = {
-                'gamma': np.linalg.norm(self.rhs_gamma_sym6),
-                'K': np.linalg.norm(self.rhs_K_sym6),
-                'phi': np.linalg.norm(self.rhs_phi),
-                'gamma_tilde': np.linalg.norm(self.rhs_gamma_tilde_sym6),
-                'A': np.linalg.norm(self.rhs_A_sym6),
-                'Z': np.linalg.norm(self.rhs_Z),
-                'Z_i': np.linalg.norm(self.rhs_Z_i)
+                'gamma': np.linalg.norm(self.rhs_computer.rhs_gamma_sym6),
+                'K': np.linalg.norm(self.rhs_computer.rhs_K_sym6),
+                'phi': np.linalg.norm(self.rhs_computer.rhs_phi),
+                'gamma_tilde': np.linalg.norm(self.rhs_computer.rhs_gamma_tilde_sym6),
+                'A': np.linalg.norm(self.rhs_computer.rhs_A_sym6),
+                'Z': np.linalg.norm(self.rhs_computer.rhs_Z),
+                'Z_i': np.linalg.norm(self.rhs_computer.rhs_Z_i)
             }
-            self.emit_stage_rhs_receipt(2, t + dt/2, rhs_norms)
-            k2_gamma = self.rhs_gamma_sym6.copy()
-            k2_K = self.rhs_K_sym6.copy()
-            k2_phi = self.rhs_phi.copy()
-            k2_gamma_tilde = self.rhs_gamma_tilde_sym6.copy()
-            k2_A = self.rhs_A_sym6.copy()
-            k2_Z = self.rhs_Z.copy()
-            k2_Z_i = self.rhs_Z_i.copy()
+            self.ledger.emit_stage_rhs_receipt(self.current_step, self.current_t, self.current_dt, 2, t + dt/2, rhs_norms, self.fields, self.rhs_computer.compute_rhs)
+            k2_gamma = self.rhs_computer.rhs_gamma_sym6.copy()
+            k2_K = self.rhs_computer.rhs_K_sym6.copy()
+            k2_phi = self.rhs_computer.rhs_phi.copy()
+            k2_gamma_tilde = self.rhs_computer.rhs_gamma_tilde_sym6.copy()
+            k2_A = self.rhs_computer.rhs_A_sym6.copy()
+            k2_Z = self.rhs_computer.rhs_Z.copy()
+            k2_Z_i = self.rhs_computer.rhs_Z_i.copy()
 
             # Stage 3: u + dt/2 * k2
             self.fields.gamma_sym6 = u0_gamma + (dt/2) * k2_gamma
@@ -782,24 +386,25 @@ class GRStepper(StepperContract):
             }
             stage_diff = self.constraints.compute_stage_difference_Linf(Psi_used_stage3, Psi_auth)
             self.constraints.eps_clk = max(self.constraints.eps_clk, stage_diff)
-            self.compute_rhs(t + dt/2, slow_update)
+            self.check_tensor_layout_compliance()
+            self.rhs_computer.compute_rhs(t + dt/2, slow_update)
             rhs_norms = {
-                'gamma': np.linalg.norm(self.rhs_gamma_sym6),
-                'K': np.linalg.norm(self.rhs_K_sym6),
-                'phi': np.linalg.norm(self.rhs_phi),
-                'gamma_tilde': np.linalg.norm(self.rhs_gamma_tilde_sym6),
-                'A': np.linalg.norm(self.rhs_A_sym6),
-                'Z': np.linalg.norm(self.rhs_Z),
-                'Z_i': np.linalg.norm(self.rhs_Z_i)
+                'gamma': np.linalg.norm(self.rhs_computer.rhs_gamma_sym6),
+                'K': np.linalg.norm(self.rhs_computer.rhs_K_sym6),
+                'phi': np.linalg.norm(self.rhs_computer.rhs_phi),
+                'gamma_tilde': np.linalg.norm(self.rhs_computer.rhs_gamma_tilde_sym6),
+                'A': np.linalg.norm(self.rhs_computer.rhs_A_sym6),
+                'Z': np.linalg.norm(self.rhs_computer.rhs_Z),
+                'Z_i': np.linalg.norm(self.rhs_computer.rhs_Z_i)
             }
-            self.emit_stage_rhs_receipt(3, t + dt/2, rhs_norms)
-            k3_gamma = self.rhs_gamma_sym6.copy()
-            k3_K = self.rhs_K_sym6.copy()
-            k3_phi = self.rhs_phi.copy()
-            k3_gamma_tilde = self.rhs_gamma_tilde_sym6.copy()
-            k3_A = self.rhs_A_sym6.copy()
-            k3_Z = self.rhs_Z.copy()
-            k3_Z_i = self.rhs_Z_i.copy()
+            self.ledger.emit_stage_rhs_receipt(self.current_step, self.current_t, self.current_dt, 3, t + dt/2, rhs_norms, self.fields, self.rhs_computer.compute_rhs)
+            k3_gamma = self.rhs_computer.rhs_gamma_sym6.copy()
+            k3_K = self.rhs_computer.rhs_K_sym6.copy()
+            k3_phi = self.rhs_computer.rhs_phi.copy()
+            k3_gamma_tilde = self.rhs_computer.rhs_gamma_tilde_sym6.copy()
+            k3_A = self.rhs_computer.rhs_A_sym6.copy()
+            k3_Z = self.rhs_computer.rhs_Z.copy()
+            k3_Z_i = self.rhs_computer.rhs_Z_i.copy()
 
             # Stage 4: u + dt * k3
             self.fields.gamma_sym6 = u0_gamma + dt * k3_gamma
@@ -825,28 +430,85 @@ class GRStepper(StepperContract):
             }
             stage_diff = self.constraints.compute_stage_difference_Linf(Psi_used_stage4, Psi_auth)
             self.constraints.eps_clk = max(self.constraints.eps_clk, stage_diff)
-            self.compute_rhs(t + dt, slow_update)
+            self.check_tensor_layout_compliance()
+            self.rhs_computer.compute_rhs(t + dt, slow_update)
             rhs_norms = {
-                'gamma': np.linalg.norm(self.rhs_gamma_sym6),
-                'K': np.linalg.norm(self.rhs_K_sym6),
-                'phi': np.linalg.norm(self.rhs_phi),
-                'gamma_tilde': np.linalg.norm(self.rhs_gamma_tilde_sym6),
-                'A': np.linalg.norm(self.rhs_A_sym6),
-                'Z': np.linalg.norm(self.rhs_Z),
-                'Z_i': np.linalg.norm(self.rhs_Z_i)
+                'gamma': np.linalg.norm(self.rhs_computer.rhs_gamma_sym6),
+                'K': np.linalg.norm(self.rhs_computer.rhs_K_sym6),
+                'phi': np.linalg.norm(self.rhs_computer.rhs_phi),
+                'gamma_tilde': np.linalg.norm(self.rhs_computer.rhs_gamma_tilde_sym6),
+                'A': np.linalg.norm(self.rhs_computer.rhs_A_sym6),
+                'Z': np.linalg.norm(self.rhs_computer.rhs_Z),
+                'Z_i': np.linalg.norm(self.rhs_computer.rhs_Z_i)
             }
-            self.emit_stage_rhs_receipt(4, t + dt, rhs_norms)
-            k4_gamma = self.rhs_gamma_sym6.copy()
-            k4_K = self.rhs_K_sym6.copy()
-            k4_phi = self.rhs_phi.copy()
-            k4_gamma_tilde = self.rhs_gamma_tilde_sym6.copy()
-            k4_A = self.rhs_A_sym6.copy()
-            k4_Z = self.rhs_Z.copy()
-            k4_Z_i = self.rhs_Z_i.copy()
+            self.ledger.emit_stage_rhs_receipt(self.current_step, self.current_t, self.current_dt, 4, t + dt, rhs_norms, self.fields, self.rhs_computer.compute_rhs)
+            k4_gamma = self.rhs_computer.rhs_gamma_sym6.copy()
+            k4_K = self.rhs_computer.rhs_K_sym6.copy()
+            k4_phi = self.rhs_computer.rhs_phi.copy()
+            k4_gamma_tilde = self.rhs_computer.rhs_gamma_tilde_sym6.copy()
+            k4_A = self.rhs_computer.rhs_A_sym6.copy()
+            k4_Z = self.rhs_computer.rhs_Z.copy()
+            k4_Z_i = self.rhs_computer.rhs_Z_i.copy()
 
-            # Final update
-            self.fields.gamma_sym6 = u0_gamma + (dt/6) * (k1_gamma + 2*k2_gamma + 2*k3_gamma + k4_gamma)
-            self.fields.K_sym6 = u0_K + (dt/6) * (k1_K + 2*k2_K + 2*k3_K + k4_K)
+            # Compute combined RHS for fused kernel (gamma, K, alpha, beta evolution)
+            # Using RK4 coefficients: (k1 + 2*k2 + 2*k3 + k4) / 6
+            rhs_gamma_combined = (k1_gamma + 2*k2_gamma + 2*k3_gamma + k4_gamma) / 6.0
+            rhs_K_combined = (k1_K + 2*k2_K + 2*k3_K + k4_K) / 6.0
+            
+            # Gauge fields (alpha, beta) are evolved AFTER physics, so RHS is zero for now
+            # The gauge.evolve_* methods modify alpha and beta in place
+            rhs_alpha_combined = np.zeros_like(self.fields.alpha)
+            rhs_beta_combined = np.zeros_like(self.fields.beta)
+            
+            # Pre-update invariants check
+            pre_violations = self._check_invariants_pre()
+            if pre_violations:
+                logger.error("Pre-update invariants violated", extra={"extra_data": {"violations": pre_violations}})
+                # Continue anyway - let the step fail naturally if needed
+            
+            # Final update using fused evolution kernel
+            norm_dgamma, norm_dK = fused_evolution_kernel(
+                self.fields.gamma_sym6,
+                self.fields.K_sym6,
+                self.fields.alpha,
+                self.fields.beta,
+                rhs_gamma_combined,
+                rhs_K_combined,
+                rhs_alpha_combined,
+                rhs_beta_combined,
+                self.current_dt,
+                self._fused_gamma,  # Use pre-allocated buffer
+                self._fused_K,      # Use pre-allocated buffer
+                self._fused_alpha,  # Use pre-allocated buffer
+                self._fused_beta    # Use pre-allocated buffer
+            )
+            
+            # Copy results back to fields (in-place modification)
+            self.fields.gamma_sym6[...] = self._fused_gamma[...]
+            self.fields.K_sym6[...] = self._fused_K[...]
+            self.fields.alpha[...] = self._fused_alpha[...]
+            self.fields.beta[...] = self._fused_beta[...]
+            
+            # Post-update invariants check
+            post_violations = self._check_invariants_post(norm_dgamma, norm_dK)
+            if post_violations:
+                logger.error("Post-update invariants violated", extra={
+                    "extra_data": {
+                        "violations": post_violations,
+                        "norm_dgamma": norm_dgamma,
+                        "norm_dK": norm_dK
+                    }
+                })
+            
+            # Log update norms
+            logger.debug("Fused evolution completed", extra={
+                "extra_data": {
+                    "norm_dgamma": norm_dgamma,
+                    "norm_dK": norm_dK
+                }
+            })
+            
+            # Continue with slow fields using separate update (non-fused for now)
             self.fields.phi = u0_phi + (dt/6) * (k1_phi + 2*k2_phi + 2*k3_phi + k4_phi)
             self.fields.gamma_tilde_sym6 = u0_gamma_tilde + (dt/6) * (k1_gamma_tilde + 2*k2_gamma_tilde + 2*k3_gamma_tilde + k4_gamma_tilde)
             self.fields.A_sym6 = u0_A + (dt/6) * (k1_A + 2*k2_A + 2*k3_A + k4_A)
@@ -858,23 +520,38 @@ class GRStepper(StepperContract):
             self.geometry.compute_ricci()
             self.geometry.compute_scalar_curvature()
 
-            # Apply constraint damping (projection effects)
-            self.apply_damping()
+            # Compute eps_H after physics update (RK)
             self.constraints.compute_residuals()
             stage_eps_H['eps_H_post_phys'] = float(self.constraints.eps_H)
-            stage_eps_H['eps_H_post_cons'] = float(self.constraints.eps_H)
-            # Evolve gauge
+
+            # Evolve gauge after physics (using t_n+1 values)
             self.gauge.evolve_lapse(dt)
             self.gauge.evolve_shift(dt)
-            # Recompute geometry and constraints after gauge evolution
+            # Recompute geometry after gauge evolution
             self.geometry.compute_christoffels()
             self.geometry.compute_ricci()
             self.geometry.compute_scalar_curvature()
-            self.constraints.compute_hamiltonian()
-            self.constraints.compute_momentum()
             self.constraints.compute_residuals()
             stage_eps_H['eps_H_post_gauge'] = float(self.constraints.eps_H)
+
+            # Apply constraint damping (projection effects)
+            self.apply_damping()
+            # Re-enforce algebraic constraints after filter
+            self.geometry.enforce_det_gamma_tilde()
+            self.geometry.enforce_traceless_A()
+            # Recompute derived geometry after constraint enforcement
+            self.geometry.compute_christoffels()
+            self.geometry.compute_ricci()
+            self.geometry.compute_scalar_curvature()
+            self.constraints.compute_residuals()
+            stage_eps_H['eps_H_post_cons'] = float(self.constraints.eps_H)
             stage_eps_H['eps_H_post_filter'] = float(self.constraints.eps_H)
+
+            # Compute stage jumps Delta_epsilon_H
+            stage_eps_H['Delta_eps_H_phys'] = stage_eps_H['eps_H_post_phys'] - stage_eps_H['eps_H_pre']
+            stage_eps_H['Delta_eps_H_gauge'] = stage_eps_H['eps_H_post_gauge'] - stage_eps_H['eps_H_pre']
+            stage_eps_H['Delta_eps_H_cons'] = stage_eps_H['eps_H_post_cons'] - stage_eps_H['eps_H_pre']
+            stage_eps_H['Delta_eps_H_filter'] = stage_eps_H['eps_H_post_filter'] - stage_eps_H['eps_H_pre']
 
             # Emit LEDGER_EVAL receipt
             final_ledgers = {
@@ -890,16 +567,32 @@ class GRStepper(StepperContract):
                     'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
                 }
             }
-            self.emit_ledger_eval_receipt(final_ledgers)
+            self.ledger.emit_ledger_eval_receipt(self.current_step, self.current_t + self.current_dt, self.current_dt, self.fields, final_ledgers)
 
             # Check gates
-            accepted_gates, hard_fail_gates, penalty_gates, reasons, margins, corrections = self.check_gates_internal()
+            accepted_gates, hard_fail_gates, penalty_gates, reasons, margins, corrections = self.check_gates_internal(rails_policy)
             if corrections:
                 self.apply_corrections(corrections)
 
             accepted = accepted_gates
             hard_fail = hard_fail_gates
             penalty = penalty_gates
+
+            # Prepare final ledgers for step receipt
+            ledgers_for_receipt = {
+                'eps_H': float(self.constraints.eps_H),
+                'eps_M': float(self.constraints.eps_M),
+                'eps_proj': float(self.constraints.eps_proj),
+                'eps_clk': float(self.constraints.eps_clk) if self.constraints.eps_clk is not None else 0.0,
+                'eps_H_norm': float(self.constraints.eps_H_norm),
+                'eps_M_norm': float(self.constraints.eps_M_norm),
+                'eps_proj_norm': float(self.constraints.eps_proj_norm),
+                'spikes': {
+                    'alpha_max_grad': float(np.max(np.abs(np.gradient(self.fields.alpha)))),
+                    'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
+                }
+            }
+            gates_for_receipt = {'pass': accepted_gates, 'penalty': penalty_gates, 'reasons': reasons, 'margins': margins}
 
             if not hard_fail:
                 # Log soft violations
@@ -911,8 +604,6 @@ class GRStepper(StepperContract):
                         }
                     })
                 # Accept step
-                # Increment step count for multi-rate
-                self.step_count += 1
                 logger.debug("UFE step accepted", extra={
                     "extra_data": {
                         "execution_time_ms": timer.elapsed_ms(),
@@ -925,7 +616,8 @@ class GRStepper(StepperContract):
                         }
                     }
                 })
-                self.emit_step_receipt(accepted=True, stage_eps_H=stage_eps_H, corrections_applied=corrections)
+                # Original step receipt for step_ufe
+                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields, accepted=True, ledgers=ledgers_for_receipt, gates=gates_for_receipt, stage_eps_H=stage_eps_H, corrections_applied=corrections)
                 # Increment step count for multi-rate
                 self.step_count += 1
                 return True, None, self.current_dt, None, stage_eps_H  # accepted, state unchanged, dt_used, no reason, stage_eps_H
@@ -944,10 +636,11 @@ class GRStepper(StepperContract):
                 self.geometry.compute_scalar_curvature()
 
                 rejection_reason = f"Gates failed: {', '.join(reasons)}"
-                self.emit_step_receipt(accepted=False, rejection_reason=rejection_reason, stage_eps_H=stage_eps_H, corrections_applied=corrections)
+                # Original step receipt for step_ufe
+                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields, accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt, rejection_reason=rejection_reason, stage_eps_H=stage_eps_H, corrections_applied=corrections)
 
                 # Suggest smaller dt for retry
-                dt_new = max(self.current_dt / 2.0, 1e-10)
+                dt_new = max(self.current_dt / 2.0, 1e-8)
 
                 logger.warning("UFE step rejected - rolling back", extra={
                     "extra_data": {
@@ -975,379 +668,60 @@ class GRStepper(StepperContract):
         for attempt in range(self.max_attempts):
             # step_ufe performs one attempt
             # It handles: clock decision, RHS, update, gauge (at end), gates, receipts
-            success, _, dt_new, reason, _ = self.step_ufe(dt, t_n)
+            success, _, dt_new, reason, stage_eps_H = self.step_ufe(dt, t_n, rails_policy) # Added stage_eps_H to unpack
+
+            # Prepare final ledgers for step receipt (copied from step_ufe for consistency)
+            ledgers_for_receipt = {
+                'eps_H': float(self.constraints.eps_H),
+                'eps_M': float(self.constraints.eps_M),
+                'eps_proj': float(self.constraints.eps_proj),
+                'eps_clk': float(self.constraints.eps_clk) if self.constraints.eps_clk is not None else 0.0,
+                'eps_H_norm': float(self.constraints.eps_H_norm),
+                'eps_M_norm': float(self.constraints.eps_M_norm),
+                'eps_proj_norm': float(self.constraints.eps_proj_norm),
+                'spikes': {
+                    'alpha_max_grad': float(np.max(np.abs(np.gradient(self.fields.alpha)))),
+                    'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
+                }
+            }
+            accepted_gates, hard_fail_gates, penalty_gates, reasons_gates, margins_gates, corrections_gates = self.check_gates_internal(rails_policy)
+            gates_for_receipt = {'pass': accepted_gates, 'penalty': penalty_gates, 'reasons': reasons_gates, 'margins': margins_gates}
+
 
             if success:
+                self.ledger.emit_step_receipt(self.current_step, t_n + dt, dt, self.fields, accepted=True, ledgers=ledgers_for_receipt, gates=gates_for_receipt, stage_eps_H=stage_eps_H, corrections_applied=corrections_gates)
                 return True, None, dt, None
             else:
+                self.ledger.emit_step_receipt(self.current_step, t_n + dt, dt, self.fields, accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt, rejection_reason=reason, stage_eps_H=stage_eps_H, corrections_applied=corrections_gates)
                 # Retry with new dt suggested by step_ufe
                 dt = dt_new
                 rejection_reason = reason
 
         return False, None, dt, rejection_reason
 
-    def attempt_receipt(self, X_n, t_n, dt_attempted, attempt_number):
-        """Emit attempt receipt for every attempt."""
-        # Log residuals and dt
-        eps_H = float(self.constraints.eps_H)
-        eps_M = float(self.constraints.eps_M)
-        logger.info("Attempt receipt", extra={
-            "extra_data": {
-                "attempt_number": attempt_number,
-                "t_n": t_n,
-                "dt_attempted": dt_attempted,
-                "eps_H": eps_H,
-                "eps_M": eps_M
-            }
-        })
-        # Does not advance τ
+    def attempt_receipt(self, X_n, t_n, dt_candidate, rails_policy, phaseloom_caps) -> Tuple[bool, Any, float, Any]:
+        """
+        Attempt a step and return success status, new state (if successful), new dt (if rejected), and rejection reason.
+        This method will call the 'step' method internally.
+        """
+        success, X_np1, dt_new, rejection_reason = self.step(X_n, t_n, dt_candidate, rails_policy, phaseloom_caps)
+        return success, X_np1, dt_new, rejection_reason
 
-    def step_receipt(self, X_next, t_next, dt_used):
-        """Emit step receipt only on acceptance."""
-        # Advance audit time τ
-        if self.temporal_system:
-            self.temporal_system.audit_time()
-        logger.info("Step receipt: accepted", extra={
-            "extra_data": {
-                "t_next": t_next,
-                "dt_used": dt_used,
-                "tau": self.temporal_system.tau if self.temporal_system else None
-            }
-        })
+    def step_receipt(self, current_step: int, t_end: float, dt: float, current_state: Any, accepted: bool, ledgers: dict, gates: dict, rejection_reason: str = None, stage_eps_H: dict = None, corrections_applied: dict = None):
+        """
+        Emit a step receipt using the internal ledger.
+        This method proxies to self.ledger.emit_step_receipt.
+        """
+        self.ledger.emit_step_receipt(current_step, t_end, dt, current_state, accepted, ledgers, gates, rejection_reason, stage_eps_H, corrections_applied)
 
-    def compute_rhs(self, t=0.0, slow_update=True):
-        """Compute full ADM RHS B with spatial derivatives."""
-        rhs_timer = Timer("compute_rhs")
-        with rhs_timer:
-            # Check tensor layout compliance before RHS computation
-            self.check_tensor_layout_compliance()
-
-            if self.rhs_func:
-                # Use Hadamard VM via rhs_func
-                fields_dict = {
-                    'gamma_sym6': self.fields.gamma_sym6,
-                    'K_sym6': self.fields.K_sym6,
-                    'alpha': self.fields.alpha,
-                    'beta': self.fields.beta,
-                    'phi': self.fields.phi,
-                    'gamma_tilde_sym6': self.fields.gamma_tilde_sym6,
-                    'A_sym6': self.fields.A_sym6,
-                    'Gamma_tilde': self.fields.Gamma_tilde,
-                    'Z': self.fields.Z,
-                    'Z_i': self.fields.Z_i,
-                    'dx': self.fields.dx, 'dy': self.fields.dy, 'dz': self.fields.dz
-                }
-                rhs_result = self.rhs_func(fields_dict, lambda_val=self.lambda_val, sources_enabled=self.sources_func is not None)
-                # Map to self.rhs_*
-                self.rhs_gamma_sym6[:] = rhs_result['rhs_gamma_sym6']
-                self.rhs_K_sym6[:] = rhs_result['rhs_K_sym6']
-                self.rhs_phi[:] = rhs_result['rhs_phi']
-                self.rhs_gamma_tilde_sym6[:] = rhs_result['rhs_gamma_tilde_sym6']
-                self.rhs_A_sym6[:] = rhs_result['rhs_A_sym6']
-                self.rhs_Gamma_tilde[:] = rhs_result['rhs_Gamma_tilde']
-                self.rhs_Z[:] = rhs_result['rhs_Z']
-                self.rhs_Z_i[:] = rhs_result['rhs_Z_i']
-                return
-
-        if self.aeonic_mode:
-            rhs_gamma_sym6 = self.rhs_gamma_sym6
-            rhs_K_sym6 = self.rhs_K_sym6
-            rhs_phi = self.rhs_phi
-            rhs_gamma_tilde_sym6 = self.rhs_gamma_tilde_sym6
-            rhs_A_sym6 = self.rhs_A_sym6
-            rhs_Gamma_tilde = self.rhs_Gamma_tilde
-            rhs_Z = self.rhs_Z
-            rhs_Z_i = self.rhs_Z_i
-            S_gamma_tilde_sym6 = self.S_gamma_tilde_sym6
-            S_A_sym6 = self.S_A_sym6
-            S_phi = self.S_phi
-            S_Gamma_tilde = self.S_Gamma_tilde
-            S_Z = self.S_Z
-            S_Z_i = self.S_Z_i
-            gamma_inv_scratch = self.gamma_inv_scratch
-            K_trace_scratch = self.K_trace_scratch
-            alpha_expanded_scratch = self.alpha_expanded_scratch
-            alpha_expanded_33_scratch = self.alpha_expanded_33_scratch
-            lie_gamma_scratch = self.lie_gamma_scratch
-            DD_alpha_scratch = self.DD_alpha_scratch
-            DD_alpha_sym6_scratch = self.DD_alpha_sym6_scratch
-            ricci_sym6_scratch = self.ricci_sym6_scratch
-            K_full_scratch = self.K_full_scratch
-            gamma_inv_full_scratch = self.gamma_inv_full_scratch
-            K_contracted_full_scratch = self.K_contracted_full_scratch
-            K_contracted_sym6_scratch = self.K_contracted_sym6_scratch
-            lie_K_scratch = self.lie_K_scratch
-            lie_gamma_tilde_scratch = self.lie_gamma_tilde_scratch
-            psi_minus4_scratch = self.psi_minus4_scratch
-            psi_minus4_expanded_scratch = self.psi_minus4_expanded_scratch
-            ricci_tf_sym6_scratch = self.ricci_tf_sym6_scratch
-            rhs_A_temp_scratch = self.rhs_A_temp_scratch
-            lie_A_scratch = self.lie_A_scratch
-        else:
-            rhs_gamma_sym6 = np.zeros_like(self.fields.gamma_sym6)
-            rhs_K_sym6 = np.zeros_like(self.fields.K_sym6)
-            rhs_phi = np.zeros_like(self.fields.phi)
-            rhs_gamma_tilde_sym6 = np.zeros_like(self.fields.gamma_tilde_sym6)
-            rhs_A_sym6 = np.zeros_like(self.fields.A_sym6)
-            rhs_Gamma_tilde = np.zeros_like(self.fields.Gamma_tilde)
-            rhs_Z = np.zeros_like(self.fields.Z)
-            rhs_Z_i = np.zeros_like(self.fields.Z_i)
-            S_gamma_tilde_sym6 = np.zeros_like(self.fields.gamma_tilde_sym6)
-            S_A_sym6 = np.zeros_like(self.fields.A_sym6)
-            S_phi = np.zeros_like(self.fields.phi)
-            S_Gamma_tilde = np.zeros_like(self.fields.Gamma_tilde)
-            S_Z = np.zeros_like(self.fields.Z)
-            S_Z_i = np.zeros_like(self.fields.Z_i)
-            gamma_inv_scratch = np.zeros_like(self.fields.gamma_sym6)
-            K_trace_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz))
-            alpha_expanded_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 6))
-            alpha_expanded_33_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            lie_gamma_scratch = np.zeros_like(self.fields.gamma_sym6)
-            DD_alpha_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            DD_alpha_sym6_scratch = np.zeros_like(self.fields.gamma_sym6)
-            ricci_sym6_scratch = np.zeros_like(self.fields.gamma_sym6)
-            K_full_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            gamma_inv_full_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            K_contracted_full_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-            K_contracted_sym6_scratch = np.zeros_like(self.fields.gamma_sym6)
-            lie_K_scratch = np.zeros_like(self.fields.gamma_sym6)
-            lie_gamma_tilde_scratch = np.zeros_like(self.fields.gamma_sym6)
-            psi_minus4_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz))
-            psi_minus4_expanded_scratch = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 6))
-            ricci_tf_sym6_scratch = np.zeros_like(self.fields.gamma_sym6)
-            rhs_A_temp_scratch = np.zeros_like(self.fields.gamma_sym6)
-            lie_A_scratch = np.zeros_like(self.fields.gamma_sym6)
-
-        # Set sources if func provided
-        if self.sources_func is not None:
-            sources = self.sources_func(t)
-            S_gamma_tilde_sym6[:] = sources['S_gamma_tilde_sym6']
-            S_A_sym6[:] = sources['S_A_sym6']
-            S_phi[:] = sources['S_phi']
-            S_Gamma_tilde[:] = sources['S_Gamma_tilde']
-            S_Z[:] = sources['S_Z']
-            S_Z_i[:] = sources['S_Z_i']
-
-        # Ensure geometry is computed
-        if not hasattr(self.geometry, 'ricci') or self.geometry.ricci is None:
-            self.geometry.compute_ricci()
-
-        # Compute K = gamma^{ij} K_ij
-        gamma_inv_scratch[:] = inv_sym6(self.fields.gamma_sym6)
-        K_trace_scratch[:] = trace_sym6(self.fields.K_sym6, gamma_inv_scratch)
-
-        alpha_expanded_scratch[:] = self.fields.alpha[..., np.newaxis]  # (Nx,Ny,Nz,1) -> (Nx,Ny,Nz,6)
-        alpha_expanded_33_scratch[:] = self.fields.alpha[..., np.newaxis, np.newaxis]  # (Nx,Ny,Nz,1,1) -> (Nx,Ny,Nz,3,3)
-
-        # ADM ∂t gamma_ij = -2 α K_ij + L_β γ_ij
-        lie_gamma_scratch[:] = self.geometry.lie_derivative_gamma(self.fields.gamma_sym6, self.fields.beta)
-        rhs_gamma_sym6[:] = -2.0 * alpha_expanded_scratch * self.fields.K_sym6 + lie_gamma_scratch
-
-        # ADM ∂t K_ij = -D_i D_j α + α R_ij - 2 α K_ik γ^{kl} K_lj + α K K_ij + L_β K_ij
-        # D_i D_j α
-        DD_alpha_scratch[:] = self.geometry.second_covariant_derivative_scalar(self.fields.alpha)
-        DD_alpha_sym6_scratch[:] = mat33_to_sym6(DD_alpha_scratch)
-
-        # R_ij in sym6 form
-        ricci_sym6_scratch[:] = mat33_to_sym6(self.geometry.ricci)
-
-        # K_ik γ^{kl} K_lj = (K γ^{-1} K)_ij
-        K_full_scratch[:] = sym6_to_mat33(self.fields.K_sym6)
-        gamma_inv_full_scratch[:] = sym6_to_mat33(gamma_inv_scratch)
-
-        # K^{kl} = γ^{ki} γ^{lj} K_ij, but for contraction K_ik γ^{kl} K_lj
-        K_contracted_full_scratch[:] = np.einsum('...ij,...jk,...kl->...il', K_full_scratch, gamma_inv_full_scratch, K_full_scratch)
-
-        K_contracted_sym6_scratch[:] = mat33_to_sym6(K_contracted_full_scratch)
-
-        lie_K_scratch[:] = self.geometry.lie_derivative_K(self.fields.K_sym6, self.fields.beta)
-
-        # Lambda term: + 2 \alpha \Lambda \gamma_{ij}
-        lambda_term = 2.0 * alpha_expanded_scratch * self.fields.Lambda * self.fields.gamma_sym6
-
-        rhs_K_sym6[:] = (-DD_alpha_sym6_scratch +
-                              alpha_expanded_scratch * ricci_sym6_scratch +
-                              -2.0 * alpha_expanded_scratch * K_contracted_sym6_scratch +
-                              alpha_expanded_scratch * K_trace_scratch[..., np.newaxis] * self.fields.K_sym6 +
-                              lambda_term +
-                              lie_K_scratch)
-
-        # BSSN ∂_0 φ = - (α/6) K + (1/6) ∂_k β^k
-        # ∂_t φ = ∂_0 φ + β^k ∂_k φ
-        if slow_update:
-            div_beta = np.gradient(self.fields.beta[..., 0], self.fields.dx, axis=0) + \
-                       np.gradient(self.fields.beta[..., 1], self.fields.dy, axis=1) + \
-                       np.gradient(self.fields.beta[..., 2], self.fields.dz, axis=2)
-            rhs_phi[:] = - (self.fields.alpha / 6.0) * K_trace_scratch + (1.0 / 6.0) * div_beta
-            # Add advection term β^k ∂_k φ
-            grad_phi = np.array([np.gradient(self.fields.phi, self.fields.dx, axis=0),
-                                 np.gradient(self.fields.phi, self.fields.dy, axis=1),
-                                 np.gradient(self.fields.phi, self.fields.dz, axis=2)])
-            advection_phi = np.sum(self.fields.beta * grad_phi.transpose(1,2,3,0), axis=-1)
-            rhs_phi[:] += advection_phi
-            rhs_phi += S_phi
-        else:
-            rhs_phi[:] = 0.0
-
-        # Full BSSN Gamma_tilde evolution: ∂_t \tilde Γ^i = A + B + C + D
-
-
-        rhs_Gamma_tilde = _compute_gamma_tilde_rhs_jit(self.fields.Nx, self.fields.Ny, self.fields.Nz,
-                                                        self.fields.alpha, self.fields.beta, self.fields.phi,
-                                                        self.fields.Gamma_tilde, self.fields.A_sym6,
-                                                        self.fields.gamma_tilde_sym6, self.fields.dx, self.fields.dy, self.fields.dz,
-                                                        K_trace_scratch)
-
-        # BSSN ∂t γ̃_ij = -2 α A_ij + L_β γ̃_ij
-        lie_gamma_tilde_scratch[:] = self.geometry.lie_derivative_gamma(self.fields.gamma_tilde_sym6, self.fields.beta)
-        rhs_gamma_tilde_sym6[:] = -2.0 * alpha_expanded_scratch * self.fields.A_sym6 + lie_gamma_tilde_scratch
-
-        # BSSN ∂_0 A_ij = e^{-4φ} [-D_i D_j α + α R_ij]^TF + α (K A_ij - 2 A_il A^l_j) + 2 A_k(i ∂_j) β^k - (2/3) A_ij ∂_k β^k
-        # Simplified version, ignoring matter for now
-        psi_minus4_scratch[:] = np.exp(-4 * self.fields.phi)
-        psi_minus4_expanded_scratch[:] = psi_minus4_scratch[..., np.newaxis]
-        ricci_tf_sym6_scratch[:] = ricci_sym6_scratch - (1/3) * self.fields.gamma_sym6 * (self.geometry.R[..., np.newaxis] if hasattr(self.geometry, 'R') else 0)  # Approximate
-
-        rhs_A_temp_scratch[:] = psi_minus4_expanded_scratch * alpha_expanded_scratch * ricci_tf_sym6_scratch + alpha_expanded_scratch * K_trace_scratch[..., np.newaxis] * self.fields.A_sym6
-
-        # Add shift terms for A_ij
-        # A_full = sym6_to_mat33(self.fields.A_sym6)
-        # shift_term_A = np.zeros((self.fields.Nx, self.fields.Ny, self.fields.Nz, 3, 3))
-        # for i in range(3):
-        #     for j in range(3):
-        #         for k in range(3):
-        #             shift_term_A[..., i, j] += A_full[..., k, i] * grad_beta[..., k, j] + A_full[..., k, j] * grad_beta[..., k, i]
-        # gauge_term_A = - (2/3.0) * A_full * div_beta[..., np.newaxis, np.newaxis]
-        # rhs_A_temp_scratch += mat33_to_sym6(shift_term_A + gauge_term_A)
-
-        lie_A_scratch[:] = self.geometry.lie_derivative_K(self.fields.A_sym6, self.fields.beta)
-        rhs_A_sym6[:] = rhs_A_temp_scratch + lie_A_scratch
-
-        # RHS for constraint damping
-        # For Z: ∂t Z = - kappa alpha H
-        if slow_update:
-            self.constraints.compute_hamiltonian()
-            kappa = 1.0
-            rhs_Z[:] = -kappa * self.fields.alpha * self.constraints.H
-            # For Z_i: ∂t Z_i = - kappa alpha M_i
-            self.constraints.compute_momentum()
-            rhs_Z_i[:] = -kappa * self.fields.alpha[:, :, :, np.newaxis] * self.constraints.M
-            rhs_Z += S_Z
-            rhs_Z_i += S_Z_i
-        else:
-            rhs_Z[:] = 0.0
-            rhs_Z_i[:] = 0.0
-
-        # Add sources
-        rhs_gamma_tilde_sym6 += S_gamma_tilde_sym6
-        rhs_A_sym6 += S_A_sym6
-        rhs_Gamma_tilde += S_Gamma_tilde
-
-        # Add LoC augmentation
-        if self.lambda_val > 0:
-            K_LoC_scaled = self.loc_operator.get_K_LoC_for_rhs()
-            rhs_gamma_sym6 += K_LoC_scaled['gamma_sym6']
-            rhs_K_sym6 += K_LoC_scaled['K_sym6']
-            rhs_gamma_tilde_sym6 += K_LoC_scaled['gamma_tilde_sym6']
-            rhs_A_sym6 += K_LoC_scaled['A_sym6']
-            rhs_Gamma_tilde += K_LoC_scaled['Gamma_tilde']
-            if slow_update:
-                rhs_phi += K_LoC_scaled['phi']
-                rhs_Z += K_LoC_scaled['Z']
-                rhs_Z_i += K_LoC_scaled['Z_i']
-
-        logger.info("compute_rhs timing", extra={
-            "extra_data": {
-                "compute_rhs_ms": rhs_timer.elapsed_ms()
-            }
-        })
-
-        if not self.aeonic_mode:
-            self.rhs_gamma_sym6 = rhs_gamma_sym6
-            self.rhs_K_sym6 = rhs_K_sym6
-            self.rhs_phi = rhs_phi
-            self.rhs_gamma_tilde_sym6 = rhs_gamma_tilde_sym6
-            self.rhs_A_sym6 = rhs_A_sym6
-            self.rhs_Gamma_tilde = rhs_Gamma_tilde
-            self.rhs_Z = rhs_Z
-            self.rhs_Z_i = rhs_Z_i
-
-    def apply_projection(self):
-        """Apply constraint projection (K_proj). Placeholder for projection operators."""
-        # TODO: Implement projection to enforce constraints
-        pass
-
-    def apply_boundary_conditions(self):
-        """Apply boundary conditions (K_bc). Placeholder."""
-        # TODO: Implement boundary condition enforcement
-        pass
-
-    def compute_dominance(self):
-        """Compute dominance D_lambda = |lambda| |K| / (|B| + eps)."""
-        # Estimate |B| as norm of baseline RHS components
-        B_norm = (np.linalg.norm(self.rhs_gamma_sym6) + np.linalg.norm(self.rhs_K_sym6) +
-                  np.linalg.norm(self.rhs_phi) + np.linalg.norm(self.rhs_gamma_tilde_sym6) +
-                  np.linalg.norm(self.rhs_A_sym6) + np.linalg.norm(self.rhs_Z) + np.linalg.norm(self.rhs_Z_i))
-        # Estimate |K| as coherence contribution, rough: lambda * B_norm
-        K_norm = abs(self.lambda_val) * B_norm
-        eps = 1e-10
-        D_lambda = abs(self.lambda_val) * K_norm / (B_norm + eps)
-        return D_lambda
 
     def apply_damping(self):
         """Apply constraint damping: reduce constraint violations."""
-        if not self.damping_enabled:
-            logger.debug("Damping disabled")
-            return
-        # Simple damping: decay the extrinsic curvature to reduce H
-        # Note: For high-frequency gauge pulses, this is insufficient (eps_H ~ 2.5e-3). Full Z4 needed.
-        decay_factor = np.exp(-self.lambda_val)  # Use lambda_val as damping rate
-        old_max_K = np.max(np.abs(self.fields.K_sym6))
-        self.fields.K_sym6 *= decay_factor
-        new_max_K = np.max(np.abs(self.fields.K_sym6))
-        logger.debug("Applied constraint damping", extra={
-            "extra_data": {
-                "lambda_val": self.lambda_val,
-                "decay_factor": decay_factor,
-                "K_max_before": old_max_K,
-                "K_max_after": new_max_K
-            }
-        })
+        self.gatekeeper.apply_damping(self.lambda_val, self.damping_enabled)
 
     def apply_corrections(self, corrections):
         """Apply bounded corrective actions for warn level violations."""
-        if 'reduce_dt' in corrections:
-            if hasattr(self, 'current_dt') and self.current_dt > 0:
-                old_dt = self.current_dt
-                self.current_dt = max(1e-6, 0.8 * self.current_dt)
-                logger.info("Corrective action: dt reduction", extra={
-                    "extra_data": {
-                        "action": "dt_reduction",
-                        "before": old_dt,
-                        "after": self.current_dt
-                    }
-                })
-        if 'increase_kappa_budget' in corrections:
-            old_kappa_H = self.loc_operator.kappa_H
-            old_kappa_M = self.loc_operator.kappa_M
-            self.loc_operator.kappa_H = min(1.0, self.loc_operator.kappa_H + 0.1)
-            self.loc_operator.kappa_M = min(1.0, self.loc_operator.kappa_M + 0.1)
-            logger.info("Corrective action: kappa increase", extra={
-                "extra_data": {
-                    "action": "kappa_increase",
-                    "kappa_H_before": old_kappa_H,
-                    "kappa_H_after": self.loc_operator.kappa_H,
-                    "kappa_M_before": old_kappa_M,
-                    "kappa_M_after": self.loc_operator.kappa_M
-                }
-            })
-        if 'increase_projection_freq' in corrections:
-            old_lambda = self.lambda_val
-            self.lambda_val = min(10.0, self.lambda_val * 2.0)
-            logger.info("Corrective action: projection frequency boost", extra={
-                "extra_data": {
-                    "action": "projection_freq_boost",
-                    "lambda_before": old_lambda,
-                    "lambda_after": self.lambda_val
-                }
-            })
+        self.current_dt, self.lambda_val = self.gatekeeper.apply_corrections(corrections, self.current_dt, self.lambda_val)
+        # Sync components
+        self.rhs_computer.lambda_val = self.lambda_val
+        self.loc_operator.lambda_val = self.lambda_val

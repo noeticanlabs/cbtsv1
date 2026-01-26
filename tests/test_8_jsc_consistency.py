@@ -27,10 +27,11 @@ class Test8Jsc:
         delta_K = np.random.randn(*self.gr_solver.fields.K_sym6.shape) * 1e-10
 
         # Compute F(u) = stepper.compute_rhs()
-        self.gr_solver.stepper.compute_rhs()
-        F_u_gamma = self.gr_solver.stepper.rhs_gamma_sym6.copy()
-        F_u_K = self.gr_solver.stepper.rhs_K_sym6.copy()
-        F_u_phi = self.gr_solver.stepper.rhs_phi.copy()
+        self.gr_solver.stepper.rhs_computer.compute_rhs(0.0, slow_update=False)
+        rhs_computer = self.gr_solver.stepper.rhs_computer
+        F_u_gamma = rhs_computer.rhs_gamma_sym6.copy()
+        F_u_K = rhs_computer.rhs_K_sym6.copy()
+        F_u_phi = rhs_computer.rhs_phi.copy()
 
         ratios = []
         epsilons = [1e-6, 1e-7, 1e-8]
@@ -45,10 +46,10 @@ class Test8Jsc:
             self.gr_solver.geometry.compute_scalar_curvature()
 
             # Compute F(u + ε δu)
-            self.gr_solver.stepper.compute_rhs()
-            F_eps_gamma = self.gr_solver.stepper.rhs_gamma_sym6.copy()
-            F_eps_K = self.gr_solver.stepper.rhs_K_sym6.copy()
-            F_eps_phi = self.gr_solver.stepper.rhs_phi.copy()
+            self.gr_solver.stepper.rhs_computer.compute_rhs(0.0, slow_update=False)
+            F_eps_gamma = rhs_computer.rhs_gamma_sym6.copy()
+            F_eps_K = rhs_computer.rhs_K_sym6.copy()
+            F_eps_phi = rhs_computer.rhs_phi.copy()
 
             # Compute ||F(u + ε δu) - F(u)|| / ε
             diff_gamma = F_eps_gamma - F_u_gamma

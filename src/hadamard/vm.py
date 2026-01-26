@@ -2,9 +2,10 @@ import struct
 import numpy as np
 from typing import Dict, Any
 try:
-    from numba import jit
+    from numba import jit, prange
 except ImportError:
     jit = lambda f=None, **kwargs: f if f else (lambda g: g)
+    prange = range
 
 # Import GR functions
 from gr_geometry_nsc import (
@@ -13,9 +14,193 @@ from gr_geometry_nsc import (
     compute_ricci_scalar_compiled,
     second_covariant_derivative_scalar_compiled,
     lie_derivative_gamma_compiled,
-    lie_derivative_K_compiled
+    lie_derivative_K_compiled,
+    _sym6_to_mat33_jit,
+    _inv_sym6_jit,
+    _compute_christoffels_jit,
+    _compute_ricci_jit,
+    _second_covariant_derivative_scalar_jit,
+    _lie_derivative_gamma_jit,
+    _lie_derivative_K_jit
 )
 from gr_constraints_nsc import compute_hamiltonian_compiled, compute_momentum_compiled
+
+@jit(nopython=True, parallel=True)
+def compute_gr_rhs_jit(gamma_sym6, K_sym6, alpha, beta, phi, gamma_tilde_sym6, A_sym6, Gamma_tilde, Z, Z_i, dx, dy, dz, lambda_val=0.0):
+    Nx, Ny, Nz = gamma_sym6.shape[:3]
+
+    # Initialize outputs
+    rhs_gamma_sym6 = np.zeros_like(gamma_sym6)
+    rhs_K_sym6 = np.zeros_like(K_sym6)
+    rhs_phi = np.zeros_like(phi)
+    rhs_gamma_tilde_sym6 = np.zeros_like(gamma_tilde_sym6)
+    rhs_A_sym6 = np.zeros_like(A_sym6)
+    rhs_Gamma_tilde = np.zeros_like(Gamma_tilde)
+    rhs_Z = np.zeros_like(Z)
+    rhs_Z_i = np.zeros_like(Z_i)
+
+    # Sources zero for now
+    S_gamma_tilde_sym6 = np.zeros_like(gamma_tilde_sym6)
+    S_A_sym6 = np.zeros_like(A_sym6)
+    S_phi = np.zeros_like(phi)
+    S_Gamma_tilde = np.zeros_like(Gamma_tilde)
+    S_Z = np.zeros_like(Z)
+    S_Z_i = np.zeros_like(Z_i)
+
+    # Geometry
+    # Compute gradients of gamma
+    dgamma_dx_sym6 = np.gradient(gamma_sym6, dx, axis=0)
+    dgamma_dy_sym6 = np.gradient(gamma_sym6, dy, axis=1)
+    dgamma_dz_sym6 = np.gradient(gamma_sym6, dz, axis=2)
+
+    christoffels, _ = _compute_christoffels_jit(Nx, Ny, Nz, gamma_sym6, dgamma_dx_sym6, dgamma_dy_sym6, dgamma_dz_sym6)
+
+    # Compute gradients of christoffels
+    d_christ_dx = np.gradient(christoffels, dx, axis=0)
+    d_christ_dy = np.gradient(christoffels, dy, axis=1)
+    d_christ_dz = np.gradient(christoffels, dz, axis=2)
+    ricci_full = _compute_ricci_jit(Nx, Ny, Nz, christoffels, d_christ_dx, d_christ_dy, d_christ_dz)
+
+    # Vectorized inverse of gamma_sym6
+    gamma_inv_sym6 = np.empty_like(gamma_sym6)
+    xx, xy, xz, yy, yz, zz = np.moveaxis(gamma_sym6, -1, 0)
+    det = xx * (yy * zz - yz * yz) - xy * (xy * zz - yz * xz) + xz * (xy * yz - yy * xz)
+    gamma_inv_sym6[..., 0] = (yy*zz - yz*yz) / det
+    gamma_inv_sym6[..., 1] = -(xy*zz - xz*yz) / det
+    gamma_inv_sym6[..., 2] = (xy*yz - xz*yy) / det
+    gamma_inv_sym6[..., 3] = (xx*zz - xz*xz) / det
+    gamma_inv_sym6[..., 4] = -(xx*yz - xy*xz) / det
+    gamma_inv_sym6[..., 5] = (xx*yy - xy*xy) / det
+
+    # Vectorized sym6 to mat33 for gamma_inv
+    gamma_inv_mat = np.zeros((Nx, Ny, Nz, 3, 3))
+    gamma_inv_mat[..., 0, 0] = gamma_inv_sym6[..., 0]
+    gamma_inv_mat[..., 0, 1] = gamma_inv_sym6[..., 1]
+    gamma_inv_mat[..., 0, 2] = gamma_inv_sym6[..., 2]
+    gamma_inv_mat[..., 1, 0] = gamma_inv_sym6[..., 1]
+    gamma_inv_mat[..., 1, 1] = gamma_inv_sym6[..., 3]
+    gamma_inv_mat[..., 1, 2] = gamma_inv_sym6[..., 4]
+    gamma_inv_mat[..., 2, 0] = gamma_inv_sym6[..., 2]
+    gamma_inv_mat[..., 2, 1] = gamma_inv_sym6[..., 4]
+    gamma_inv_mat[..., 2, 2] = gamma_inv_sym6[..., 5]
+
+    # Vectorized Ricci scalar
+    R = np.sum(gamma_inv_mat * ricci_full, axis=(-2, -1))
+
+    # K_trace
+    K_trace_scratch = np.zeros((Nx, Ny, Nz))
+    for i in range(Nx):
+        for j in range(Ny):
+            for k in range(Nz):
+                K_trace_scratch[i,j,k] = (gamma_inv_sym6[i,j,k,0]*K_sym6[i,j,k,0] +
+                                           2.0*gamma_inv_sym6[i,j,k,1]*K_sym6[i,j,k,1] +
+                                           2.0*gamma_inv_sym6[i,j,k,2]*K_sym6[i,j,k,2] +
+                                           gamma_inv_sym6[i,j,k,3]*K_sym6[i,j,k,3] +
+                                           2.0*gamma_inv_sym6[i,j,k,4]*K_sym6[i,j,k,4] +
+                                           gamma_inv_sym6[i,j,k,5]*K_sym6[i,j,k,5])
+
+    alpha_expanded_scratch = alpha[..., np.newaxis]
+
+    # ADM ∂t gamma_ij = -2 α K_ij + L_β γ_ij
+    lie_gamma_scratch = _lie_derivative_gamma_jit(gamma_sym6, beta, dx, dy, dz)
+    rhs_gamma_sym6 = -2.0 * alpha_expanded_scratch * K_sym6 + lie_gamma_scratch
+
+    # ADM ∂t K_ij
+    DD_alpha_scratch = _second_covariant_derivative_scalar_jit(alpha, christoffels, dx, dy, dz)
+    DD_alpha_sym6_scratch = np.zeros_like(gamma_sym6)
+    DD_alpha_sym6_scratch[..., 0] = DD_alpha_scratch[..., 0, 0]
+    DD_alpha_sym6_scratch[..., 1] = DD_alpha_scratch[..., 0, 1]
+    DD_alpha_sym6_scratch[..., 2] = DD_alpha_scratch[..., 0, 2]
+    DD_alpha_sym6_scratch[..., 3] = DD_alpha_scratch[..., 1, 1]
+    DD_alpha_sym6_scratch[..., 4] = DD_alpha_scratch[..., 1, 2]
+    DD_alpha_sym6_scratch[..., 5] = DD_alpha_scratch[..., 2, 2]
+
+    ricci_sym6_scratch = np.zeros_like(gamma_sym6)
+    ricci_sym6_scratch[..., 0] = ricci_full[..., 0, 0]
+    ricci_sym6_scratch[..., 1] = ricci_full[..., 0, 1]
+    ricci_sym6_scratch[..., 2] = ricci_full[..., 0, 2]
+    ricci_sym6_scratch[..., 3] = ricci_full[..., 1, 1]
+    ricci_sym6_scratch[..., 4] = ricci_full[..., 1, 2]
+    ricci_sym6_scratch[..., 5] = ricci_full[..., 2, 2]
+
+    K_full_scratch = np.zeros((Nx, Ny, Nz, 3, 3))
+    K_full_scratch[..., 0, 0] = K_sym6[..., 0]
+    K_full_scratch[..., 0, 1] = K_sym6[..., 1]
+    K_full_scratch[..., 0, 2] = K_sym6[..., 2]
+    K_full_scratch[..., 1, 0] = K_sym6[..., 1]
+    K_full_scratch[..., 1, 1] = K_sym6[..., 3]
+    K_full_scratch[..., 1, 2] = K_sym6[..., 4]
+    K_full_scratch[..., 2, 0] = K_sym6[..., 2]
+    K_full_scratch[..., 2, 1] = K_sym6[..., 4]
+    K_full_scratch[..., 2, 2] = K_sym6[..., 5]
+
+    gamma_inv_full_scratch = gamma_inv_mat
+    K_contracted_full_scratch = np.einsum('...ij,...jk,...kl->...il', K_full_scratch, gamma_inv_full_scratch, K_full_scratch)
+    K_contracted_sym6_scratch = np.zeros_like(gamma_sym6)
+    K_contracted_sym6_scratch[..., 0] = K_contracted_full_scratch[..., 0, 0]
+    K_contracted_sym6_scratch[..., 1] = K_contracted_full_scratch[..., 0, 1]
+    K_contracted_sym6_scratch[..., 2] = K_contracted_full_scratch[..., 0, 2]
+    K_contracted_sym6_scratch[..., 3] = K_contracted_full_scratch[..., 1, 1]
+    K_contracted_sym6_scratch[..., 4] = K_contracted_full_scratch[..., 1, 2]
+    K_contracted_sym6_scratch[..., 5] = K_contracted_full_scratch[..., 2, 2]
+
+    lie_K_scratch = _lie_derivative_K_jit(K_sym6, beta, dx, dy, dz)
+    lambda_term = 2.0 * alpha_expanded_scratch * lambda_val * gamma_sym6
+    rhs_K_sym6 = (-DD_alpha_sym6_scratch +
+                  alpha_expanded_scratch * ricci_sym6_scratch +
+                  -2.0 * alpha_expanded_scratch * K_contracted_sym6_scratch +
+                  alpha_expanded_scratch * K_trace_scratch[..., np.newaxis] * K_sym6 +
+                  lambda_term +
+                  lie_K_scratch)
+
+    # BSSN ∂t φ
+    div_beta = np.gradient(beta[..., 0], dx, axis=0) + np.gradient(beta[..., 1], dy, axis=1) + np.gradient(beta[..., 2], dz, axis=2)
+    rhs_phi = - (alpha / 6.0) * K_trace_scratch + (1.0 / 6.0) * div_beta
+    grad_phi = np.zeros((Nx, Ny, Nz, 3))
+    grad_phi[..., 0] = np.gradient(phi, dx, axis=0)
+    grad_phi[..., 1] = np.gradient(phi, dy, axis=1)
+    grad_phi[..., 2] = np.gradient(phi, dz, axis=2)
+    advection_phi = np.sum(beta * grad_phi, axis=-1)
+    rhs_phi += advection_phi
+
+    # BSSN Gamma_tilde (placeholder)
+    rhs_Gamma_tilde = np.zeros_like(Gamma_tilde)
+
+    # BSSN ∂t γ̃_ij
+    lie_gamma_tilde_scratch = _lie_derivative_gamma_jit(gamma_tilde_sym6, beta, dx, dy, dz)
+    rhs_gamma_tilde_sym6 = -2.0 * alpha_expanded_scratch * A_sym6 + lie_gamma_tilde_scratch
+
+    # BSSN ∂t A_ij
+    psi_minus4_scratch = np.exp(-4 * phi)
+    psi_minus4_expanded_scratch = psi_minus4_scratch[..., np.newaxis]
+    ricci_tf_sym6_scratch = ricci_sym6_scratch - (1/3) * gamma_sym6 * R[..., np.newaxis]
+    rhs_A_temp_scratch = psi_minus4_expanded_scratch * alpha_expanded_scratch * ricci_tf_sym6_scratch + alpha_expanded_scratch * K_trace_scratch[..., np.newaxis] * A_sym6
+    lie_A_scratch = _lie_derivative_K_jit(A_sym6, beta, dx, dy, dz)
+    rhs_A_sym6 = rhs_A_temp_scratch + lie_A_scratch
+
+    # Constraint damping (placeholder)
+    kappa = 1.0
+    rhs_Z = -kappa * alpha * R  # placeholder for H
+    rhs_Z_i = np.zeros_like(Z_i)  # placeholder for M
+
+    # Add sources
+    rhs_gamma_tilde_sym6 += S_gamma_tilde_sym6
+    rhs_A_sym6 += S_A_sym6
+    rhs_Gamma_tilde += S_Gamma_tilde
+    rhs_phi += S_phi
+    rhs_Z += S_Z
+    rhs_Z_i += S_Z_i
+
+    return {
+        'rhs_gamma_sym6': rhs_gamma_sym6,
+        'rhs_K_sym6': rhs_K_sym6,
+        'rhs_phi': rhs_phi,
+        'rhs_gamma_tilde_sym6': rhs_gamma_tilde_sym6,
+        'rhs_A_sym6': rhs_A_sym6,
+        'rhs_Gamma_tilde': rhs_Gamma_tilde,
+        'rhs_Z': rhs_Z,
+        'rhs_Z_i': rhs_Z_i
+    }
 
 class HadamardVM:
     def __init__(self, fields: Dict[str, np.ndarray]):
@@ -140,9 +325,8 @@ class HadamardVM:
             self.registers[arg1] += dt * rhs  # assuming arg1 is the field reg, but wait, in dispatch arg1 is for step
 
     def ricci_tensor(self, metric: np.ndarray) -> np.ndarray:
-        # Compute full GR RHS
+        # Compute full GR RHS using JIT-compiled function
         lambda_val = 0.0
-        sources_enabled = False
 
         # Extract fields
         gamma_sym6 = self.fields['gamma_sym6']
@@ -157,119 +341,12 @@ class HadamardVM:
         Z_i = self.fields['Z_i']
         dx, dy, dz = self.fields['dx'], self.fields['dy'], self.fields['dz']
 
-        Nx, Ny, Nz = gamma_sym6.shape[:3]
-
-        # Initialize outputs
-        rhs_gamma_sym6 = np.zeros_like(gamma_sym6)
-        rhs_K_sym6 = np.zeros_like(K_sym6)
-        rhs_phi = np.zeros_like(phi)
-        rhs_gamma_tilde_sym6 = np.zeros_like(gamma_tilde_sym6)
-        rhs_A_sym6 = np.zeros_like(A_sym6)
-        rhs_Gamma_tilde = np.zeros_like(Gamma_tilde)
-        rhs_Z = np.zeros_like(Z)
-        rhs_Z_i = np.zeros_like(Z_i)
-
-        # Full GR RHS computation (copied from nsc_runtime_min.py)
-
-        # Set sources
-        S_gamma_tilde_sym6 = np.zeros_like(gamma_tilde_sym6)
-        S_A_sym6 = np.zeros_like(A_sym6)
-        S_phi = np.zeros_like(phi)
-        S_Gamma_tilde = np.zeros_like(Gamma_tilde)
-        S_Z = np.zeros_like(Z)
-        S_Z_i = np.zeros_like(Z_i)
-
-        # Geometry
-        christoffels, _ = compute_christoffels_compiled(gamma_sym6, dx, dy, dz)
-        ricci_full = compute_ricci_compiled(gamma_sym6, christoffels, dx, dy, dz)
-        gamma_inv_sym6 = self.inv_sym6(gamma_sym6)
-        gamma_inv_mat = self.sym6_to_mat33(gamma_inv_sym6)
-        R = np.einsum('...ij,...ij', gamma_inv_mat, ricci_full)
-
-        gamma_inv_scratch = self.inv_sym6(gamma_sym6)
-        K_trace_scratch = self.trace_sym6(K_sym6, gamma_inv_scratch)
-
-        alpha_expanded_scratch = alpha[..., np.newaxis]
-        alpha_expanded_33_scratch = alpha[..., np.newaxis, np.newaxis]
-
-        # ADM ∂t gamma_ij
-        lie_gamma_scratch = lie_derivative_gamma_compiled(gamma_sym6, beta, dx, dy, dz)
-        rhs_gamma_sym6[:] = -2.0 * alpha_expanded_scratch * K_sym6 + lie_gamma_scratch
-
-        # ADM ∂t K_ij
-        DD_alpha_scratch = second_covariant_derivative_scalar_compiled(alpha, christoffels, dx, dy, dz)
-        DD_alpha_sym6_scratch = self.mat33_to_sym6(DD_alpha_scratch)
-
-        ricci_sym6_scratch = self.mat33_to_sym6(ricci_full)
-
-        K_full_scratch = self.sym6_to_mat33(K_sym6)
-        gamma_inv_full_scratch = self.sym6_to_mat33(gamma_inv_scratch)
-
-        K_contracted_full_scratch = np.einsum('...ij,...jk,...kl->...il', K_full_scratch, gamma_inv_full_scratch, K_full_scratch)
-        K_contracted_sym6_scratch = self.mat33_to_sym6(K_contracted_full_scratch)
-
-        lie_K_scratch = lie_derivative_K_compiled(K_sym6, beta, dx, dy, dz)
-
-        lambda_term = 2.0 * alpha_expanded_scratch * lambda_val * gamma_sym6
-
-        rhs_K_sym6[:] = (-DD_alpha_sym6_scratch +
-                          alpha_expanded_scratch * ricci_sym6_scratch +
-                          -2.0 * alpha_expanded_scratch * K_contracted_sym6_scratch +
-                          alpha_expanded_scratch * K_trace_scratch[..., np.newaxis] * K_sym6 +
-                          lambda_term +
-                          lie_K_scratch)
-
-        # BSSN ∂t φ
-        div_beta = np.gradient(beta[..., 0], dx, axis=0) + np.gradient(beta[..., 1], dy, axis=1) + np.gradient(beta[..., 2], dz, axis=2)
-        rhs_phi[:] = - (alpha / 6.0) * K_trace_scratch + (1.0 / 6.0) * div_beta
-        grad_phi = np.array([np.gradient(phi, dx, axis=0),
-                             np.gradient(phi, dy, axis=1),
-                             np.gradient(phi, dz, axis=2)])
-        advection_phi = np.sum(beta * grad_phi.transpose(1,2,3,0), axis=-1)
-        rhs_phi[:] += advection_phi
-
-        # BSSN Gamma_tilde (simplified, copy from nsc_runtime_min.py)
-        rhs_Gamma_tilde = np.zeros_like(Gamma_tilde)  # Placeholder
-
-        # BSSN ∂t γ̃_ij
-        lie_gamma_tilde_scratch = lie_derivative_gamma_compiled(gamma_tilde_sym6, beta, dx, dy, dz)
-        rhs_gamma_tilde_sym6[:] = -2.0 * alpha_expanded_scratch * A_sym6 + lie_gamma_tilde_scratch
-
-        # BSSN ∂t A_ij (simplified)
-        psi_minus4_scratch = np.exp(-4 * phi)
-        psi_minus4_expanded_scratch = psi_minus4_scratch[..., np.newaxis]
-        ricci_tf_sym6_scratch = ricci_sym6_scratch - (1/3) * gamma_sym6 * R[..., np.newaxis]
-
-        rhs_A_temp_scratch = psi_minus4_expanded_scratch * alpha_expanded_scratch * ricci_tf_sym6_scratch + alpha_expanded_scratch * K_trace_scratch[..., np.newaxis] * A_sym6
-
-        lie_A_scratch = lie_derivative_K_compiled(A_sym6, beta, dx, dy, dz)
-        rhs_A_sym6[:] = rhs_A_temp_scratch + lie_A_scratch
-
-        # Constraint damping
-        H = compute_hamiltonian_compiled(R, gamma_sym6, K_sym6, lambda_val)
-        M = compute_momentum_compiled(gamma_sym6, K_sym6, christoffels, dx, dy, dz)
-        kappa = 1.0
-        rhs_Z[:] = -kappa * alpha * H
-        rhs_Z_i[:] = -kappa * alpha[..., np.newaxis] * M
-
-        # Add sources
-        rhs_gamma_tilde_sym6 += S_gamma_tilde_sym6
-        rhs_A_sym6 += S_A_sym6
-        rhs_Gamma_tilde += S_Gamma_tilde
-        rhs_phi += S_phi
-        rhs_Z += S_Z
-        rhs_Z_i += S_Z_i
-
-        self.rhs = {
-            'rhs_gamma_sym6': rhs_gamma_sym6,
-            'rhs_K_sym6': rhs_K_sym6,
-            'rhs_phi': rhs_phi,
-            'rhs_gamma_tilde_sym6': rhs_gamma_tilde_sym6,
-            'rhs_A_sym6': rhs_A_sym6,
-            'rhs_Gamma_tilde': rhs_Gamma_tilde,
-            'rhs_Z': rhs_Z,
-            'rhs_Z_i': rhs_Z_i
-        }
+        # Use JIT-compiled RHS computation
+        self.rhs = compute_gr_rhs_jit(
+            gamma_sym6, K_sym6, alpha, beta, phi,
+            gamma_tilde_sym6, A_sym6, Gamma_tilde, Z, Z_i,
+            dx, dy, dz, lambda_val
+        )
 
         return np.zeros_like(metric)  # Dummy return
 
