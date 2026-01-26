@@ -3,6 +3,8 @@ import json
 import logging
 import sys
 import os
+# Add config directory to path for gr_constraints_nsc import
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gr_solver.gr_solver import GRSolver
 from gr_solver.host_api import GRHostAPI

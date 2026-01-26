@@ -5,7 +5,7 @@ from typing import Dict, List, Any, Optional
 from src.nllc.nir import *
 from src.nllc.intrinsic_binder import IntrinsicBinder
 from src.common.receipt import create_run_receipt
-from gr_solver.gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6, norm2_sym6
+from src.core.gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6, norm2_sym6
 
 class VM:
     def __init__(self, module: Module, module_id: str, dep_closure_hash: str, gr_host_api=None):
