@@ -1,6 +1,6 @@
 from src.contracts.solver_contract import SolverContract
 from src.aeonic.aeonic_memory_contract import AeonicMemoryContract
-from scripts.phaseloom_27 import PhaseLoom27
+from src.phaseloom.phaseloom_27 import PhaseLoom27
 from src.receipts.receipt_schemas import Kappa, MSolveReceipt
 import numpy as np
 import hashlib

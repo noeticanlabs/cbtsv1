@@ -1,5 +1,26 @@
-# Implements: LoC-5 clock coherence with multi-clock selection (CFL, gauge, coh, res); enforces LoC-4 discrete witness bound with eps_model residuals; logs LoC-6 representation fidelity via eta_rep and hashes.
-
+# gr_stepper.py
+# =============================================================================
+# GR Evolution Stepper with RK4 Time Integration and Multi-Rate Clock Selection
+# =============================================================================
+# 
+# This module implements the core time-stepping logic for GR evolution using the
+# BSSN (Baumgarte-Shapiro-Shibata-Nakamura) formulation. It provides the GRStepper
+# class which orchestrates the complete evolution cycle including:
+# 
+# 1. **RK4 Integration**: Fourth-order Runge-Kutta time integration for all ADM/BSSN 
+#    fields (gamma_ij, K_ij, phi, gamma_tilde_ij, A_ij, Gamma_tilde^i, Z, Z_i)
+# 
+# 2. **Multi-Rate Clock Selection**: Adaptive timestep selection based on multiple
+#    clock sources (CFL, gauge, coherence, resolution constraints)
+# 
+# 3. **Constraint Monitoring**: Real-time Hamiltonian and momentum constraint 
+#    evaluation with gate checking for step acceptance
+# 
+# 4. **LoC Coherence Control**: Integration with the Limit of Coherence (LoC) 
+#    operator for damping constraint violations
+# 
+# 5. **Gauge Evolution**: Lapse (alpha) and shift (beta) evolution after physics
+# 
 # Lexicon declarations per canon v1.2
 LEXICON_IMPORTS = [
     "LoC_axiom",
@@ -216,7 +237,55 @@ class GRStepper(StepperContract):
         return self.gatekeeper.check_gates(rails_policy)
 
     def step_ufe(self, dt, t=0.0, rails_policy=None):
-        """RK4 step for UFE."""
+        """
+        Perform a single RK4 step for the Unified Field Evolution (UFE) system.
+        
+        This is the core time-stepping method implementing 4th-order Runge-Kutta 
+        integration for all BSSN/ADM variables. The method:
+        
+        1. **Clock Decision**: Queries the scheduler to determine if dt should be 
+           reduced based on multi-clock constraints (CFL, gauge, coherence, resolution)
+        
+        2. **Pre-Update Ledger**: Records initial constraint residuals (Hamiltonian H,
+           Momentum M, projection Z, Z_i) as reference for normalized residuals
+        
+        3. **RK4 Integration**:
+           - Stage 1: Compute RHS at t using current state u_0
+           - Stage 2: u_1 = u_0 + (dt/2)*k1, compute RHS at t + dt/2
+           - Stage 3: u_2 = u_0 + (dt/2)*k2, compute RHS at t + dt/2
+           - Stage 4: u_3 = u_0 + dt*k3, compute RHS at t + dt
+           - Combined: u_{n+1} = u_0 + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+        
+        4. **Clock Error Tracking**: Computes epsilon_clk = max_Linf(Psi_used - Psi_auth)
+           at each stage to quantify discretization coherence error
+        
+        5. **Gauge Evolution**: Evolves lapse (alpha) and shift (beta) after physics
+           update using appropriate gauge conditions
+        
+        6. **Post-Update Processing**:
+           - Constraint damping via LoC operator
+           - Algebraic constraint enforcement (det(gamma_tilde)=1, tr(A)=0)
+           - Geometry recomputation
+        
+        7. **Gate Checking**: Validates step against constraint thresholds and
+           coherence gates for acceptance/rejection
+        
+        8. **Rollback on Failure**: If hard gates fail, state rolls back to u_0
+           and reduced dt is suggested
+        
+        Args:
+            dt: Proposed timestep (may be reduced by clock constraints)
+            t: Current physical time
+            rails_policy: Optional policy for rail constraints
+            
+        Returns:
+            Tuple: (accepted, state_unchanged, dt_used, rejection_reason, stage_eps_H)
+                   - accepted: bool indicating step acceptance
+                   - state_unchanged: None (state modified in-place)
+                   - dt_used: actual timestep applied
+                   - rejection_reason: str if rejected, None if accepted
+                   - stage_eps_H: dict of constraint evolution through stages
+        """
         with Timer("step_ufe") as timer:
             self.dt_applied = dt  # Set dt_applied as source of truth
             self.current_dt = dt
@@ -283,7 +352,11 @@ class GRStepper(StepperContract):
 
 
 
-            # Stage 1
+            
+            # ========================================================================
+            # STAGE 1: k1 = RHS(t, u0)
+            # ========================================================================
+            # Compute initial RHS at time t using state u0
             self.check_tensor_layout_compliance()
             self.rhs_computer.compute_rhs(t, slow_update)
             rhs_norms = {
@@ -318,7 +391,10 @@ class GRStepper(StepperContract):
             stage_diff = self.constraints.compute_stage_difference_Linf(Psi_used_stage1, Psi_auth)
             self.constraints.eps_clk = max(self.constraints.eps_clk, stage_diff)
 
-            # Stage 2: u + dt/2 * k1
+            # ========================================================================
+            # STAGE 2: u2 = u0 + (dt/2)*k1, compute RHS at t + dt/2
+            # ========================================================================
+            # Update fields to intermediate state for stage 2 evaluation
             self.fields.gamma_sym6 = u0_gamma + (dt/2) * k1_gamma
             self.fields.K_sym6 = u0_K + (dt/2) * k1_K
             self.fields.phi = u0_phi + (dt/2) * k1_phi
@@ -326,6 +402,10 @@ class GRStepper(StepperContract):
             self.fields.A_sym6 = u0_A + (dt/2) * k1_A
             self.fields.Z = u0_Z + (dt/2) * k1_Z
             self.fields.Z_i = u0_Z_i + (dt/2) * k1_Z_i
+            
+            # Recompute geometry-dependent quantities for the intermediate state
+            # This is required because Christoffel symbols and Ricci tensor depend
+            # on the metric, which changes at each RK stage
             self.geometry.compute_christoffels()
             self.geometry.compute_ricci()
             self.geometry.compute_scalar_curvature()
@@ -362,7 +442,10 @@ class GRStepper(StepperContract):
             k2_Z = self.rhs_computer.rhs_Z.copy()
             k2_Z_i = self.rhs_computer.rhs_Z_i.copy()
 
-            # Stage 3: u + dt/2 * k2
+            # ========================================================================
+            # STAGE 3: u3 = u0 + (dt/2)*k2, compute RHS at t + dt/2
+            # ========================================================================
+            # Second midpoint evaluation - uses k2 instead of k1 for update
             self.fields.gamma_sym6 = u0_gamma + (dt/2) * k2_gamma
             self.fields.K_sym6 = u0_K + (dt/2) * k2_K
             self.fields.phi = u0_phi + (dt/2) * k2_phi
@@ -370,6 +453,8 @@ class GRStepper(StepperContract):
             self.fields.A_sym6 = u0_A + (dt/2) * k2_A
             self.fields.Z = u0_Z + (dt/2) * k2_Z
             self.fields.Z_i = u0_Z_i + (dt/2) * k2_Z_i
+            
+            # Geometry recomputation for stage 3 state
             self.geometry.compute_christoffels()
             self.geometry.compute_ricci()
             self.geometry.compute_scalar_curvature()
@@ -406,7 +491,10 @@ class GRStepper(StepperContract):
             k3_Z = self.rhs_computer.rhs_Z.copy()
             k3_Z_i = self.rhs_computer.rhs_Z_i.copy()
 
-            # Stage 4: u + dt * k3
+            # ========================================================================
+            # STAGE 4: u4 = u0 + dt*k3, compute RHS at t + dt
+            # ========================================================================
+            # Full-step evaluation - uses k3 for forward jump
             self.fields.gamma_sym6 = u0_gamma + dt * k3_gamma
             self.fields.K_sym6 = u0_K + dt * k3_K
             self.fields.phi = u0_phi + dt * k3_phi
@@ -414,6 +502,8 @@ class GRStepper(StepperContract):
             self.fields.A_sym6 = u0_A + dt * k3_A
             self.fields.Z = u0_Z + dt * k3_Z
             self.fields.Z_i = u0_Z_i + dt * k3_Z_i
+            
+            # Geometry recomputation for stage 4 state
             self.geometry.compute_christoffels()
             self.geometry.compute_ricci()
             self.geometry.compute_scalar_curvature()
@@ -450,6 +540,12 @@ class GRStepper(StepperContract):
             k4_Z = self.rhs_computer.rhs_Z.copy()
             k4_Z_i = self.rhs_computer.rhs_Z_i.copy()
 
+            # ========================================================================
+            # RK4 COMBINATION: u_{n+1} = u_0 + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+            # ========================================================================
+            # The RK4 coefficients (1/6, 2/6, 2/6, 1/6) ensure 4th-order accuracy.
+            # This combines all four stage derivatives with appropriate weights.
+            
             # Compute combined RHS for fused kernel (gamma, K, alpha, beta evolution)
             # Using RK4 coefficients: (k1 + 2*k2 + 2*k3 + k4) / 6
             rhs_gamma_combined = (k1_gamma + 2*k2_gamma + 2*k3_gamma + k4_gamma) / 6.0
@@ -520,25 +616,48 @@ class GRStepper(StepperContract):
             self.geometry.compute_ricci()
             self.geometry.compute_scalar_curvature()
 
+            # ========================================================================
+            # POST-PHYSICS PHASE
+            # ========================================================================
+            
             # Compute eps_H after physics update (RK)
             self.constraints.compute_residuals()
             stage_eps_H['eps_H_post_phys'] = float(self.constraints.eps_H)
 
-            # Evolve gauge after physics (using t_n+1 values)
+            # ========================================================================
+            # GAUGE EVOLUTION: Evolve lapse (alpha) and shift (beta)
+            # ========================================================================
+            # Gauge evolution is performed AFTER physics to ensure:
+            # 1. Constraints are evaluated on the evolved spacetime geometry
+            # 2. Gauge conditions depend on the final state, not intermediate stages
+            # Common gauge conditions: 1+log slicing for alpha, Gamma-driver for beta
             self.gauge.evolve_lapse(dt)
             self.gauge.evolve_shift(dt)
-            # Recompute geometry after gauge evolution
+            
+            # Recompute geometry after gauge evolution (lapse/shift affect Christoffels)
             self.geometry.compute_christoffels()
             self.geometry.compute_ricci()
             self.geometry.compute_scalar_curvature()
             self.constraints.compute_residuals()
             stage_eps_H['eps_H_post_gauge'] = float(self.constraints.eps_H)
 
-            # Apply constraint damping (projection effects)
+            # ========================================================================
+            # CONSTRAINT DAMPING PHASE
+            # ========================================================================
+            # Apply constraint damping via LoC operator to reduce constraint violations.
+            # The damping term K_damp = -kappa * gradient(constraint_energy) pushes
+            # the system back toward the constraint surface.
             self.apply_damping()
-            # Re-enforce algebraic constraints after filter
+            
+            # ========================================================================
+            # ALGEBRAIC CONSTRAINT ENFORCEMENT
+            # ========================================================================
+            # Re-enforce algebraic constraints after damping/filter:
+            # 1. det(gamma_tilde) = 1 (conformal metric determinant)
+            # 2. tr(A) = 0 (tracelessness of A_ij)
             self.geometry.enforce_det_gamma_tilde()
             self.geometry.enforce_traceless_A()
+            
             # Recompute derived geometry after constraint enforcement
             self.geometry.compute_christoffels()
             self.geometry.compute_ricci()
@@ -569,7 +688,23 @@ class GRStepper(StepperContract):
             }
             self.ledger.emit_ledger_eval_receipt(self.current_step, self.current_t + self.current_dt, self.current_dt, self.fields, final_ledgers)
 
-            # Check gates
+            # ========================================================================
+            # GATE CHECKING PHASE
+            # ========================================================================
+            # Check all coherence gates G1-G4 for step acceptance:
+            # G1: Constraint residuals within bounds (eps_H <= H_max, eps_M <= M_max)
+            # G2: Clock coherence error within tolerance (eps_clk <= clk_max)
+            # G3: Projection error within tolerance (eps_proj <= proj_max)
+            # G4: Damage monotonicity (D <= D_prev + budget)
+            #
+            # Returns:
+            #   accepted_gates: bool - all gates passed
+            #   hard_fail_gates: bool - critical failure (rollback required)
+            #   penalty_gates: bool - soft violations (warning but accept)
+            #   reasons: list of violation descriptions
+            #   margins: float - how close to thresholds
+            #   corrections: dict - recommended parameter adjustments
+            
             accepted_gates, hard_fail_gates, penalty_gates, reasons, margins, corrections = self.check_gates_internal(rails_policy)
             if corrections:
                 self.apply_corrections(corrections)
@@ -595,7 +730,10 @@ class GRStepper(StepperContract):
             gates_for_receipt = {'pass': accepted_gates, 'penalty': penalty_gates, 'reasons': reasons, 'margins': margins}
 
             if not hard_fail:
-                # Log soft violations
+                # ========================================================================
+                # STEP ACCEPTED
+                # ========================================================================
+                # Log soft violations if any
                 if penalty > 0:
                     logger.warning("UFE step accepted with soft violations", extra={
                         "extra_data": {
@@ -603,7 +741,7 @@ class GRStepper(StepperContract):
                             "reasons": reasons
                         }
                     })
-                # Accept step
+                
                 logger.debug("UFE step accepted", extra={
                     "extra_data": {
                         "execution_time_ms": timer.elapsed_ms(),
@@ -616,13 +754,22 @@ class GRStepper(StepperContract):
                         }
                     }
                 })
-                # Original step receipt for step_ufe
-                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields, accepted=True, ledgers=ledgers_for_receipt, gates=gates_for_receipt, stage_eps_H=stage_eps_H, corrections_applied=corrections)
-                # Increment step count for multi-rate
+                
+                # Emit step receipt for accepted step
+                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields, 
+                                              accepted=True, ledgers=ledgers_for_receipt, gates=gates_for_receipt, 
+                                              stage_eps_H=stage_eps_H, corrections_applied=corrections)
+                
+                # Increment step count for multi-rate stepping
                 self.step_count += 1
-                return True, None, self.current_dt, None, stage_eps_H  # accepted, state unchanged, dt_used, no reason, stage_eps_H
+                
+                return True, None, self.current_dt, None, stage_eps_H
             else:
-                # Reject step: rollback to initial state
+                # ========================================================================
+                # STEP REJECTED - ROLLBACK
+                # ========================================================================
+                # Restore all fields to their initial state u_0.
+                # This ensures the state remains physically valid for retry with smaller dt.
                 self.fields.gamma_sym6 = u0_gamma
                 self.fields.K_sym6 = u0_K
                 self.fields.phi = u0_phi
@@ -630,16 +777,22 @@ class GRStepper(StepperContract):
                 self.fields.A_sym6 = u0_A
                 self.fields.Z = u0_Z
                 self.fields.Z_i = u0_Z_i
+                
                 # Recompute geometry for rolled-back state
                 self.geometry.compute_christoffels()
                 self.geometry.compute_ricci()
                 self.geometry.compute_scalar_curvature()
 
                 rejection_reason = f"Gates failed: {', '.join(reasons)}"
-                # Original step receipt for step_ufe
-                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields, accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt, rejection_reason=rejection_reason, stage_eps_H=stage_eps_H, corrections_applied=corrections)
+                
+                # Emit step receipt for rejected step
+                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields, 
+                                              accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt, 
+                                              rejection_reason=rejection_reason, stage_eps_H=stage_eps_H, 
+                                              corrections_applied=corrections)
 
-                # Suggest smaller dt for retry
+                # Suggest smaller timestep for retry
+                # Exponential backoff with floor at dt_floor (typically 1e-8)
                 dt_new = max(self.current_dt / 2.0, 1e-8)
 
                 logger.warning("UFE step rejected - rolling back", extra={

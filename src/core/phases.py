@@ -10,8 +10,8 @@ from typing import Dict, Any, Tuple, Optional
 import numpy as np
 import logging
 from .logging_config import Timer
-from .phaseloom_threads_gr import compute_omega_current, compute_coherence_drop
-from receipt_schemas import Kappa
+from src.phaseloom.phaseloom_threads_gr import compute_omega_current, compute_coherence_drop
+from src.receipts.receipt_schemas import Kappa
 from .gr_clock import UnifiedClockState
 
 logger = logging.getLogger(__name__)

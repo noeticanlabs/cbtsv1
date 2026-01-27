@@ -14,11 +14,11 @@ import hashlib
 import json
 from typing import Dict, Any, Tuple, Optional
 
-from gr_solver.gr_constraints import GRConstraints, discrete_L2_norm_compiled
-from gr_solver.phaseloom_rails_gr import GRPhaseLoomRails
-from gr_solver.gr_stepper import GRStepper
-from gr_solver.phaseloom_memory import PhaseLoomMemory
-from gr_solver.gr_coherence import CoherenceOperator
+from src.core.gr_constraints import GRConstraints, discrete_L2_norm_compiled
+from src.phaseloom.phaseloom_rails_gr import GRPhaseLoomRails
+from src.core.gr_stepper import GRStepper
+from src.phaseloom.phaseloom_memory import PhaseLoomMemory
+from src.core.gr_coherence import CoherenceOperator
 
 
 class LimitAwareAeonicStepper:
@@ -293,9 +293,9 @@ def setup_minkowski_with_gauge_wave(N: int = 32) -> Tuple:
     Returns:
         Tuple of (fields, geometry, constraints, rails, stepper, memory, coherence)
     """
-    from gr_solver.gr_core_fields import GRCoreFields, aligned_zeros
-    from gr_solver.gr_geometry import GRGeometry
-    from gr_solver.gr_gauge import GRGauge
+    from src.core.gr_core_fields import GRCoreFields, aligned_zeros
+    from src.core.gr_geometry import GRGeometry
+    from src.core.gr_gauge import GRGauge
     
     # Grid parameters
     L = 2.0 * np.pi

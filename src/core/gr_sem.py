@@ -13,7 +13,7 @@ LEXICON_SYMBOLS = {
 
 import numpy as np
 import logging
-from receipt_schemas import SEMFailure, Kappa
+from src.receipts.receipt_schemas import SEMFailure, Kappa
 from .gr_core_fields import det_sym6, eigenvalues_sym6
 
 logger = logging.getLogger('gr_solver.sem')

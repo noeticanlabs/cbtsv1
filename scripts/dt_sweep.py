@@ -1,6 +1,6 @@
 import numpy as np
 from tests.test_gcat1_calibration_suite import create_gr_adapter
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 # Fixed N=16, vary dt
 N = 16

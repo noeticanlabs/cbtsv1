@@ -171,9 +171,11 @@ class MultiRateClockSystem:
     """
     Multi-rate scheduler for band-selective updates.
     
-    .. deprecated::
-        Use MultiRateBandManager with UnifiedClock instead for new code.
-        This class is maintained for backward compatibility.
+    .. admonition:: Legacy
+       :class: note
+       
+       Use MultiRateBandManager with UnifiedClock instead for new code.
+       This class is maintained for backward compatibility.
     
     Manages clock hierarchy for HPC integration with:
     - Band-specific update cadences (octave-based)

@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Dict, Optional, Tuple
-from .gr_clocks import MultiRateClockSystem, MultiRateBandManager
-from .gr_clock import UnifiedClock
+from src.core.gr_clocks import MultiRateClockSystem, MultiRateBandManager
+from src.core.gr_clock import UnifiedClock
 
 
 class PhaseLoomMemory:

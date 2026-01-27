@@ -5,7 +5,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 def test_zero_allocations_per_step():
     """Prove 0 allocations/step in stepper loop."""
@@ -20,7 +20,7 @@ def test_zero_allocations_per_step():
 
 def test_spectral_cache_correctness():
     """Test spectral cache produces same results as on-the-fly computation."""
-    from gr_solver.spectral.cache import SpectralCache
+    from src.spectral.cache import SpectralCache
     cache = SpectralCache(8, 8, 8, 1.0, 1.0, 1.0)
 
     # Create test field
@@ -82,7 +82,7 @@ def test_mixed_precision_demotion():
 
 def test_elliptic_solver_warm_start():
     """Test MG warm-start reduces iterations."""
-    from gr_solver.elliptic.solver import EllipticSolver, apply_poisson
+    from src.elliptic.solver import EllipticSolver, apply_poisson
     solver = EllipticSolver(apply_poisson)
 
     # Test problem
@@ -120,7 +120,7 @@ def test_convergence_loop_fix():
 
 def test_etd_factor_correctness():
     """Test ETD factors are computed correctly for spectral diagonalization."""
-    from gr_solver.spectral.cache import SpectralCache, _phi1, _phi2
+    from src.spectral.cache import SpectralCache, _phi1, _phi2
     
     # Create cache
     cache = SpectralCache(8, 8, 8, 1.0, 1.0, 1.0)

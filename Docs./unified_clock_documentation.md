@@ -65,9 +65,8 @@ graph TD
 
 | File | Changes |
 |------|---------|
-| [`Technical Data/time_scale_system_canvas.md`](Technical Data/time_scale_system_canvas.md) | Added Level 6 (UnifiedClock), migration notes, architecture diagram, API reference |
-| [`Technical Data/temporal_system_contract.md`](Technical Data/temporal_system_contract.md) | Added UnifiedClockState entity, integration examples |
-| [`Technical Data/stepper_contract.md`](Technical Data/stepper_contract.md) | Added UnifiedClock interface, updated pseudocode |
+| [`specifications/contracts/temporal_system_contract.md`](specifications/contracts/temporal_system_contract.md) | Added UnifiedClockState entity, integration examples |
+| [`specifications/contracts/stepper_contract.md`](specifications/contracts/stepper_contract.md) | Added UnifiedClock interface, updated pseudocode |
 | [`plans/gr_solver_build_plan.md`](plans/gr_solver_build_plan.md) | Added gr_clock.py module, updated architecture diagram, UnifiedClock constraints |
 | [`plans/comprehensive_gr_solver_system_test_plan.md`](plans/comprehensive_gr_solver_system_test_plan.md) | Added UnifiedClock test scenarios, clock state management tests |
 

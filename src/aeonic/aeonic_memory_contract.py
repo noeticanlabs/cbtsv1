@@ -266,7 +266,7 @@ class AeonicMemoryContract:
         # Soft failure handling is delegated to retry policy in the caller
 
     def abort_on_state_gate_no_repair(self, gate: Dict[str, Any]):
-        """Fast-exit for state gate with no repair action. Deprecated: use abort_on_hard_fail."""
+        """Fast-exit for state gate with no repair action. LEGACY: use abort_on_hard_fail."""
         if gate.get('kind') == 'state' and not any(action.get('repair', False) for action in gate.get('actions_allowed', [])):
             raise SEMFailure("State gate violation with no repair action - abort immediately")
 

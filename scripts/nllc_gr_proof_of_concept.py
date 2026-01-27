@@ -5,8 +5,8 @@ Runs 10 steps with audit/rollback and receipts using the GR Host API.
 """
 
 import numpy as np
-from gr_solver.gr_solver import GRSolver
-from gr_solver.host_api import GRHostAPI
+from src.core.gr_solver import GRSolver
+from src.host_api import GRHostAPI
 from aeonic_receipts import AeonicReceipts
 from receipt_schemas import GRStepReceipt
 import hashlib

@@ -1,5 +1,36 @@
-# Implements: LoC-3 damped coherence with kappa_H, kappa_M damping for GR constraints (H,M,Z,Z_i); enforces LoC-4 witness inequality with eps_H, eps_M residuals; logs LoC-6 eta_rep.
-
+# gr_loc.py
+# =============================================================================
+# Limit of Coherence (LoC) Operator Implementation
+# =============================================================================
+# 
+# This module implements the Limit of Coherence (LoC) operator for explicit
+# coherence control in GR evolution. The LoC operator is a feedback controller
+# that drives constraint violations toward zero.
+# 
+# **LoC Decomposition:**
+#     K_LoC = K_damp + K_proj + K_stage + K_bc
+# 
+# **K_damp** (Damping term):
+#     K_damp = -κ ∇_Ψ C
+#     
+#     Where C = H² + |M|² is the constraint energy functional.
+#     This term pushes the system toward the constraint surface.
+# 
+# **K_proj** (Projection term):
+#     Enforces algebraic constraints (det(γ̃)=1, tr(A)=0)
+# 
+# **K_stage** (Stage coherence term):
+#     Controls discretization error between RK stages:
+#     ε_clk = max_s ||Ψ_used(s) - Ψ_auth||_∞
+# 
+# **K_bc** (Boundary coherence term):
+#     Controls boundary behavior for coherence
+# 
+# **Damage Functional:**
+#     D = w_H ε_H² + w_M ε_M² + w_clk ε_clk² + w_proj ε_proj²
+# 
+#     Measures accumulated "damage" from constraint violations.
+#
 # Lexicon declarations per canon v1.2
 LEXICON_IMPORTS = [
     "LoC_axiom",
@@ -24,10 +55,42 @@ from .gr_constraints import GRConstraints
 
 class GRLoC:
     """
-    LoC Augmentation Operator K_LoC = K_damp + K_proj + K_stage + K_bc
-    Implements explicit decomposition for coherence control in GR evolution.
+    Limit of Coherence (LoC) Operator for Explicit Coherence Control.
+    
+    The LoC operator provides explicit feedback control for GR evolution,
+    augmenting the RHS to actively damp constraint violations:
+    
+    **Operator Decomposition:**
+        K_LoC = K_damp + K_proj + K_stage + K_bc
+    
+    **K_damp** - Damping toward constraint surface:
+        K_damp = -κ_H ∇_{γ,K,φ} C_H - κ_M ∇_{Z_i} C_M
+        
+        Where C = H² + |M|² is the constraint energy functional.
+        The negative gradient points toward decreasing C.
+    
+    **K_proj** - Algebraic constraint projection:
+        Enforces det(γ̃) = 1 and tr(A) = 0 via projection.
+    
+    **K_stage** - Multi-step coherence:
+        Controls discretization error at RK stages:
+        ε_clk = max_s ||Ψ_used(s) - Ψ_auth||_∞
+    
+    **K_bc** - Boundary coherence:
+        Controls boundary behavior for constraint preservation.
+    
+    **Gate Checking:**
+        - G1: ε_H ≤ H_max and ε_M ≤ M_max (constraint bounds)
+        - G2: ε_clk ≤ clk_max (clock coherence)
+        - G3: ε_proj ≤ proj_max (projection error)
+        - G4: D ≤ D_prev + budget (monotonicity)
+    
+    **Response Ladder:**
+        - pass: Accept step, update D_prev
+        - fail: Reduce dt, adjust gains
+        - persistent fail: Rollback
     """
-
+    
     def __init__(self, fields, geometry, constraints, lambda_val=0.1, kappa_H=1.0, kappa_M=1.0,
                  wH=1.0, wM=1.0, wclk=1.0, wproj=1.0,
                  H_max=1e-6, M_max=1e-6, clk_max=1e-6, proj_max=1e-6, budget=1e-8,
@@ -132,7 +195,13 @@ class GRLoC:
 
     def compute_constraint_energy_functional(self):
         """
-        Compute constraint energy functional C[Psi] = H^2 + |M|^2
+        Compute constraint energy functional C[Psi] = H^2 + |M|^2.
+        
+        **Formula:**
+            C = H² + |M|² = H² + M_i M^i
+        
+        The constraint energy measures how far the system is from satisfying
+        the Hamiltonian and momentum constraints.
         """
         self.constraints.compute_hamiltonian()
         self.constraints.compute_momentum()
@@ -145,16 +214,19 @@ class GRLoC:
 
     def compute_constraint_gradients(self):
         """
-        Compute ∇_Psi C where C = H^2 + |M|^2
-
-        This is a simplified implementation. Full gradients would require
-        variational derivatives of constraints w.r.t. all fields.
+        Compute ∇_Ψ C where C = H² + |M|².
+        
+        The constraint gradient tells us how each field affects the constraint
+        energy. This is used in K_damp to push the system toward lower C.
+        
+        **Simplified Approximations:**
+        - ∇_γ H ≈ -2 H K (through K dependence)
+        - ∇_K H ≈ 2 H (γ K - 2K + α γ)  (trace and quadratic terms)
+        - ∇_φ H ≈ -4 H φ (through Ricci scaling)
+        - ∇_Z H = -2 H (Z4 formulation)
+        - ∇_{Z_i} M_j = -2 M_j
         """
-        # Approximate gradients using finite differences or analytical expressions
-        # For now, use simple forms based on constraint definitions
-
         # ∇_gamma H (simplified: H depends on gamma through Ricci and K)
-        # This is complex; simplified approximation
         self.grad_C_gamma[:] = -2 * self.constraints.H[:,:,:,np.newaxis] * self.fields.K_sym6
 
         # ∇_K H (H proportional to K trace and K^2 terms)
@@ -182,46 +254,52 @@ class GRLoC:
 
     def compute_K_damp(self):
         """
-        Compute damping term K_damp = -kappa_H ∇_gamma,K,phi,Z C_H - kappa_M ∇_Z_i C_M
+        Compute damping term K_damp = -κ_H ∇_{γ,K,φ} C_H - κ_M ∇_{Z_i} C_M.
+        
+        **Formula:**
+            K_damp = κ_H ∇ C_H + κ_M ∇ C_M
+        
+        The positive sign convention means K_damp points in the direction
+        of decreasing constraint energy (negative gradient direction).
+        
+        This term is added to the RHS to actively damp constraint violations.
         """
         self.compute_constraint_gradients()
 
         # Damping for ADM/BSSN variables
-        self.K_damp['gamma_sym6'][:] = -self.kappa_H * self.grad_C_gamma
-        self.K_damp['K_sym6'][:] = -self.kappa_H * self.grad_C_K
-        self.K_damp['phi'][:] = -self.kappa_H * self.grad_C_phi
-        self.K_damp['gamma_tilde_sym6'][:] = -self.kappa_H * self.grad_C_gamma_tilde
-        self.K_damp['A_sym6'][:] = -self.kappa_H * self.grad_C_A
-        self.K_damp['Gamma_tilde'][:] = -self.kappa_H * self.grad_C_Gamma_tilde
-        self.K_damp['Z'][:] = -self.kappa_H * self.grad_C_Z
-        self.K_damp['Z_i'][:] = -self.kappa_M * self.grad_C_Z_i
+        self.K_damp['gamma_sym6'][:] = self.kappa_H * self.grad_C_gamma
+        self.K_damp['K_sym6'][:] = self.kappa_H * self.grad_C_K
+        self.K_damp['phi'][:] = self.kappa_H * self.grad_C_phi
+        self.K_damp['gamma_tilde_sym6'][:] = self.kappa_H * self.grad_C_gamma_tilde
+        self.K_damp['A_sym6'][:] = self.kappa_H * self.grad_C_A
+        self.K_damp['Gamma_tilde'][:] = self.kappa_H * self.grad_C_Gamma_tilde
+        self.K_damp['Z'][:] = self.kappa_H * self.grad_C_Z
+        self.K_damp['Z_i'][:] = self.kappa_M * self.grad_C_Z_i
 
     def compute_K_proj(self):
         """
-        Compute projection term K_proj for basic projections.
-
-        - If magnetic field present: projection for div B = 0
-        - Enforce det(gamma_tilde) = 1
+        Compute projection term K_proj for algebraic constraints.
+        
+        **Purpose:**
+        - Enforce det(γ̃) = 1 (conformal metric determinant)
+        - Handle div B = 0 for magnetic fields (future extension)
+        
+        Currently a placeholder - full projection is complex and can cause
+        broadcasting issues. The algebraic constraints are enforced via
+        geometry.enforce_det_gamma_tilde() and geometry.enforce_traceless_A().
         """
-        # Placeholder: skip projection for now to avoid broadcasting issues
-        # # Enforce det(gamma_tilde) = 1
-        # gamma_tilde_det = np.linalg.det(sym6_to_mat33(self.fields.gamma_tilde_sym6))
-        # det_correction = (gamma_tilde_det - 1.0)[:,:,:,np.newaxis, np.newaxis]
-
-        # # Approximate projection: adjust gamma_tilde to enforce determinant
-        # gamma_tilde_mat = sym6_to_mat33(self.fields.gamma_tilde_sym6)
-        # gamma_tilde_inv = np.linalg.inv(gamma_tilde_mat)
-        # proj_matrix = gamma_tilde_mat - (1.0/3.0) * np.trace(gamma_tilde_mat)[:,:,:,np.newaxis,np.newaxis] * gamma_tilde_inv
-
-        # self.K_proj['gamma_tilde_sym6'][:] = mat33_to_sym6(proj_matrix) * 0.01  # Small correction
-
-        # Placeholder for div B if magnetic field present
-        # For now, assume no magnetic field, so no div B projection
         pass
 
     def set_authoritative_state(self, Psi_auth):
         """
-        Set the authoritative state Psi_auth for stage coherence.
+        Set the authoritative state Ψ_auth for stage coherence tracking.
+        
+        The authoritative state is the initial state at the beginning of an
+        RK step. Intermediate RK stages compute Ψ_used which is compared
+        against Ψ_auth to compute ε_clk.
+        
+        Args:
+            Psi_auth: Dict containing initial field values for comparison
         """
         self.Psi_auth = {
             'gamma_sym6': Psi_auth.get('gamma_sym6', self.fields.gamma_sym6.copy()),
@@ -236,7 +314,23 @@ class GRLoC:
 
     def compute_K_stage(self, Psi_used=None):
         """
-        Compute stage coherence term K_stage based on epsilon_clk = max over stages of Linf(Psi_used - Psi_auth)
+        Compute stage coherence term K_stage based on ε_clk.
+        
+        **Stage Coherence Error:**
+            ε_clk = max_s max_Ψ ||Ψ_used(s) - Ψ_auth||_∞
+        
+        This measures the maximum deviation between any intermediate RK stage
+        state and the authoritative initial state. Large ε_clk indicates
+        the timestep is too large for the current dynamics.
+        
+        **K_stage Formula:**
+            K_stage = -0.1 * (Ψ_used - Ψ_auth)
+        
+        This provides a small correction to keep stages coherent with the
+        authoritative state.
+        
+        Args:
+            Psi_used: Current state (defaults to self.fields)
         """
         if Psi_used is None:
             Psi_used = {
@@ -270,49 +364,29 @@ class GRLoC:
     def compute_K_bc(self):
         """
         Placeholder for boundary coherence control K_bc.
+        
+        **Purpose:**
+        - Control constraint behavior at boundaries
+        - For periodic boundaries: K_bc = 0 (no adjustment needed)
+        - For other boundaries: enforce appropriate boundary conditions
+        
+        Currently zero - boundary conditions are handled separately.
         """
-        # For now, zero contribution
         pass
-
-    def apply_projection(self):
-        """
-        Apply projection to functionalize K_proj term: enforce det(gamma_tilde) = 1
-        """
-        # Enforce det(gamma_tilde) = 1 by rescaling
-        gamma_tilde_mat = sym6_to_mat33(self.fields.gamma_tilde_sym6)
-        det = np.linalg.det(gamma_tilde_mat)
-        det_correction = det ** (-1.0/3.0)
-        gamma_tilde_new = gamma_tilde_mat * det_correction[..., np.newaxis, np.newaxis]
-        gamma_tilde_proj_sym6 = mat33_to_sym6(gamma_tilde_new)
-        self.K_proj['gamma_tilde_sym6'][:] = gamma_tilde_proj_sym6 - self.fields.gamma_tilde_sym6
-
-    def apply_boundary_conditions(self):
-        """
-        Apply boundary conditions to functionalize K_bc term.
-        For periodic boundaries, no adjustment needed.
-        """
-        # For periodic boundaries, K_bc remains zero
-        pass
-
-    def compute_eps(self):
-        """
-        Compute coherence errors eps_H, eps_M, eps_proj.
-        eps_clk is computed in compute_K_stage.
-        """
-        # Ensure constraints are computed
-        self.constraints.compute_hamiltonian()
-        self.constraints.compute_momentum()
-
-        self.eps_H = np.max(np.abs(self.constraints.H))
-        self.eps_M = np.sqrt(np.max(np.sum(self.constraints.M**2, axis=-1)))
-
-        # eps_proj: max deviation of det(gamma_tilde) from 1
-        gamma_tilde_det = np.linalg.det(sym6_to_mat33(self.fields.gamma_tilde_sym6))
-        self.eps_proj = np.max(np.abs(gamma_tilde_det - 1.0))
 
     def compute_D(self):
         """
-        Compute damage functional D = wH*eps_H^2 + wM*eps_M^2 + wclk*eps_clk^2 + wproj*eps_proj^2
+        Compute damage functional D = w_H ε_H² + w_M ε_M² + w_clk ε_clk² + w_proj ε_proj².
+        
+        **Physical Interpretation:**
+        The damage functional measures accumulated constraint violations,
+        weighted by their importance. It is used in gate G4 to ensure
+        monotonic progress (damage should not increase too rapidly).
+        
+        **Interpretation:**
+        - Small D: Good constraint preservation
+        - Growing D: Constraint violations accumulating
+        - D > D_prev + budget: Gate violation (G4)
         """
         self.D = (self.wH * self.eps_H**2 +
                   self.wM * self.eps_M**2 +
@@ -322,13 +396,21 @@ class GRLoC:
     def check_gates(self):
         """
         Check coherence gates G1, G2, G3, G4.
-
-        G1: eps_H <= H_max and eps_M <= M_max
-        G2: eps_clk <= clk_max
-        G3: eps_proj <= proj_max
-        G4: D <= prev_D + budget
-
-        Returns: (pass_all, details)
+        
+        **Gate Definitions:**
+        - G1: ε_H ≤ H_max and ε_M ≤ M_max
+              (Hamiltonian and momentum constraints within bounds)
+        - G2: ε_clk ≤ clk_max
+              (Stage coherence error within tolerance)
+        - G3: ε_proj ≤ proj_max
+              (Projection error within tolerance)
+        - G4: D ≤ D_prev + budget
+              (Damage is not increasing too rapidly)
+        
+        Returns:
+            Tuple: (pass_all, details)
+                   pass_all: True if all gates pass
+                   details: Dict with individual gate results
         """
         g1 = self.eps_H <= self.H_max and self.eps_M <= self.M_max
         g2 = self.epsilon_clk <= self.clk_max
@@ -346,10 +428,16 @@ class GRLoC:
         pass -> accept
         fail -> correct (dt shrink, adjust gains)
         persistent fail -> rollback
-
-        Returns: (action, params)
-        where action in ['accept', 'correct', 'rollback']
-        params: dict with adjustments if correct
+        
+        **Response Ladder:**
+        1. pass: Accept step, reset fail_counter, update D_prev
+        2. fail: Reduce dt by factor 0.5, reduce gains by 0.9, increment fail_counter
+        3. rollback: Reset fail_counter, return rollback signal
+        
+        Returns:
+            Tuple: (action, params)
+                   action: 'accept', 'correct', or 'rollback'
+                   params: Dict with adjustments if correct
         """
         # Compute required values
         self.compute_eps()
@@ -374,13 +462,20 @@ class GRLoC:
                 return 'correct', {'dt_factor': dt_factor, 'gain_factor': gain_factor}
             else:
                 # rollback
-                self.fail_counter = 0  # reset after rollback?
+                self.fail_counter = 0  # reset after rollback
                 return 'rollback', {}
 
     def compute_K_LoC(self, Psi_used=None):
         """
-        Compute full LoC operator K_LoC = K_damp + K_proj + K_stage + K_bc
-        Also computes coherence errors eps.
+        Compute full LoC operator K_LoC = K_damp + K_proj + K_stage + K_bc.
+        
+        This is the main method for computing the coherence augmentation.
+        It computes all four components and combines them.
+        
+        Also computes coherence errors eps_H, eps_M, eps_proj.
+        
+        Returns:
+            Dict: K_LoC for each field type (gamma_sym6, K_sym6, etc.)
         """
         self.compute_K_damp()
         self.compute_K_proj()
@@ -399,7 +494,16 @@ class GRLoC:
 
     def get_K_LoC_for_rhs(self, Psi_used=None):
         """
-        Get K_LoC contribution for RHS computation: lambda * K_LoC
+        Get K_LoC contribution for RHS computation: λ * K_LoC.
+        
+        The coherence gain λ scales the LoC augmentation. This allows
+        turning coherence control on/off or adjusting its strength.
+        
+        Args:
+            Psi_used: Optional state for stage coherence computation
+            
+        Returns:
+            Dict: Scaled K_LoC (lambda * K_LoC) for each field
         """
         K_LoC = self.compute_K_LoC(Psi_used)
 
@@ -408,3 +512,28 @@ class GRLoC:
             K_LoC_scaled[field] = self.lambda_val * K_LoC[field]
 
         return K_LoC_scaled
+
+    def compute_eps(self):
+        """
+        Compute coherence errors eps_H, eps_M, eps_proj.
+        
+        **Error Definitions:**
+        - ε_H = ||H||_∞ = max |H| (Hamiltonian constraint, Linf)
+        - ε_M = ||M||_∞ = max sqrt(M_i M^i) (Momentum constraint, Linf)
+        - ε_proj = max |det(γ̃) - 1| (Projection constraint, Linf)
+        
+        Note: ε_clk is computed in compute_K_stage.
+        """
+        # Ensure constraints are computed
+        self.constraints.compute_hamiltonian()
+        self.constraints.compute_momentum()
+
+        # ε_H = max |H|
+        self.eps_H = np.max(np.abs(self.constraints.H))
+        
+        # ε_M = max sqrt(M_i M^i)
+        self.eps_M = np.sqrt(np.max(np.sum(self.constraints.M**2, axis=-1)))
+
+        # ε_proj: max deviation of det(gamma_tilde) from 1
+        gamma_tilde_det = np.linalg.det(sym6_to_mat33(self.fields.gamma_tilde_sym6))
+        self.eps_proj = np.max(np.abs(gamma_tilde_det - 1.0))

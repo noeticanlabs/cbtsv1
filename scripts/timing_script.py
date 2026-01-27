@@ -1,5 +1,5 @@
 import time
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 def W0():
     """Small grid GR solver workload."""

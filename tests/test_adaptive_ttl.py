@@ -9,7 +9,7 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gr_solver.gr_ttl_calculator import TTLCalculator, AdaptiveTTLs, compute_adaptive_ttls
+from src.core.gr_ttl_calculator import TTLCalculator, AdaptiveTTLs, compute_adaptive_ttls
 from aeonic_clocks import AeonicClockPack
 from aeonic_memory_bank import AeonicMemoryBank
 from aeonic_memory_contract import AeonicMemoryContract

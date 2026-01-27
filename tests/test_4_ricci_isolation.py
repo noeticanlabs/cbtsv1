@@ -8,8 +8,8 @@ import json
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from gr_solver.gr_solver import GRSolver
-from gr_solver.gr_core_fields import SYM6_IDX
+from src.core.gr_solver import GRSolver
+from src.core.gr_core_fields import SYM6_IDX
 from tests.gr_test_utils import estimate_order
 
 class RicciIsolationTest:

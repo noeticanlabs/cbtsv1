@@ -6,11 +6,11 @@ Run the stability test using Python GR stepper directly.
 
 import numpy as np
 import time
-from gr_solver.gr_stepper import GRStepper
-from gr_solver.gr_core_fields import GRCoreFields, SYM6_IDX
-from gr_solver.gr_geometry import GRGeometry
-from gr_solver.gr_constraints import GRConstraints
-from gr_solver.gr_gauge import GRGauge
+from src.core.gr_stepper import GRStepper
+from src.core.gr_core_fields import GRCoreFields, SYM6_IDX
+from src.core.gr_geometry import GRGeometry
+from src.core.gr_constraints import GRConstraints
+from src.core.gr_gauge import GRGauge
 
 def test_python_baseline():
     # Initialize Minkowski fields

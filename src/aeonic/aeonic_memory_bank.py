@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, List
 import numpy as np
-from aeonic_clocks import AeonicClockPack
-from aeonic_receipts import AeonicReceipts
+from src.aeonic.aeonic_clocks import AeonicClockPack
+from src.core.aeonic_receipts import AeonicReceipts
 
 @dataclass
 class Record:

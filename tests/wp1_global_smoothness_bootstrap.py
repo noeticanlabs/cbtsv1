@@ -31,9 +31,9 @@ from pathlib import Path
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-from gr_solver.gr_solver import GRSolver
-from gr_solver.gr_core_fields import inv_sym6, trace_sym6, norm2_sym6, sym6_to_mat33
-from gr_solver.gr_constraints import GRConstraints
+from src.core.gr_solver import GRSolver
+from src.core.gr_core_fields import inv_sym6, trace_sym6, norm2_sym6, sym6_to_mat33
+from src.core.gr_constraints import GRConstraints
 from receipt_schemas import OmegaReceipt, GRStepReceipt
 
 logging.basicConfig(

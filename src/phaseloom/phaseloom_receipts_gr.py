@@ -23,8 +23,8 @@ import json
 from datetime import datetime
 import numpy as np
 import hashlib
-from .logging_config import ReceiptLevels
-from receipt_schemas import OmegaReceipt
+from src.core.logging_config import ReceiptLevels
+from src.receipts.receipt_schemas import OmegaReceipt
 
 class GRPhaseLoomReceipts:
     def __init__(self):

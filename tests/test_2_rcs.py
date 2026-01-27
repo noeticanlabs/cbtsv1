@@ -4,7 +4,7 @@ Test 2 RCS
 
 import numpy as np
 import logging
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 class Test2Rcs:
     def __init__(self, gr_solver):

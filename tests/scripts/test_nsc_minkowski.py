@@ -7,7 +7,7 @@ Run the stability test using NSC runtime for Minkowski spacetime.
 import numpy as np
 import json
 import time
-from gr_solver.gr_core_fields import det_sym6, SYM6_IDX
+from src.core.gr_core_fields import det_sym6, SYM6_IDX
 from nsc_runtime_min import load_nscir, make_rhs_callable
 from gr_constraints_nsc import compute_hamiltonian_compiled, compute_momentum_compiled
 from gr_geometry_nsc import compute_christoffels_compiled, compute_ricci_compiled, compute_ricci_scalar_compiled

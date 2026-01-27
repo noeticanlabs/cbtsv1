@@ -6,8 +6,8 @@ import numpy as np
 import copy
 from dataclasses import dataclass
 from typing import Callable, Dict, Any, Tuple, List
-from gr_solver.gr_solver import GRSolver
-from gr_solver.gr_core_fields import inv_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6
+from src.core.gr_solver import GRSolver
+from src.core.gr_core_fields import inv_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6
 
 @dataclass
 class NRAdapter:

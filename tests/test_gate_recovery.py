@@ -12,12 +12,12 @@ import pytest
 from unittest.mock import Mock, MagicMock, patch
 import hashlib
 
-from gr_solver.gr_gates import GateKind, should_hard_fail
+from src.core.gr_gates import GateKind, should_hard_fail
 from aeonic_memory_contract import SEMFailure, AeonicMemoryContract
 from aeonic_memory_bank import AeonicMemoryBank, Record
 from aeonic_clocks import AeonicClockPack
 from receipt_schemas import Kappa, MSolveReceipt
-from gr_solver.gr_clock import UnifiedClockState
+from src.core.gr_clock import UnifiedClockState
 
 
 class TestGateKindClassification:

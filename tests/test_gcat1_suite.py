@@ -3,7 +3,7 @@ GCAT1 Suite
 """
 
 import logging
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 from tests.test_0_bs2_evolution import Test0Bs2
 from tests.test_1_mms_lite import Test1MmsLite
 from tests.test_1a_discrete_defect import Test1A

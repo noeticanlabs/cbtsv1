@@ -1,1 +1,1 @@
-../src/aeonic/aeonic_memory_contract.py
+../aeonic/aeonic_memory_contract.py

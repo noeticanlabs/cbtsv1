@@ -1,5 +1,37 @@
-# Implements: LoC-1 tangency/invariance via Bianchi identities for GR constraint propagation (H,M remain zero if initially zero under ADM/BSSN dynamics).
-
+# gr_constraints.py
+# =============================================================================
+# GR Constraint Computation and Elliptic Cleanup Module
+# =============================================================================
+# 
+# This module implements constraint monitoring and elliptic constraint cleanup
+# for General Relativity:
+# 
+# **Hamiltonian Constraint** (energy constraint):
+#     H = R + K² - K_{ij}K^{ij} - 2Λ = 0
+# 
+#     Physical interpretation: local energy density must be zero (vacuum GR).
+#     Violations indicate the evolution is not preserving the constraints.
+# 
+# **Momentum Constraints** (momentum/energy current):
+#     M^i = D_j (K^{ij} - γ^{ij} K) = 0
+# 
+#     Physical interpretation: local momentum flux must be consistent.
+#     Violations indicate the evolution is not preserving constraints.
+# 
+# **Constraint Propagation** (Bianchi identities):
+#     ∂t H = -D_i M^i + nonlinear terms
+#     ∂t M^i = γ^{ij} D_j H + nonlinear terms
+# 
+#     This guarantees that if H = M^i = 0 initially, they remain zero
+#     (constraint preservation).
+# 
+# **Elliptic Constraint Cleanup**:
+#     When constraints grow too large, solve elliptic equations:
+#     - A_H[δφ] = H (Hamiltonian correction)
+#     - A_M[δβ^i] = M^i (momentum correction)
+# 
+#     Uses multigrid (periodic domains) or GMRES (non-periodic) solvers.
+#
 # Lexicon declarations per canon v1.2
 LEXICON_IMPORTS = [
     "LoC_axiom",
@@ -24,7 +56,7 @@ from typing import Callable, Optional, Tuple, Dict, Any
 from .logging_config import array_stats, Timer
 from .gr_core_fields import inv_sym6, trace_sym6, norm2_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6
 from src.elliptic.solver import MultigridSolver, KrylovSolver, EllipticSolver
-from gr_constraints_nsc import compute_hamiltonian_compiled, compute_momentum_compiled, discrete_L2_norm_compiled
+from config.gr_constraints_nsc import compute_hamiltonian_compiled, compute_momentum_compiled, discrete_L2_norm_compiled
 
 logger = logging.getLogger('gr_solver.constraints')
 
@@ -243,10 +275,30 @@ def apply_momentum_constraint_operator(vector_correction, dx=1.0):
 
 class ConstraintCleanupSolver:
     """
-    Elliptic solver for constraint cleanup via transverse-traceless projection.
+    Elliptic solver for constraint cleanup via transverse-traceless (TT) projection.
     
-    Solves: A δφ = H (for Hamiltonian) and A δβ^i = M^i (for momentum)
-    where A is the appropriate elliptic operator.
+    This solver addresses constraint violations by computing correction fields
+    that reduce constraint violations. The method uses elliptic operators:
+    
+    **Hamiltonian Correction:**
+    Solves: A_H[δφ] = H
+    
+    Where A_H is the linearized Hamiltonian constraint operator:
+    A_H ≈ -∇² (Laplace operator for small perturbations)
+    
+    **Momentum Correction:**
+    Solves: A_M[δβ^i] = M^i
+    
+    Where A_M is the vector Laplace operator:
+    A_M ≈ -∇² δβ^i (vector Laplacian)
+    
+    **Solver Methods:**
+    - Multigrid (MG): Fast for periodic domains, O(n) complexity
+    - GMRES: General-purpose Krylov method, works for any boundary conditions
+    
+    **AEONIC Memory Integration:**
+    - Solutions are cached in AEONIC memory for warm-start reuse
+    - Regime hashing based on (constraint_type, step, t)
     """
     
     def __init__(self, fields, geometry, aeonic_memory=None, memory_contract=None):
@@ -506,17 +558,39 @@ class ConstraintCleanupSolver:
         """
         Perform threshold-triggered constraint cleanup.
         
-        Only solves elliptic equations if constraints exceed thresholds.
+        This is the main entry point for elliptic constraint cleanup. It checks
+        constraint violation levels and only solves elliptic equations if they
+        exceed configured thresholds.
+        
+        **Threshold Logic:**
+        - If ||H||_∞ > hamiltonian_threshold: Solve A_H[δφ] = H
+        - If ||M||_∞ > momentum_threshold: Solve A_M[δβ^i] = M^i
+        
+        **Thresholds:**
+        - hamiltonian_threshold: Default 1e-6 (Linf norm of H)
+        - momentum_threshold: Default 1e-6 (Linf norm of M)
+        
+        **Performance:**
+        - Elliptic solves are expensive; only triggered when needed
+        - Multigrid is faster for periodic domains
+        - AEONIC memory provides warm-start from previous solves
         
         Args:
             H: Hamiltonian constraint field (right-hand side), optional
             M: Momentum constraint field (right-hand side), optional  
-            step: Current step number
-            t: Current time
+            step: Current step number (for regime hash)
+            t: Current time (for regime hash)
             use_mg: Use multigrid if True, GMRES if False
         
         Returns:
-            Dict with cleanup results and statistics
+            Dict with cleanup results:
+            {
+                'hamiltonian_solved': bool,
+                'momentum_solved': bool,
+                'hamiltonian_info': dict or None,
+                'momentum_info': dict or None,
+                'corrections': {'hamiltonian': array, 'momentum': array or None}
+            }
         """
         results = {
             'hamiltonian_solved': False,
@@ -560,6 +634,38 @@ class ConstraintCleanupSolver:
 
 
 class GRConstraints:
+    """
+    GR Constraint Computer for Hamiltonian and Momentum Constraints.
+    
+    This class computes the constraint residuals that must be monitored during
+    GR evolution:
+    
+    **Hamiltonian Constraint:**
+        H = R + K² - K_{ij}K^{ij} - 2Λ
+        
+        - R: Scalar curvature of spatial metric
+        - K: Trace of extrinsic curvature (K = γ^{ij} K_ij)
+        - K_{ij}K^{ij}: Contraction of extrinsic curvature
+        - Λ: Cosmological constant
+        
+    **Momentum Constraint:**
+        M^i = D_j (K^{ij} - γ^{ij} K)
+        
+        - D_j: Spatial covariant derivative
+        - (K^{ij} - γ^{ij} K): Trace-free part of extrinsic curvature
+        
+    **Residual Norms:**
+        - eps_H = ||H||_L2 = sqrt(∫ H² dV) (L2 norm)
+        - eps_M = ||M||_L2 = sqrt(∫ M_i M^i dV) (L2 norm)
+        - eps_proj = ||Z, Z_i||_L2 (auxiliary constraints)
+        - eps_clk = max ||Psi_used - Psi_auth||_Linf (clock coherence)
+    
+    **Elliptic Cleanup Integration:**
+        - Uses ConstraintCleanupSolver for threshold-triggered cleanup
+        - Supports multigrid (periodic) and GMRES (non-periodic) solvers
+        - AEONIC memory for warm-start of elliptic solves
+    """
+    
     def __init__(self, fields, geometry, num_workers: int = None, aeonic_memory=None, memory_contract=None):
         self.fields = fields
         self.geometry = geometry
@@ -603,7 +709,25 @@ class GRConstraints:
         return R[slice_indices] + K_trace**2 - K_sq
 
     def compute_hamiltonian(self):
-        """Compute Hamiltonian constraint \mathcal{H} = R + K^2 - K_{ij}K^{ij} - 2\Lambda using compiled function."""
+        """
+        Compute Hamiltonian constraint: H = R + K² - K_{ij}K^{ij} - 2Λ.
+        
+        **Formula:**
+        H = R + K² - K_{ij}K^{ij} - 2Λ
+        
+        Where:
+        - R = γ^{ij} R_ij is the spatial scalar curvature
+        - K² = (γ^{ij} K_ij)² is the square of the trace
+        - K_{ij}K^{ij} = γ^{ik} γ^{jl} K_{ij} K_{kl} is the contraction
+        
+        **Implementation:**
+        - Uses compiled function for efficiency
+        - Requires geometry.R to be up-to-date
+        - Stores result in self.H (shape [Nx, Ny, Nz])
+        
+        **Note:** H = 0 for vacuum solutions (no matter fields).
+        Constraint violations indicate the evolution is not constraint-preserving.
+        """
         start_time = time.time()
 
         # Ensure geometry R is up to date
@@ -636,7 +760,27 @@ class GRConstraints:
         logger.info(f"Momentum constraint computation time: {timer.elapsed_ms():.4f}ms (compiled)")
 
     def compute_residuals(self):
-        """Compute residuals: eps_H (L2 H), eps_M (L2 sqrt(gamma^{ij} M_i M_j)), eps_proj (L2 aux constraints)."""
+        """
+        Compute constraint residuals (L2 norms) for monitoring.
+        
+        **Residual Definitions:**
+        
+        eps_H = ||H||_L2 = sqrt( Σ H² dV )  [Hamiltonian residual]
+        
+        eps_M = ||M||_L2 = sqrt( Σ γ^{ij} M_i M_j dV )  [Momentum residual]
+        
+        eps_proj = ||(Z, Z_i)||_L2  [Projection constraint residual]
+        
+        eps_clk = max ||Psi_used - Psi_auth||_∞  [Clock coherence error]
+        
+        **Normalized Residuals:**
+        eps_H_norm = eps_H / eps_H_initial (ratio to initial state)
+        
+        **Interpretation:**
+        - Small residuals (< 1e-6): Good constraint preservation
+        - Growing residuals: Numerical instability or gauge issues
+        - Exploding residuals: Likely numerical error or PDE violation
+        """
         # L2 norm: sqrt( sum field^2 dV ) using compiled function
         self.eps_H = discrete_L2_norm_compiled(self.H, self.fields.dx, self.fields.dy, self.fields.dz)
         self.eps_H_grid = self.H  # Grid of Hamiltonian constraint values

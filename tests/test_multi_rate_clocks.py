@@ -9,7 +9,7 @@ class TestBandClockConfig:
     
     def test_cadence_factors(self):
         """Test that cadence factors are powers of 2."""
-        from gr_solver.gr_clocks import BandClockConfig
+        from src.core.gr_clocks import BandClockConfig
         
         config = BandClockConfig(base_dt=0.001, octaves=8)
         
@@ -19,7 +19,7 @@ class TestBandClockConfig:
     
     def test_update_intervals(self):
         """Test that update intervals match cadence factors."""
-        from gr_solver.gr_clocks import BandClockConfig
+        from src.core.gr_clocks import BandClockConfig
         
         config = BandClockConfig(base_dt=0.001, octaves=4)
         
@@ -30,7 +30,7 @@ class TestBandClockConfig:
     
     def test_band_thresholds(self):
         """Test that band thresholds decrease with octave."""
-        from gr_solver.gr_clocks import BandClockConfig
+        from src.core.gr_clocks import BandClockConfig
         
         config = BandClockConfig(base_dt=0.001, octaves=4)
         thresholds = config.band_thresholds
@@ -45,7 +45,7 @@ class TestMultiRateClockSystem:
     
     def test_initialization(self):
         """Test clock system initialization."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -57,7 +57,7 @@ class TestMultiRateClockSystem:
     
     def test_tick_global(self):
         """Test global clock ticking."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -69,7 +69,7 @@ class TestMultiRateClockSystem:
     
     def test_get_bands_to_update_cadence(self):
         """Test that bands are updated based on cadence."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -101,7 +101,7 @@ class TestMultiRateClockSystem:
     
     def test_get_bands_to_update_culling(self):
         """Test octave culling for low amplitude."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -117,7 +117,7 @@ class TestMultiRateClockSystem:
     
     def test_regime_hash_computation(self):
         """Test regime hash computation."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -133,7 +133,7 @@ class TestMultiRateClockSystem:
     
     def test_dt_change_regime_shift(self):
         """Test regime shift detection on dt change > 2x."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -148,7 +148,7 @@ class TestMultiRateClockSystem:
     
     def test_residual_slope_regime_shift(self):
         """Test regime shift detection on residual slope sign change."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -164,7 +164,7 @@ class TestMultiRateClockSystem:
     
     def test_cache_invalidation(self):
         """Test that cache is invalidated on regime shift."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -187,7 +187,7 @@ class TestMultiRateClockSystem:
     
     def test_multi_rate_summary(self):
         """Test multi-rate summary generation."""
-        from gr_solver.gr_clocks import MultiRateClockSystem
+        from src.core.gr_clocks import MultiRateClockSystem
         
         mock_emitter = MagicMock()
         clock_system = MultiRateClockSystem(mock_emitter, base_dt=0.001, octaves=4)
@@ -208,7 +208,7 @@ class TestPhaseLoomMemoryMultiRate:
     
     def test_initialization(self):
         """Test PhaseLoomMemory initialization."""
-        from gr_solver.phaseloom_memory import PhaseLoomMemory
+        from src.phaseloom.phaseloom_memory import PhaseLoomMemory
         
         mock_fields = MagicMock()
         mock_fields.alpha = np.array([1.0])
@@ -223,7 +223,7 @@ class TestPhaseLoomMemoryMultiRate:
     
     def test_initialize_clock_system(self):
         """Test clock system initialization from PhaseLoomMemory."""
-        from gr_solver.phaseloom_memory import PhaseLoomMemory
+        from src.phaseloom.phaseloom_memory import PhaseLoomMemory
         
         mock_fields = MagicMock()
         mock_fields.alpha = np.array([1.0])
@@ -240,7 +240,7 @@ class TestPhaseLoomMemoryMultiRate:
     
     def test_should_compute_loom_with_clock_system(self):
         """Test clock-based triggering for loom computation."""
-        from gr_solver.phaseloom_memory import PhaseLoomMemory
+        from src.phaseloom.phaseloom_memory import PhaseLoomMemory
         
         mock_fields = MagicMock()
         mock_fields.alpha = np.array([1.0])
@@ -268,7 +268,7 @@ class TestPhaseLoomMemoryMultiRate:
     
     def test_get_bands_to_update(self):
         """Test retrieval of bands to update."""
-        from gr_solver.phaseloom_memory import PhaseLoomMemory
+        from src.phaseloom.phaseloom_memory import PhaseLoomMemory
         
         mock_fields = MagicMock()
         mock_fields.alpha = np.array([1.0])
@@ -296,7 +296,7 @@ class TestPhaseLoomMemoryMultiRate:
     
     def test_get_clock_summary(self):
         """Test clock summary retrieval."""
-        from gr_solver.phaseloom_memory import PhaseLoomMemory
+        from src.phaseloom.phaseloom_memory import PhaseLoomMemory
         
         mock_fields = MagicMock()
         mock_fields.alpha = np.array([1.0])
@@ -315,7 +315,7 @@ class TestPhaseLoomMemoryMultiRate:
     
     def test_post_loom_update(self):
         """Test post-loom update state management."""
-        from gr_solver.phaseloom_memory import PhaseLoomMemory
+        from src.phaseloom.phaseloom_memory import PhaseLoomMemory
         
         mock_fields = MagicMock()
         mock_fields.alpha = np.array([1.0])
@@ -344,7 +344,7 @@ class TestLegacyCompatibility:
     
     def test_legacy_fallback(self):
         """Test that legacy logic works when no clock system is set."""
-        from gr_solver.phaseloom_memory import PhaseLoomMemory
+        from src.phaseloom.phaseloom_memory import PhaseLoomMemory
         
         mock_fields = MagicMock()
         mock_fields.alpha = np.array([1.0])

@@ -5,7 +5,7 @@ Test 5 Gauge Invariance
 import numpy as np
 import logging
 import copy
-from gr_solver.gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33
+from src.core.gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33
 
 class Test5:
     def __init__(self, gr_solver):

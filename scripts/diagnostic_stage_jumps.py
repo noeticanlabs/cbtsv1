@@ -12,7 +12,7 @@ import json
 import logging
 sys.path.append(os.path.abspath('.'))
 
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 import inspect_receipts
 
 # Set up logging

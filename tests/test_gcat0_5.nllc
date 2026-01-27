@@ -1,3 +1,5 @@
+@uses [TERM-NSC-0011, TERM-NSC-0020, TERM-NSC-0003, TERM-NSC-0017, TERM-NSC-0001]
+
 // GCAT 0.5 Lie Detector Tests in NLLC
 // Implements the 5 tests: CWT, PDT, RTIT, GST, SOT
 // Assumes GR backend provides necessary functions; if not, extensions needed.

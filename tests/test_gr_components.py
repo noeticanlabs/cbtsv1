@@ -6,14 +6,14 @@ import os
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from gr_solver.gr_core_fields import GRCoreFields
-from gr_solver.gr_geometry import GRGeometry
-from gr_solver.gr_constraints import GRConstraints
-from gr_solver.gr_rhs import GRRhs
-from gr_solver.gr_ledger import GRLedger
-from gr_solver.gr_scheduler import GRScheduler
-from gr_solver.gr_gates import GateChecker
-from gr_solver.gr_loc import GRLoC
+from src.core.gr_core_fields import GRCoreFields
+from src.core.gr_geometry import GRGeometry
+from src.core.gr_constraints import GRConstraints
+from src.core.gr_rhs import GRRhs
+from src.core.gr_ledger import GRLedger
+from src.core.gr_scheduler import GRScheduler
+from src.core.gr_gates import GateChecker
+from src.core.gr_loc import GRLoC
 
 class TestGRComponents(unittest.TestCase):
     def setUp(self):

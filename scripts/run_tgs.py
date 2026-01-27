@@ -9,8 +9,8 @@ import sys
 import os
 sys.path.append('src')
 
-from gr_solver.gr_solver import GRSolver
-from gr_solver.host_api import GRHostAPI
+from src.core.gr_solver import GRSolver
+from src.host_api import GRHostAPI
 from nllc.vm import VM
 from nllc.parse import parse
 from nllc.lower_nir import Lowerer

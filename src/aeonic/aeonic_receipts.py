@@ -2,7 +2,7 @@ import json
 import time
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, Union, Optional
-from receipt_schemas import MSolveReceipt, MStepReceipt, MOrchReceipt
+from src.receipts.receipt_schemas import MSolveReceipt, MStepReceipt, MOrchReceipt
 
 def canonical_json_dumps(obj):
     """Triaxis v1.2 canonical JSON serialization: sorted keys, no whitespace, floats as decimal strings."""
@@ -25,7 +25,7 @@ class AeonicReceipts:
 
     def emit_structured_receipt(self, receipt: Union[MSolveReceipt, MStepReceipt, MOrchReceipt]):
         """Emit unified OmegaReceipt with hash chaining."""
-        from receipt_schemas import OmegaReceipt
+        from src.receipts.receipt_schemas import OmegaReceipt
 
         # Determine tier based on type
         tier_map = {

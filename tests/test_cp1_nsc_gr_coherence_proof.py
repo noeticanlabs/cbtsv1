@@ -3,7 +3,7 @@ CP-1: NSC-GR Coherence Proof Test Suite
 """
 import numpy as np
 import pytest
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 from receipt_schemas import validate_receipt_chain
 
 # Adapter class to interface with the GR solver

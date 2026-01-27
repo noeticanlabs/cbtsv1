@@ -21,13 +21,13 @@ import numpy as np
 import copy
 import logging
 import json
-from aeonic_clocks import AeonicClockPack
-from aeonic_memory_bank import AeonicMemoryBank
-from aeonic_receipts import AeonicReceipts
-from aeonic_memory_contract import AeonicMemoryContract
-from .logging_config import Timer, array_stats
+from src.aeonic.aeonic_clocks import AeonicClockPack
+from src.aeonic.aeonic_memory_bank import AeonicMemoryBank
+from src.core.aeonic_receipts import AeonicReceipts
+from src.core.aeonic_memory_contract import AeonicMemoryContract
+from src.core.logging_config import Timer, array_stats
 from .phaseloom_threads_gr import GRPhaseLoomThreads, compute_omega_current
-from .phases import (
+from src.core.phases import (
     PhaseState, SensePhase, ProposePhase, DecidePhase, PredictPhase,
     CommitPhase, VerifyPhase, RailEnforcePhase, ReceiptPhase, RenderPhase
 )
@@ -37,12 +37,12 @@ from .phaseloom_render_gr import GRPhaseLoomRender
 from .phaseloom_gr_adapter import GRPhaseLoomAdapter
 from .phaseloom_octaves import PhaseLoomOctaves
 from .phaseloom_gr_controller import GRPhaseLoomController
-from .gr_scheduler import GRScheduler
-from .gr_sem import SEMDomain
+from src.core.gr_scheduler import GRScheduler
+from src.core.gr_sem import SEMDomain
 from .phaseloom_memory import PhaseLoomMemory
-from .gr_ttl_calculator import TTLCalculator
-from receipt_schemas import Kappa
-from orchestrator_contract_memory import OrchestratorContractWithMemory
+from src.core.gr_ttl_calculator import TTLCalculator
+from src.receipts.receipt_schemas import Kappa
+from src.receipts.orchestrator_contract_memory import OrchestratorContractWithMemory
 from src.nllc.vm import VM
 from src.nllc.nir import Module, Function, BasicBlock, ConstInst, BinOpInst, CallInst, BrInst, RetInst, Value, Type, Trace, Span
 
@@ -202,7 +202,7 @@ class GRPhaseLoomOrchestrator:
         self.sem_domain = SEMDomain()
 
         # Spectral Cache
-        from .spectral.cache import SpectralCache
+        from src.spectral.cache import SpectralCache
         self.spectral_cache = SpectralCache(self.fields.Nx, self.fields.Ny, self.fields.Nz, self.fields.dx, self.fields.dy, self.fields.dz)
         # Cache in Tier3
         bytes_est = (self.spectral_cache.kx.nbytes + self.spectral_cache.ky.nbytes + self.spectral_cache.kz.nbytes +

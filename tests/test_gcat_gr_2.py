@@ -1,7 +1,7 @@
 import numpy as np
 import logging
 import copy
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 class TestGcatGr2:
     """

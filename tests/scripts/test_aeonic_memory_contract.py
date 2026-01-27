@@ -1,10 +1,10 @@
 import numpy as np
-from aeonic_memory_bank import AeonicMemoryBank
-from aeonic_memory_contract import AeonicMemoryContract, SEMFailure
-from phaseloom_27 import PhaseLoom27
-from receipt_schemas import Kappa, MSolveReceipt, MStepReceipt
-from aeonic_clocks import AeonicClockPack
-from aeonic_receipts import AeonicReceipts
+from src.core.aeonic_memory_bank import AeonicMemoryBank
+from src.core.aeonic_memory_contract import AeonicMemoryContract, SEMFailure
+from src.phaseloom.phaseloom_27 import PhaseLoom27
+from src.receipts.receipt_schemas import Kappa, MSolveReceipt, MStepReceipt
+from src.core.aeonic_clocks import AeonicClockPack
+from src.core.aeonic_receipts import AeonicReceipts
 
 class MockState:
     def __init__(self):

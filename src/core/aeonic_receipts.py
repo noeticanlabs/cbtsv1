@@ -1,1 +1,1 @@
-../src/aeonic/aeonic_receipts.py
+../aeonic/aeonic_receipts.py

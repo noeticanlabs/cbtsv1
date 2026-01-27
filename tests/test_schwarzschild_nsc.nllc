@@ -1,3 +1,5 @@
+@uses [TERM-NSC-0011, TERM-NSC-0020, TERM-NSC-0003]
+
 fn main() {
   let constraints = call gr_compute_constraints();
   let eps_H = constraints["eps_H"];

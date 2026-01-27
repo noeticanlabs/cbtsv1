@@ -11,7 +11,7 @@ LEXICON_SYMBOLS = {
 }
 
 import numpy as np
-from gr_gauge_nsc import evolve_lapse_compiled, evolve_shift_compiled, compute_gradients_compiled, compute_dt_gauge_compiled
+from config.gr_gauge_nsc import evolve_lapse_compiled, evolve_shift_compiled, compute_gradients_compiled, compute_dt_gauge_compiled
 from .gr_core_fields import inv_sym6, trace_sym6
 
 class GRGauge:

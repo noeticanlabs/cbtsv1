@@ -4,7 +4,7 @@ import pytest
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 class TestGcatGr0:
     """

@@ -7,10 +7,10 @@ import json
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from gr_solver.gr_solver import GRSolver
-from gr_solver.gr_core_fields import det_sym6, inv_sym6, sym6_to_mat33
+from src.core.gr_solver import GRSolver
+from src.core.gr_core_fields import det_sym6, inv_sym6, sym6_to_mat33
 from tests.gr_test_utils import estimate_order
-from gr_solver.gr_geometry_nsc import _compute_christoffels_jit
+from src.core.gr_geometry_nsc import _compute_christoffels_jit
 
 class MMSOperatorTest:
     """

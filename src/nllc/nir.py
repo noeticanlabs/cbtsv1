@@ -31,6 +31,33 @@ class ArrayType(Type):
 class ObjectType(Type):
     pass
 
+@dataclass
+class TensorType(Type):
+    """Tensor type for GR computations.
+    dims=0: scalar, dims=1: vector, dims=2: 2-tensor, etc.
+    """
+    dims: int
+
+@dataclass
+class FieldType(Type):
+    """Grid field type for numerical relativity.
+    Represents a quantity defined on a grid point.
+    """
+    pass
+
+@dataclass
+class MetricType(Type):
+    """Spacetime metric type.
+    Represents a 4-dimensional spacetime metric.
+    """
+    pass
+
+@dataclass
+class ClockType(Type):
+    """Temporal clock type for time evolution.
+    """
+    pass
+
 # Trace information
 @dataclass
 class Trace:

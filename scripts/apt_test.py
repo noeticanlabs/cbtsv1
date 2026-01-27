@@ -2,7 +2,7 @@ import time
 import json
 import tracemalloc
 import numpy as np
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 def W0(mode):
     """Small grid GR solver workload."""

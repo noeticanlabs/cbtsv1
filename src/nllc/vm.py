@@ -4,11 +4,12 @@ import dataclasses
 from typing import Dict, List, Any, Optional
 from src.nllc.nir import *
 from src.nllc.intrinsic_binder import IntrinsicBinder
+from src.nllc.type_checker import TypeChecker, typecheck_nir_module
 from src.common.receipt import create_run_receipt
 from src.core.gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6, norm2_sym6
 
 class VM:
-    def __init__(self, module: Module, module_id: str, dep_closure_hash: str, gr_host_api=None):
+    def __init__(self, module: Module, module_id: str, dep_closure_hash: str, gr_host_api=None, typecheck: bool = True):
         self.module = module
         self.module_id = module_id
         self.dep_closure_hash = dep_closure_hash
@@ -19,6 +20,18 @@ class VM:
         self.state_snapshots: List[Dict[str, Any]] = []  # For rollback
         self.gr_host_api = gr_host_api  # GR integration
         self.binder = IntrinsicBinder()
+        self.typecheck_enabled = typecheck
+        
+        # Run type checking if enabled
+        if self.typecheck_enabled:
+            self._run_type_check()
+    
+    def _run_type_check(self) -> None:
+        """Run type checking on the module before execution."""
+        success, errors = typecheck_nir_module(self.module, raise_on_error=False)
+        if not success:
+            error_messages = "\n".join(str(e) for e in errors)
+            raise TypeError(f"Type checking failed:\n{error_messages}")
 
     def run(self) -> Any:
         # Start with main function
@@ -181,6 +194,8 @@ class VM:
             return len(args[0])
         elif name == 'str':
             return str(args[0]) if args else ""
+        elif name == 'abs':
+            return abs(args[0]) if args else 0
         elif name == 'inv_sym6':
             return inv_sym6(*args)
         elif name == 'trace_sym6':

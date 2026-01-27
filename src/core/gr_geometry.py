@@ -1,3 +1,36 @@
+# gr_geometry.py
+# =============================================================================
+# GR Geometry Computation Module
+# =============================================================================
+# 
+# This module implements geometric computations for General Relativity including:
+# 
+# **Christoffel Symbols** (Levi-Civita connection):
+#     Γ^k_{ij} = ½ g^{kl} (∂_i g_{jl} + ∂_j g_{il} - ∂_l g_{ij})
+# 
+# **Ricci Tensor** (from BSSN conformal decomposition):
+#     R_ij = R̃_ij + R_χ_ij
+# 
+#     where R̃_ij is the Ricci tensor of the conformal metric γ̃_ij and:
+#     
+#     R_χ_ij = -2 D̃_i D̃_j χ - 2 γ̃_ij D̃^k D̃_k χ 
+#              + 4 (D̃_i χ)(D̃_j χ) - 4 γ̃_ij (D̃^k χ)(D̃_k χ)
+#     
+#     with χ = e^{-4φ} = ψ^{-4} and D̃ being the covariant derivative w.r.t. γ̃.
+# 
+# **Scalar Curvature**:
+#     R = g^{ij} R_ij
+# 
+# **Lie Derivatives** (advection by shift vector β):
+#     L_β γ_ij = β^k ∂_k γ_ij + γ_ik ∂_j β^k + γ_jk ∂_i β^k
+#     L_β K_ij = β^k ∂_k K_ij + K_ik ∂_j β^k + K_jk ∂_i β^k
+# 
+# **Second Covariant Derivatives**:
+#     D_i D_j f = ∂_i ∂_j f - Γ^k_{ij} ∂_k f
+# 
+# The module uses LRU caching to avoid recomputing geometric quantities when
+# the underlying metric hasn't changed (important during RK stages).
+#
 # Lexicon declarations per canon v1.2
 LEXICON_IMPORTS = [
     "LoC_axiom",
@@ -61,6 +94,30 @@ def hash_array(arr):
     return hashlib.sha256(arr.tobytes()).hexdigest()
 
 class GRGeometry:
+    """
+    Geometry Computer for GR Evolution.
+    
+    This class manages computation of all geometric quantities required for
+    BSSN evolution:
+    
+    **Primary Quantities:**
+    - christoffels: Γ^k_{ij} (Levi-Civita connection, shape [Nx, Ny, Nz, 3, 3, 3])
+    - Gamma: Γ^i = γ^{jk} Γ^i_jk (trace of Christoffel, shape [Nx, Ny, Nz, 3])
+    - ricci: R_ij (Ricci tensor, shape [Nx, Ny, Nz, 3, 3])
+    - R: R = γ^{ij} R_ij (scalar curvature, shape [Nx, Ny, Nz])
+    
+    **Caching Strategy:**
+    - All geometric quantities are cached using OrderedDict with LRU eviction
+    - Cache key: hash of metric and its derivatives
+    - Cache size: 32 entries max per cache
+    - Automatic cache invalidation via clear_cache() when metric changes
+    
+    **Performance Notes:**
+    - Christoffel symbols and Ricci tensor require finite differences
+    - Caching is essential during RK integration to avoid recomputation
+    - Numba JIT compilation is used for core kernels
+    """
+    
     def __init__(self, fields):
         self.fields = fields
         Nx, Ny, Nz = fields.Nx, fields.Ny, fields.Nz
@@ -84,7 +141,20 @@ class GRGeometry:
         self._lie_K_cache = collections.OrderedDict()
 
     def clear_cache(self):
-        """Clear all caches when fields are modified."""
+        """
+        Clear all geometry caches when the metric field is modified.
+        
+        This MUST be called whenever self.fields.gamma_sym6 is modified,
+        as cached geometric quantities (Christoffels, Ricci) depend on the metric.
+        
+        **Cache Invalidation Pattern:**
+        1. Modify metric field in-place
+        2. Call clear_cache() to invalidate all cached geometry
+        3. Recompute geometry on next access (compute_christoffels, compute_ricci, etc.)
+        
+        **Note:** The enforce_det_gamma_tilde() and enforce_traceless_A() methods
+        automatically call clear_cache() after modifying fields.
+        """
         self._christoffel_cache.clear()
         self._ricci_cache.clear()
         self._ricci_for_metric_cache.clear()
@@ -137,56 +207,86 @@ class GRGeometry:
         return ricci
 
     def compute_ricci(self):
-        """Compute Ricci tensor R_{ij} using BSSN conformal decomposition."""
+        """
+        Compute Ricci tensor R_ij using BSSN conformal decomposition.
+        
+        The Ricci tensor is decomposed as: R_ij = R̃_ij + R_χ_ij
+        
+        **Conformal Ricci Tensor R̃_ij:**
+        - Computed from the conformal metric γ̃_ij
+        - Uses standard formula: R̃_ij = ∂_k Γ̃^k_{ij} - ∂_j Γ̃^k_{ik} + Γ̃^k_{kl} Γ̃^l_{ij} - Γ̃^l_{kj} Γ̃^k_{il}
+        
+        **Conformal Factor Contribution R_χ_ij:**
+        - χ = e^{-4φ} is the conformal factor relating γ_ij = χ γ̃_ij
+        - R_χ_ij = -2 D̃_i D̃_j χ - 2 γ̃_ij D̃^k D̃_k χ 
+                   + 4 (D̃_i χ)(D̃_j χ) - 4 γ̃_ij (D̃^k χ)(D̃_k χ)
+        
+        **Special Case Handling:**
+        - If φ ≈ 0 (flat conformal factor), use physical metric directly
+        - This avoids numerical issues with inconsistent BSSN variables
+        
+        **Caching:**
+        - Cache key includes both γ_ij and γ̃_ij (consistency check)
+        - Invalidated when metric changes via clear_cache()
+        """
         combined_hash = hash_array(np.concatenate([self.fields.gamma_sym6.flatten(), self.fields.gamma_tilde_sym6.flatten(), self.fields.phi.flatten()]))
         if combined_hash in self._ricci_cache:
             self.ricci = self._ricci_cache[combined_hash]
             self._ricci_cache.move_to_end(combined_hash)
             return
 
-        # Check for phi=0 case (flat conformal factor)
-        chi = self.fields.phi
-        if np.max(np.abs(chi)) < 1e-14:
-            # If chi is zero, R_ij is just the Ricci tensor of gamma_sym6.
-            # Use physical metric directly to avoid issues with inconsistent BSSN vars.
-            self.compute_christoffels()
-            self.ricci = self.compute_ricci_for_metric(self.fields.gamma_sym6, self.christoffels)
-        else:
-            # Compute \~{R}_{ij} using the conformal metric
-            conformal_christoffels = np.zeros_like(self.christoffels)
-            gamma_tilde = self.fields.gamma_tilde_sym6
-            # Compute Christoffels for gamma_tilde
-            self.compute_christoffels_for_metric(gamma_tilde, conformal_christoffels)
-            R_tilde = self.compute_ricci_for_metric(gamma_tilde, conformal_christoffels)
+            # Special case: φ ≈ 0 (flat conformal factor)
+            # Use physical metric directly to avoid issues with inconsistent BSSN vars
+            if np.max(np.abs(chi)) < 1e-14:
+                self.compute_christoffels()
+                self.ricci = self.compute_ricci_for_metric(self.fields.gamma_sym6, self.christoffels)
+            else:
+                # ========================================================================
+                # FULL CONFORMAL DECOMPOSITION: R_ij = R̃_ij + R_χ_ij
+                # ========================================================================
+                
+                # Step 1: Compute conformal Christoffel symbols Γ̃^k_{ij}
+                # These depend on γ̃_ij, not the physical metric
+                conformal_christoffels = np.zeros_like(self.christoffels)
+                gamma_tilde = self.fields.gamma_tilde_sym6
+                self.compute_christoffels_for_metric(gamma_tilde, conformal_christoffels)
+                
+                # Step 2: Compute R̃_ij from conformal metric
+                R_tilde = self.compute_ricci_for_metric(gamma_tilde, conformal_christoffels)
 
-            Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
-            dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
+                Nx, Ny, Nz = self.fields.Nx, self.fields.Ny, self.fields.Nz
+                dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
 
-            # grad_chi
-            grad_chi = np.zeros((Nx, Ny, Nz, 3))
-            grad_chi[..., 0] = _fd_derivative_periodic(chi, dx, axis=0)
-            grad_chi[..., 1] = _fd_derivative_periodic(chi, dy, axis=1)
-            grad_chi[..., 2] = _fd_derivative_periodic(chi, dz, axis=2)
+                # Step 3: Compute gradient of conformal factor: ∇̃χ = ∂χ (since χ is scalar)
+                grad_chi = np.zeros((Nx, Ny, Nz, 3))
+                grad_chi[..., 0] = _fd_derivative_periodic(chi, dx, axis=0)
+                grad_chi[..., 1] = _fd_derivative_periodic(chi, dy, axis=1)
+                grad_chi[..., 2] = _fd_derivative_periodic(chi, dz, axis=2)
 
-            # DD_chi = D_i D_j chi
-            DD_chi = self.second_covariant_derivative_scalar(chi, christoffels=conformal_christoffels)
+                # Step 4: Second covariant derivative D̃_i D̃_j χ
+                # D̃_i D̃_j χ = ∂_i ∂_j χ - Γ̃^k_{ij} ∂_k χ
+                DD_chi = self.second_covariant_derivative_scalar(chi, christoffels=conformal_christoffels)
 
-            # Lap_chi = gamma^{ij} D_i D_j chi
-            gamma_tilde_inv = inv_sym6(gamma_tilde)
-            gamma_tilde_inv_full = sym6_to_mat33(gamma_tilde_inv)
-            Lap_chi = np.einsum('...ij,...ij', gamma_tilde_inv_full, DD_chi)
+                # Step 5: Laplacian D̃^k D̃_k χ = γ̃^{kl} D̃_k D̃_l χ
+                gamma_tilde_inv = inv_sym6(gamma_tilde)
+                gamma_tilde_inv_full = sym6_to_mat33(gamma_tilde_inv)
+                Lap_chi = np.einsum('...ij,...ij', gamma_tilde_inv_full, DD_chi)
 
-            # D^k chi D_k chi
-            D_chi_D_chi = np.einsum('...ij,...i,...j', gamma_tilde_inv_full, grad_chi, grad_chi)
+                # Step 6: D̃^k χ D̃_k χ (norm squared of gradient)
+                D_chi_D_chi = np.einsum('...ij,...i,...j', gamma_tilde_inv_full, grad_chi, grad_chi)
 
-            gamma_tilde_full = sym6_to_mat33(gamma_tilde)
+                # Step 7: Convert γ̃ to full matrix for tensor operations
+                gamma_tilde_full = sym6_to_mat33(gamma_tilde)
 
-            R_chi = (-2 * DD_chi
-                     - 2 * gamma_tilde_full * Lap_chi[..., np.newaxis, np.newaxis]
-                     + 4 * np.einsum('...i,...j->...ij', grad_chi, grad_chi)
-                     - 4 * gamma_tilde_full * D_chi_D_chi[..., np.newaxis, np.newaxis])
+                # Step 8: Assemble R_χ_ij
+                # R_χ_ij = -2 DD_chi - 2 γ̃_ij Lap_chi + 4 grad_chi ⊗ grad_chi - 4 γ̃_ij (grad_chi)²
+                R_chi = (-2 * DD_chi
+                         - 2 * gamma_tilde_full * Lap_chi[..., np.newaxis, np.newaxis]
+                         + 4 * np.einsum('...i,...j->...ij', grad_chi, grad_chi)
+                         - 4 * gamma_tilde_full * D_chi_D_chi[..., np.newaxis, np.newaxis])
 
-            self.ricci = R_tilde + R_chi
+                # Total Ricci: R_ij = R̃_ij + R_χ_ij
+                self.ricci = R_tilde + R_chi
 
         # Cache the result
         self._ricci_cache[combined_hash] = self.ricci.copy()
@@ -265,7 +365,24 @@ class GRGeometry:
         return DD_scalar
 
     def lie_derivative_gamma(self, gamma_sym6, beta):
-        """Compute Lie derivative L_β γ_ij using compiled function"""
+        """
+        Compute Lie derivative of metric tensor: L_β γ_ij.
+        
+        **Lie Derivative Formula:**
+        L_β γ_ij = β^k ∂_k γ_ij + γ_ik ∂_j β^k + γ_jk ∂_i β^k
+        
+        **Physical Interpretation:**
+        The Lie derivative describes how the metric changes when dragged along
+        the integral curves of the vector field β (the shift vector in GR).
+        This term accounts for advection by the shift in the evolution equation:
+        
+        ∂t γ_ij = -2α K_ij + L_β γ_ij
+        
+        **Implementation:**
+        - Uses centered finite differences for spatial derivatives
+        - Caches results to avoid recomputation during RK stages
+        - JIT-compiled for performance
+        """
         combined_hash = hash_array(np.concatenate([gamma_sym6.flatten(), beta.flatten()]))
         if combined_hash in self._lie_gamma_cache:
             return self._lie_gamma_cache[combined_hash]
@@ -297,7 +414,23 @@ class GRGeometry:
         return lie_K_sym6
 
     def enforce_det_gamma_tilde(self):
-        """Enforce det(\tilde{\gamma}) = 1 by rescaling \tilde{\gamma}."""
+        """
+        Enforce algebraic constraint: det(γ̃_ij) = 1.
+        
+        The conformal metric must have unit determinant for the BSSN formulation
+        to be well-posed. This is enforced by rescaling:
+        
+        γ̃_ij → γ̃_ij / (det(γ̃))^{1/3}
+        
+        **Method:**
+        1. Compute determinant det = det(γ̃_ij)
+        2. Compute det^{1/3} = det^{0.333...}
+        3. Divide each component by det^{1/3}
+        
+        **Post-Condition:**
+        - det(γ̃_ij) = 1 (within numerical precision)
+        - Cache is cleared (geometry must be recomputed)
+        """
         gamma_tilde_full = sym6_to_mat33(self.fields.gamma_tilde_sym6)
         det_gamma_tilde = np.linalg.det(gamma_tilde_full)
         det_third_root = det_gamma_tilde ** (1.0 / 3.0)
@@ -306,7 +439,22 @@ class GRGeometry:
         self.clear_cache()
 
     def enforce_traceless_A(self):
-        """Enforce traceless A: A_ij = A_ij - (1/3) \tilde{\gamma}_{ij} (\tilde{\gamma}^{kl} A_kl)."""
+        """
+        Enforce algebraic constraint: tr(A) = γ̃^{ij} A_ij = 0.
+        
+        The BSSN variable Ã_ij must be traceless. This is enforced by:
+        
+        Ã_ij → Ã_ij - (1/3) γ̃_ij (γ̃^{kl} Ã_kl)
+        
+        **Method:**
+        1. Compute trace: tr_A = γ̃^{ij} Ã_ij
+        2. Compute correction: -(1/3) γ̃_ij tr_A
+        3. Subtract correction from A
+        
+        **Post-Condition:**
+        - tr(Ã_ij) = 0 (within numerical precision)
+        - Cache is NOT cleared (Christoffels depend on γ̃, not A)
+        """
         gamma_tilde_inv = inv_sym6(self.fields.gamma_tilde_sym6)
         gamma_tilde_inv_full = sym6_to_mat33(gamma_tilde_inv)
         gamma_tilde_full = sym6_to_mat33(self.fields.gamma_tilde_sym6)

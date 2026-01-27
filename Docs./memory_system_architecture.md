@@ -20,9 +20,9 @@ The AEONIC memory system is a tiered, receipt-driven memory architecture that ma
 
 | Component | Scope | Purpose |
 |-----------|-------|---------|
-| **[`PhaseLoomMemory`](gr_solver/phaseloom_memory.py:7)** | Per-orchestrator | Tracks phase loom computation state, band updates, octave culling |
-| **[`GRLedger`](gr_solver/gr_ledger.py:7)** | Global | Persistent receipt logging to `aeonic_receipts.jsonl` |
-| **[`OmegaLedger`](gr_solver/omega_ledger.py:81)** | Global | Coherence hash chain for step verification |
+| **[`PhaseLoomMemory`](src/phaseloom/phaseloom_memory.py:7)** | Per-orchestrator | Tracks phase loom computation state, band updates, octave culling |
+| **[`GRLedger`](src/core/gr_ledger.py:7)** | Global | Persistent receipt logging to `aeonic_receipts.jsonl` |
+| **[`OmegaLedger`](src/contracts/omega_ledger.py:81)** | Global | Coherence hash chain for step verification |
 
 ---
 
@@ -40,19 +40,19 @@ Receipts are the primary memory construct. Three receipt types correspond to mem
 
 ### 2.2 Ledger Memory
 
-**[`GRLedger`](gr_solver/gr_ledger.py:7)** provides:
+**[`GRLedger`](src/core/gr_ledger.py:7)** provides:
 - Hash-chained receipts (`receipt_hash`, `prev_receipt_hash`)
 - Persistent JSONL storage
 - Event types: `LAYOUT_VIOLATION`, `STAGE_RHS`, `CLOCK_DECISION`, `LEDGER_EVAL`, `STEP_ACCEPT/REJECT`
 
-**[`OmegaLedger`](gr_solver/omega_ledger.py:81)** provides:
+**[`OmegaLedger`](src/contracts/omega_ledger.py:81)** provides:
 - Per-step Ω-receipts with coherence hash: `HASH(serialize(Xi_n) || prev_hash_{n-1})`
 - LoC-PRINCIPLE-v1.0 minimal schema: `delta_norm`, `eps_model`, `eta_rep`, `gamma`, `clock_tau`, `clock_margin`
 - Chain verification via `verify_chain()`
 
 ### 2.3 State Memory
 
-**[`PhaseLoomMemory`](gr_solver/phaseloom_memory.py:7)** manages:
+**[`PhaseLoomMemory`](src/phaseloom/phaseloom_memory.py:7)** manages:
 - `prev_K`, `prev_gamma`: Previous curvature/connection state for delta computation
 - `bands_updated`: 8-element boolean array for octave band tracking
 - `dominant_band`, `amplitude`: Band metrics from phaseloom analysis
@@ -64,7 +64,7 @@ Receipts are the primary memory construct. Three receipt types correspond to mem
 
 ### 3.1 AeonicMemoryBank
 
-**File:** [`aeonic_memory_bank.py`](aeonic_memory_bank.py:27)
+**File:** [`aeonic_memory_bank.py`](src/aeonic/aeonic_memory_bank.py:27)
 
 ```python
 class AeonicMemoryBank:
@@ -100,7 +100,7 @@ class Record:
 
 ### 3.2 AeonicMemoryContract
 
-**File:** [`aeonic_memory_contract.py`](aeonic_memory_contract.py:12)
+**File:** [`aeonic_memory_contract.py`](src/aeonic/aeonic_memory_contract.py:12)
 
 Enforces contract compliance between memory tiers and receipt types:
 
@@ -118,7 +118,7 @@ Enforces contract compliance between memory tiers and receipt types:
 
 ### 3.3 AML (Aeonic Memory Language)
 
-**File:** [`aml.py`](aml.py:49)
+**File:** [`aml.py`](src/core/aml.py:49)
 
 Legality layer enforcing NSC↔GR/NR coupling:
 
@@ -145,11 +145,11 @@ SOLVE → STEP → ORCH → S_PHY
 
 | Contract | File | Purpose |
 |----------|------|---------|
-| **`SolverContract`** | [`solver_contract.py`](gr_solver/solver_contract.py:7) | Enforce stage time usage, prerequisites |
-| **`StepperContract`** | [`stepper_contract.py`](gr_solver/stepper_contract.py:5) | Attempt/step receipt separation, rollback safety |
-| **`TemporalSystemContract`** | [`temporal_system_contract.py`](gr_solver/temporal_system_contract.py:3) | Time management (t, τ, o, s, μ, attempt_id) |
-| **`OrchestratorContract`** | [`orchestrator_contract.py`](gr_solver/orchestrator_contract.py:5) | Window aggregation, regime transitions, promotions |
-| **`PhaseLoomContract`** | [`phaseloom_contract.py`](gr_solver/phaseloom_contract.py:5) | dt caps, action suggestions per tier (R0/R1/R2) |
+| **`SolverContract`** | [`gr_solver.py`](src/core/gr_solver.py:7) | Enforce stage time usage, prerequisites |
+| **`StepperContract`** | [`gr_stepper.py`](src/core/gr_stepper.py:5) | Attempt/step receipt separation, rollback safety |
+| **`TemporalSystemContract`** | [`temporal_system_contract.py`](src/contracts/temporal_system_contract.py:3) | Time management (t, τ, o, s, μ, attempt_id) |
+| **`OrchestratorContract`** | [`orchestrator_contract.py`](src/contracts/orchestrator_contract.py:5) | Window aggregation, regime transitions, promotions |
+| **`PhaseLoomContract`** | [`phaseloom_contract.py`](src/contracts/phaseloom_contract.py:5) | dt caps, action suggestions per tier (R0/R1/R2) |
 
 ---
 
@@ -221,7 +221,7 @@ Orchestration Window:
 
 ### 6.1 Clock Scales
 
-The memory system integrates with [`AeonicClockPack`](aeonic_clocks.py) (3 scales):
+The memory system integrates with [`AeonicClockPack`](src/aeonic/aeonic_clocks.py) (3 scales):
 
 | Scale | Symbol | Purpose | Memory TTL Reference |
 |-------|--------|---------|---------------------|
@@ -231,7 +231,7 @@ The memory system integrates with [`AeonicClockPack`](aeonic_clocks.py) (3 scale
 
 ### 6.2 Clock-Memory Synchronization
 
-**In [`AeonicMemoryBank.maintenance_tick()`](aeonic_memory_bank.py:176):**
+**In [`AeonicMemoryBank.maintenance_tick()`](src/aeonic/aeonic_memory_bank.py:176):**
 ```python
 def maintenance_tick(self):
     self.clock.tick_maintenance()  # Advance all clocks
@@ -242,7 +242,7 @@ def maintenance_tick(self):
         expire_record()
 ```
 
-**In [`PhaseLoomMemory`](gr_solver/phaseloom_memory.py:122-159):**
+**In [`PhaseLoomMemory`](src/phaseloom/phaseloom_memory.py:122-159):**
 - `_should_compute_with_unified_clock()`: Uses clock for regime shift detection
 - `detect_regime_shift(residual_slope)`: Triggers memory tainting
 - `compute_regime_hash(dt, dominant_band, resolution)`: Creates regime fingerprint
@@ -273,7 +273,7 @@ All records with matching regime_hash → tainted=True
 
 ### 7.2 Checkpoint Strategy
 
-1. **State Backup** (per step): [`CommitPhase`](gr_solver/phases.py:236-243)
+1. **State Backup** (per step): [`CommitPhase`](src/core/phases.py:236-243)
    - Fields backup before step execution
    - Used for rollback on rejection
 
@@ -376,18 +376,18 @@ All records with matching regime_hash → tainted=True
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| [`aeonic_memory_bank.py`](aeonic_memory_bank.py) | 247 | Core tiered memory storage |
-| [`aeonic_memory_contract.py`](aeonic_memory_contract.py) | 180 | Contract-compliant memory access |
-| [`aml.py`](aml.py) | 263 | Legality layer for coupling |
-| [`gr_solver/phaseloom_memory.py`](gr_solver/phaseloom_memory.py) | 321 | Phase loom state tracking |
-| [`gr_solver/gr_ledger.py`](gr_solver/gr_ledger.py) | 162 | Receipt persistence |
-| [`gr_solver/omega_ledger.py`](gr_solver/omega_ledger.py) | 235 | Coherence hash chain |
-| [`gr_solver/phases.py`](gr_solver/phases.py) | 470 | Phase-based orchestrator |
-| [`gr_solver/solver_contract.py`](gr_solver/solver_contract.py) | 123 | Solver contract |
-| [`gr_solver/stepper_contract.py`](gr_solver/stepper_contract.py) | 75 | Stepper contract |
-| [`gr_solver/temporal_system_contract.py`](gr_solver/temporal_system_contract.py) | 80 | Temporal contract |
-| [`gr_solver/orchestrator_contract.py`](gr_solver/orchestrator_contract.py) | 50 | Orchestrator contract |
-| [`gr_solver/phaseloom_contract.py`](gr_solver/phaseloom_contract.py) | 37 | Phase loom contract |
+| [`aeonic_memory_bank.py`](src/aeonic/aeonic_memory_bank.py) | 247 | Core tiered memory storage |
+| [`aeonic_memory_contract.py`](src/aeonic/aeonic_memory_contract.py) | 180 | Contract-compliant memory access |
+| [`aml.py`](src/core/aml.py) | 263 | Legality layer for coupling |
+| [`phaseloom_memory.py`](src/phaseloom/phaseloom_memory.py) | 321 | Phase loom state tracking |
+| [`gr_ledger.py`](src/core/gr_ledger.py) | 162 | Receipt persistence |
+| [`omega_ledger.py`](src/contracts/omega_ledger.py) | 235 | Coherence hash chain |
+| [`phases.py`](src/core/phases.py) | 470 | Phase-based orchestrator |
+| [`gr_solver.py`](src/core/gr_solver.py) | 123 | Solver contract |
+| [`gr_stepper.py`](src/core/gr_stepper.py) | 75 | Stepper contract |
+| [`temporal_system_contract.py`](src/contracts/temporal_system_contract.py) | 80 | Temporal contract |
+| [`orchestrator_contract.py`](src/contracts/orchestrator_contract.py) | 50 | Orchestrator contract |
+| [`phaseloom_contract.py`](src/contracts/phaseloom_contract.py) | 37 | Phase loom contract |
 
 ---
 

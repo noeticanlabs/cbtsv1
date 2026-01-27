@@ -1,0 +1,2043 @@
+{
+  "summary": {
+    "files_scanned": 241,
+    "registry_valid": true,
+    "total_issues": 254,
+    "fail_count": 11,
+    "warn_count": 243
+  },
+  "issues": [
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 12,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 33,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 34,
+      "message": "Undefined term reference",
+      "term_id": "A:MEMORY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 56,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 57,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 58,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 59,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 60,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 77,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 84,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 105,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 106,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 113,
+      "message": "Undefined term reference",
+      "term_id": "A:MEMORY.create_snapshot"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 114,
+      "message": "Undefined term reference",
+      "term_id": "A:MEMORY.emit_receipt"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 126,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 127,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 149,
+      "message": "Undefined term reference",
+      "term_id": "A:MEMORY.restore_snapshot"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 150,
+      "message": "Undefined term reference",
+      "term_id": "A:MEMORY.emit_receipt"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 167,
+      "message": "Undefined term reference",
+      "term_id": "N:GR"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 172,
+      "message": "Undefined term reference",
+      "term_id": "A:MEMORY.emit_receipt"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "src/tgs/TGS_design.md",
+      "line": 176,
+      "message": "Undefined term reference",
+      "term_id": "A:MEMORY.emit_receipt"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "plans/triaxis_integration_master_plan.md",
+      "line": 20,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "plans/triaxis_integration_master_plan.md",
+      "line": 20,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "plans/triaxis_integration_master_plan.md",
+      "line": 27,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "plans/triaxis_integration_master_plan.md",
+      "line": 28,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "plans/triaxis_integration_master_plan.md",
+      "line": 28,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "plans/triaxis_integration_master_plan.md",
+      "line": 53,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT.step"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "plans/triaxis_integration_master_plan.md",
+      "line": 54,
+      "message": "Undefined term reference",
+      "term_id": "N:SPEC"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/aeonica/42_AEONICA_RECEIPTS.md",
+      "line": 50,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT.step"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/aeonica/42_AEONICA_RECEIPTS.md",
+      "line": 128,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/aeonica/42_AEONICA_RECEIPTS.md",
+      "line": 140,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/aeonica/42_AEONICA_RECEIPTS.md",
+      "line": 146,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/aeonica/42_AEONICA_RECEIPTS.md",
+      "line": 152,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/aeonica/42_AEONICA_RECEIPTS.md",
+      "line": 152,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/aeonica/42_AEONICA_RECEIPTS.md",
+      "line": 152,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/aeonica/42_AEONICA_RECEIPTS.md",
+      "line": 152,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GML_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 43,
+      "message": "Undefined term reference",
+      "term_id": "A:CKPT.created"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GML_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 44,
+      "message": "Undefined term reference",
+      "term_id": "A:ALERT.gate_fail"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GML_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 45,
+      "message": "Undefined term reference",
+      "term_id": "A:SUM.run"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GML_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 97,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GML_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 185,
+      "message": "Undefined term reference",
+      "term_id": "A:THREAD"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GML_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 225,
+      "message": "Undefined term reference",
+      "term_id": "A:ALERT.bottleneck"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GML_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 240,
+      "message": "Undefined term reference",
+      "term_id": "A:KIND.path"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/Noetica.NSC.Triaxis \u2014 The Unified Language & Ecosystem.md",
+      "line": 35,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/Noetica.NSC.Triaxis \u2014 The Unified Language & Ecosystem.md",
+      "line": 35,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/Noetica.NSC.Triaxis \u2014 The Unified Language & Ecosystem.md",
+      "line": 58,
+      "message": "Undefined term reference",
+      "term_id": "A:KIND.PATH"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 72,
+      "message": "Undefined term reference",
+      "term_id": "H128:r127"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 166,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 225,
+      "message": "Undefined term reference",
+      "term_id": "H128:r74"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 226,
+      "message": "Undefined term reference",
+      "term_id": "H128:r75"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 227,
+      "message": "Undefined term reference",
+      "term_id": "H128:r76"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 228,
+      "message": "Undefined term reference",
+      "term_id": "H128:r77"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 229,
+      "message": "Undefined term reference",
+      "term_id": "H128:r78"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 230,
+      "message": "Undefined term reference",
+      "term_id": "H128:r79"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 231,
+      "message": "Undefined term reference",
+      "term_id": "H128:r80"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 232,
+      "message": "Undefined term reference",
+      "term_id": "H128:r81"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 233,
+      "message": "Undefined term reference",
+      "term_id": "H128:r82"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 234,
+      "message": "Undefined term reference",
+      "term_id": "H128:r83"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 235,
+      "message": "Undefined term reference",
+      "term_id": "H128:r84"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 236,
+      "message": "Undefined term reference",
+      "term_id": "H128:r85"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 237,
+      "message": "Undefined term reference",
+      "term_id": "H128:r86"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 238,
+      "message": "Undefined term reference",
+      "term_id": "H128:r87"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 239,
+      "message": "Undefined term reference",
+      "term_id": "H128:r88"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 240,
+      "message": "Undefined term reference",
+      "term_id": "H128:r89"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 241,
+      "message": "Undefined term reference",
+      "term_id": "H128:r90"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 242,
+      "message": "Undefined term reference",
+      "term_id": "H128:r91"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 243,
+      "message": "Undefined term reference",
+      "term_id": "H128:r92"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 244,
+      "message": "Undefined term reference",
+      "term_id": "H128:r93"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 245,
+      "message": "Undefined term reference",
+      "term_id": "H128:r94"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 246,
+      "message": "Undefined term reference",
+      "term_id": "H128:r95"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 258,
+      "message": "Undefined term reference",
+      "term_id": "H128:r96"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GLLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 258,
+      "message": "Undefined term reference",
+      "term_id": "H128:r127"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 12,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 42,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 43,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 44,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 45,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 63,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 64,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 78,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 149,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT.step"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 173,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 185,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 188,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 240,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 260,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 264,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 273,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 283,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 287,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 296,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 306,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 310,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 319,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 329,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 333,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 342,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/lexicon/GHLL_LEXICON_ADDITIONS_AND_CONTRACT.md",
+      "line": 383,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/praxica/30_PRAXICA_SPEC.md",
+      "line": 119,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT.step"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 53,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT.step"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 79,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 161,
+      "message": "Undefined term reference",
+      "term_id": "A:CKPT.id"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 177,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 178,
+      "message": "Undefined term reference",
+      "term_id": "A:ALERT"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 180,
+      "message": "Undefined term reference",
+      "term_id": "A:ALERT.bottleneck"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 185,
+      "message": "Undefined term reference",
+      "term_id": "A:ALERT.decode_margin_low"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 189,
+      "message": "Undefined term reference",
+      "term_id": "A:ALERT.stage_mismatch"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 193,
+      "message": "Undefined term reference",
+      "term_id": "A:ALERT.hash_chain_fail"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 201,
+      "message": "Undefined term reference",
+      "term_id": "A:SUM.thread_dominance"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 205,
+      "message": "Undefined term reference",
+      "term_id": "A:SUM.gate_failures"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GML_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 213,
+      "message": "Undefined term reference",
+      "term_id": "A:LINK.intent_to_ops"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 44,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 47,
+      "message": "Undefined term reference",
+      "term_id": "H32:r24"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 48,
+      "message": "Undefined term reference",
+      "term_id": "H32:r26"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 49,
+      "message": "Undefined term reference",
+      "term_id": "H32:r30"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 50,
+      "message": "Undefined term reference",
+      "term_id": "H32:r25"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 60,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 61,
+      "message": "Undefined term reference",
+      "term_id": "H32:r24"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 61,
+      "message": "Undefined term reference",
+      "term_id": "H32:r26"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 61,
+      "message": "Undefined term reference",
+      "term_id": "H32:r30"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_HADAMARD_GLYPH_CODEBOOK.md",
+      "line": 61,
+      "message": "Undefined term reference",
+      "term_id": "H32:r25"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 112,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 113,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 114,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 115,
+      "message": "Undefined term reference",
+      "term_id": "N:SPEC"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 116,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 117,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 118,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 119,
+      "message": "Undefined term reference",
+      "term_id": "N:META"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 124,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 125,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 126,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 127,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 128,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 129,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 130,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 133,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 134,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 135,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 136,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 137,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 140,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 141,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 142,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 145,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 146,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 147,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 148,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 149,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 152,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 153,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 154,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 155,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 156,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 159,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 160,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 161,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 162,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/14_TRIASIS_GLYPH_CODEBOOK_NPA.md",
+      "line": 212,
+      "message": "Undefined term reference",
+      "term_id": "A:RCPT.step"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 34,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 35,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 36,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 37,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 38,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 94,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 98,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 99,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 146,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/12_GLYPH_TAXONOMY.md",
+      "line": 180,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GLLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 133,
+      "message": "Undefined term reference",
+      "term_id": "A:ALERT.trap"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GLLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 162,
+      "message": "Undefined term reference",
+      "term_id": "A:CLOCK.policy"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GLLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 497,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 20,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 21,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 22,
+      "message": "Undefined term reference",
+      "term_id": "N:SPEC"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 42,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 53,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 56,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 59,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 64,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 68,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 70,
+      "message": "Undefined term reference",
+      "term_id": "A:CLOCK.policy"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 72,
+      "message": "Undefined term reference",
+      "term_id": "N:TYPE"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 80,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 86,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 89,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 92,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 95,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 102,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 110,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 114,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 119,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 123,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 128,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 132,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 137,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 141,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 146,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 154,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 161,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 161,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 166,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 169,
+      "message": "Undefined term reference",
+      "term_id": "N:GOAL"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 176,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 182,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 186,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 189,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 193,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 196,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 200,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 203,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 207,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 210,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 218,
+      "message": "Undefined term reference",
+      "term_id": "N:SPEC"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 224,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 224,
+      "message": "Undefined term reference",
+      "term_id": "N:DOMAIN"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 225,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 225,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 225,
+      "message": "Undefined term reference",
+      "term_id": "N:POLICY"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 226,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 226,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 226,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 226,
+      "message": "Undefined term reference",
+      "term_id": "N:INV"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 239,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 243,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 246,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 249,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 252,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 255,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 258,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 261,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 264,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 267,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 274,
+      "message": "Undefined term reference",
+      "term_id": "N:META"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 278,
+      "message": "Undefined term reference",
+      "term_id": "N:META"
+    },
+    {
+      "severity": "WARN",
+      "category": "markdown",
+      "file": "specifications/glyphs/GHLL_GLYPH_LIBRARY_DICTIONARY.md",
+      "line": 288,
+      "message": "Undefined term reference",
+      "term_id": "N:MAP"
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "src/core/gr_clocks.py",
+      "line": 174,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "src/core/aeonic_memory_contract.py",
+      "line": 269,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "src/aeonic/aeonic_memory_contract.py",
+      "line": 269,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "compliance_tests/ci_check.py",
+      "line": 9,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "compliance_tests/ci_check.py",
+      "line": 189,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "compliance_tests/ci_check.py",
+      "line": 191,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "compliance_tests/ci_check.py",
+      "line": 192,
+      "message": "Deprecated usage: obsolete keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "compliance_tests/ci_check.py",
+      "line": 195,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "compliance_tests/ci_check.py",
+      "line": 246,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "compliance_tests/ci_check.py",
+      "line": 263,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "FAIL",
+      "category": "python",
+      "file": "compliance_tests/ci_check.py",
+      "line": 271,
+      "message": "Deprecated usage: deprecated keyword",
+      "term_id": null
+    },
+    {
+      "severity": "WARN",
+      "category": "nllc",
+      "file": "tests/test_gcat0_5.nllc",
+      "line": 1,
+      "message": "Missing @uses declaration",
+      "term_id": null
+    },
+    {
+      "severity": "WARN",
+      "category": "nllc",
+      "file": "tests/test_schwarzschild_nsc.nllc",
+      "line": 1,
+      "message": "Missing @uses declaration",
+      "term_id": null
+    },
+    {
+      "severity": "WARN",
+      "category": "nllc",
+      "file": "tests/test_comprehensive_gr_solver.nllc",
+      "line": 1,
+      "message": "Missing @uses declaration",
+      "term_id": null
+    },
+    {
+      "severity": "WARN",
+      "category": "nllc",
+      "file": "tests/wp1_global_smoothness_bootstrap.nllc",
+      "line": 1,
+      "message": "Missing @uses declaration",
+      "term_id": null
+    },
+    {
+      "severity": "WARN",
+      "category": "nllc",
+      "file": "tests/scripts/test_minkowski.nllc",
+      "line": 1,
+      "message": "Missing @uses declaration",
+      "term_id": null
+    },
+    {
+      "severity": "WARN",
+      "category": "nllc",
+      "file": "src/tgs/TGS.nllc",
+      "line": 1,
+      "message": "Missing @uses declaration",
+      "term_id": null
+    },
+    {
+      "severity": "WARN",
+      "category": "nllc",
+      "file": "Docs./example_gr_solver.nllc",
+      "line": 1,
+      "message": "Missing @uses declaration",
+      "term_id": null
+    }
+  ]
+}

@@ -172,7 +172,7 @@ class GRPhaseLoomThreads:
 
     def dt_thread_gr(self, domain, scale, response, eps_H, eps_M, m_det, eps_H_prev, eps_M_prev, m_det_prev, dt_prev, geometry, gauge, dt_selected):
         """Compute dt proposal for a specific thread in the 27-thread lattice."""
-        from .gr_core_fields import inv_sym6, trace_sym6, norm2_sym6
+        from src.core.gr_core_fields import inv_sym6, trace_sym6, norm2_sym6
         dx = self.fields.dx
         gamma_inv_sym6 = inv_sym6(self.fields.gamma_sym6)
         K_trace = trace_sym6(self.fields.K_sym6, gamma_inv_sym6)

@@ -3,7 +3,7 @@ import numpy as np
 import logging
 from src.contracts.stepper_contract import StepperContract
 from src.aeonic.aeonic_memory_contract import AeonicMemoryContract
-from scripts.phaseloom_27 import PhaseLoom27
+from src.phaseloom.phaseloom_27 import PhaseLoom27
 from src.receipts.receipt_schemas import Kappa, MStepReceipt
 from scripts.promotion_engine import PromotionEngine
 

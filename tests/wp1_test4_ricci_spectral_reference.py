@@ -28,9 +28,9 @@ import json
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from gr_solver.gr_solver import GRSolver
-from gr_solver.gr_core_fields import sym6_to_mat33, mat33_to_sym6
-from gr_solver.gr_geometry_nsc import IDX_XX, IDX_XY, IDX_XZ, IDX_YY, IDX_YZ, IDX_ZZ
+from src.core.gr_solver import GRSolver
+from src.core.gr_core_fields import sym6_to_mat33, mat33_to_sym6
+from src.core.gr_geometry_nsc import IDX_XX, IDX_XY, IDX_XZ, IDX_YY, IDX_YZ, IDX_ZZ
 
 def make_grid(N, L):
     dx = L / N

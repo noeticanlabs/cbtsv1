@@ -4,7 +4,7 @@ Test 9 Bianchi Integrity
 
 import numpy as np
 import logging
-from gr_solver.gr_core_fields import inv_sym6, sym6_to_mat33, det_sym6
+from src.core.gr_core_fields import inv_sym6, sym6_to_mat33, det_sym6
 
 class Test9Bianchi:
     """

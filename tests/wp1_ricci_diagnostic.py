@@ -290,7 +290,7 @@ def spectral_ricci(g: np.ndarray, L: float) -> np.ndarray:
 # ----------------------------
 def try_import_compiled():
     try:
-        from gr_solver.gr_geometry_nsc import compute_christoffels_compiled
+        from src.core.gr_geometry_nsc import compute_christoffels_compiled
         return compute_christoffels_compiled
     except Exception:
         return None

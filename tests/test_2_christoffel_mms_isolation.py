@@ -6,8 +6,8 @@ import argparse
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from gr_solver.gr_geometry_nsc import compute_christoffels_compiled
-from gr_solver.gr_core_fields import inv_sym6, sym6_to_mat33
+from src.core.gr_geometry_nsc import compute_christoffels_compiled
+from src.core.gr_core_fields import inv_sym6, sym6_to_mat33
 
 def test_christoffel_isolation(print_shapes=False):
     print("Running Christoffel Isolation Test...")

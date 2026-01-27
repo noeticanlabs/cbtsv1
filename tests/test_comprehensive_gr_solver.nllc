@@ -1,3 +1,5 @@
+@uses [TERM-NSC-0011, TERM-NSC-0020, TERM-NSC-0003, TERM-NSC-0017, TERM-NSC-0001]
+
 // NSC/NLLC Comprehensive GR Solver Test
 // Mirrors test_comprehensive_gr_solver.py functionality using Noetica Scripting Calculus
 // Glyph-integrated version showing N:GR namespace and Aeonic receipt system

@@ -8,7 +8,7 @@ except ImportError:
     prange = range
 
 # Import GR functions
-from gr_geometry_nsc import (
+from src.core.gr_geometry_nsc import (
     compute_christoffels_compiled,
     compute_ricci_compiled,
     compute_ricci_scalar_compiled,
@@ -23,7 +23,7 @@ from gr_geometry_nsc import (
     _lie_derivative_gamma_jit,
     _lie_derivative_K_jit
 )
-from gr_constraints_nsc import compute_hamiltonian_compiled, compute_momentum_compiled
+from config.gr_constraints_nsc import compute_hamiltonian_compiled, compute_momentum_compiled
 
 @jit(nopython=True, parallel=True)
 def compute_gr_rhs_jit(gamma_sym6, K_sym6, alpha, beta, phi, gamma_tilde_sym6, A_sym6, Gamma_tilde, Z, Z_i, dx, dy, dz, lambda_val=0.0):

@@ -1,0 +1,120 @@
+{
+  "schema": "nir_v0.1",
+  "functions": [
+    {
+      "name": "gr_step",
+      "params": [
+        {
+          "name": "%dt",
+          "type": "float64"
+        },
+        {
+          "name": "%t",
+          "type": "float64"
+        }
+      ],
+      "return_ty": {
+        "kind": "float64"
+      },
+      "blocks": [
+        {
+          "name": "entry",
+          "instructions": [
+            {
+              "trace": {
+                "file": "generated.nir",
+                "span": {
+                  "start": 1,
+                  "end": 10
+                },
+                "ast_path": "gr_step"
+              },
+              "result": {
+                "name": "%dt_copy",
+                "type": "float64"
+              },
+              "value": {
+                "kind": "float64",
+                "value": 0.001
+              }
+            },
+            {
+              "trace": {
+                "file": "generated.nir",
+                "span": {
+                  "start": 11,
+                  "end": 20
+                },
+                "ast_path": "gr_step"
+              },
+              "result": {
+                "name": "%result",
+                "type": "float64"
+              },
+              "value": {
+                "kind": "float64",
+                "value": 1.0
+              }
+            },
+            {
+              "trace": {
+                "file": "generated.nir",
+                "span": {
+                  "start": 21,
+                  "end": 25
+                },
+                "ast_path": "gr_step"
+              },
+              "value": null,
+              "kind": "return"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "gr_constraint_check",
+      "params": [],
+      "return_ty": {
+        "kind": "float64"
+      },
+      "blocks": [
+        {
+          "name": "entry",
+          "instructions": [
+            {
+              "trace": {
+                "file": "generated.nir",
+                "span": {
+                  "start": 30,
+                  "end": 40
+                },
+                "ast_path": "gr_constraint_check"
+              },
+              "result": {
+                "name": "%eps_H",
+                "type": "float64"
+              },
+              "value": {
+                "kind": "float64",
+                "value": 1e-10
+              }
+            },
+            {
+              "trace": {
+                "file": "generated.nir",
+                "span": {
+                  "start": 41,
+                  "end": 45
+                },
+                "ast_path": "gr_constraint_check"
+              },
+              "value": null,
+              "kind": "return"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

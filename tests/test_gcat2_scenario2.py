@@ -9,8 +9,8 @@ import json
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from gr_solver.gr_solver import GRSolver
-from gr_solver.gr_core_fields import SYM6_IDX
+from src.core.gr_solver import GRSolver
+from src.core.gr_core_fields import SYM6_IDX
 
 def test_gcat2_scenario2_constraint_violating_perturbation():
     """Scenario 2: Constraint-violating initial perturbation to test Z-field damping."""

@@ -20,12 +20,14 @@ from .gr_gauge import GRGauge
 from .gr_scheduler import GRScheduler
 from .gr_stepper import GRStepper
 from .gr_ledger import GRLedger
-from .phaseloom_gr_orchestrator import GRPhaseLoomOrchestrator
-from aeonic_memory_bank import AeonicMemoryBank
-from aeonic_memory_contract import AeonicMemoryContract
-from aeonic_clocks import AeonicClockPack
-from aeonic_receipts import AeonicReceipts
-from phaseloom_27 import PhaseLoom27
+from src.phaseloom.phaseloom_gr_orchestrator import GRPhaseLoomOrchestrator
+from src.aeonic.aeonic_memory_bank import AeonicMemoryBank
+from src.core.aeonic_memory_contract import AeonicMemoryContract
+from src.aeonic.aeonic_clocks import AeonicClockPack
+from src.core.aeonic_receipts import AeonicReceipts
+from src.phaseloom.phaseloom_27 import PhaseLoom27
+
+from src.spectral.cache import SpectralCache
 
 @dataclass
 class Damping:
@@ -111,6 +113,10 @@ class GRSolver:
         self.aeonic_receipts = AeonicReceipts()
         self.memory_bank = AeonicMemoryBank(self.clocks, self.aeonic_receipts)
         self.memory_contract = AeonicMemoryContract(self.memory_bank, self.aeonic_receipts)
+        self.spectral_cache = SpectralCache(
+            Nx=self.fields.Nx, Ny=self.fields.Ny, Nz=self.fields.Nz,
+            dx=self.fields.dx, dy=self.fields.dy, dz=self.fields.dz
+        )
         self.phaseloom = PhaseLoom27()
 
         self.analysis_mode = analysis_mode
@@ -160,6 +166,14 @@ class GRSolver:
                 step_timer = Timer("step")
                 with step_timer:
                     dt, dominant_thread, rail_violation = self.orchestrator.run_step(dt_max)
+
+                # Check if constraint cleanup is needed
+                if hasattr(self, 'constraints') and self.constraints.enable_threshold_cleanup:
+                    cleanup_result = self.constraints.elliptic_cleanup(
+                        step=self.step, t=self.t
+                    )
+                    if cleanup_result['hamiltonian_solved'] or cleanup_result['momentum_solved']:
+                        logger.info(f"Constraint cleanup performed: {cleanup_result}")
 
                 self.t = self.orchestrator.t
                 self.step = self.orchestrator.step

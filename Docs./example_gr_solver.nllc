@@ -1,3 +1,5 @@
+@uses [TERM-NSC-0011, TERM-NSC-0020, TERM-NSC-0003]
+
 // Example NLLC script for GR/NR solver integration
 // Simulates the canonical per-step sequence
 

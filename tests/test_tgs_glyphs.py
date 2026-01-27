@@ -9,7 +9,7 @@ sys.path.insert(0, 'src')
 sys.path.insert(0, '.')
 
 from triaxis.lexicon import GLLL
-from gr_solver.gr_geometry import connection_coeff, lambda_laplacian
+from src.core.gr_geometry import connection_coeff, lambda_laplacian
 
 
 class TestGLLLTGSGlyphs:

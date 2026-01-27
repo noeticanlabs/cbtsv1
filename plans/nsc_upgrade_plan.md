@@ -1,12 +1,12 @@
 # NSC System Upgrade Plan
 
 ## Executive Summary
-The Noetica Symbolic Compiler (NSC) system is transitioning from a prototype phase (Phase 1) to a robust, structured language compiler (NLLC). The current state involves split logic between `noetica_nsc_phase1` (glyph-centric, regex-based) and `src/nllc` (AST, NIR, VM). This upgrade plan targets the unification of these systems, introducing static typing, optimization passes, and deep integration with the GR/HPC solver stack.
+The Noetica Symbolic Compiler (NSC) system is transitioning from a prototype phase to a robust, structured language compiler (NLLC). The current state involves legacy logic that was previously spread across multiple prototype implementations, now consolidated into `src/nllc` (AST, NIR, VM). This upgrade plan targets the unification of these systems, introducing static typing, optimization passes, and deep integration with the GR/HPC solver stack.
 
 ## 1. Architecture Consolidation
 **Goal**: Establish `src/nllc` as the canonical compiler pipeline.
-- **Action**: Port the rich glyph set (e.g., `ℋ`, `𝓜`, `𝔊`) and policy parsing logic from `noetica_nsc_phase1` to `src/nllc/lex.py` and `src/nllc/parse.py`.
-- **Action**: Deprecate `nsc_compile_min.py` and `noetica_nsc_phase1/nsc.py` logic, replacing them with NLLC-based equivalents.
+- **Action**: Port the rich glyph set (e.g., `ℋ`, `𝓜`, `𝔊`) and policy parsing logic to `src/nllc/lex.py` and `src/nllc/parse.py`.
+- **Action**: Deprecate `nsc_compile_min.py` and legacy NSC logic, replacing them with NLLC-based equivalents.
 - **Benefit**: Removes code duplication and provides a single source of truth for language semantics.
 
 ## 2. Type System Hardening
@@ -25,12 +25,12 @@ The Noetica Symbolic Compiler (NSC) system is transitioning from a prototype pha
 ## 4. GR/HPC Intrinsic Integration
 **Goal**: Seamlessly bridge NLLC scripts with the high-performance GR solver.
 - **Action**: Define NIR instructions for heavy-lifting kernels (e.g., `RicciOp`, `LieDerivOp`, `EvolveGaugeOp`).
-- **Action**: Map these instructions directly to `nsc_runtime_min.py` JIT-compiled functions in the VM, bypassing the interpreter for inner loops.
+- **Action**: Map these instructions directly to JIT-compiled functions in the VM, bypassing the interpreter for inner loops.
 - **Benefit**: Allows NLLC to orchestrate HPC kernels without interpreter overhead.
 
 ## 5. Tooling & Diagnostics
 **Goal**: Improve developer experience.
-- **Action**: Update `nsc_cli.py` to drive the `src/nllc` pipeline.
+- **Action**: Update CLI to drive the `src/nllc` pipeline.
 - **Action**: Enhance VM error reporting using `Trace` objects to point to exact source lines/spans.
 - **Benefit**: Easier debugging and usage.
 

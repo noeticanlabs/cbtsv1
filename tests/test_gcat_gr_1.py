@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
 import logging
 import copy
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 class TestGcatGr1:
     """

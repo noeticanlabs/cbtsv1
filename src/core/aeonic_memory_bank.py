@@ -1,1 +1,1 @@
-../src/aeonic/aeonic_memory_bank.py
+../aeonic/aeonic_memory_bank.py

@@ -7,8 +7,8 @@ Run GR solver on flat spacetime, check constraints remain ~0.
 import numpy as np
 import json
 import time
-from gr_solver.gr_solver import GRSolver
-from gr_solver.gr_core_fields import det_sym6, SYM6_IDX
+from src.core.gr_solver import GRSolver
+from src.core.gr_core_fields import det_sym6, SYM6_IDX
 
 def test_minkowski_stability():
     solver = GRSolver(Nx=10, Ny=10, Nz=10, dx=0.1, dy=0.1, dz=0.1)

@@ -13,8 +13,8 @@ import logging
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from gr_solver.gr_solver import GRSolver
-from phaseloom_27 import PhaseLoom27
+from src.core.gr_solver import GRSolver
+from src.phaseloom.phaseloom_27 import PhaseLoom27
 
 class TestComprehensiveGRSolver(unittest.TestCase):
     def setUp(self):

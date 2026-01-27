@@ -11,7 +11,7 @@ import os
 # Add project root to path to import phaseloom_27
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from phaseloom_27 import PhaseLoom27
+from src.phaseloom.phaseloom_27 import PhaseLoom27
 
 class TestGateStepLogic(unittest.TestCase):
     def setUp(self):

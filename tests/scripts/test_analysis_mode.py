@@ -10,7 +10,7 @@ import os
 import logging
 sys.path.append(os.path.abspath('.'))
 
-from gr_solver.gr_solver import GRSolver
+from src.core.gr_solver import GRSolver
 
 # Set up logging to see the logs
 logging.basicConfig(level=logging.INFO)
