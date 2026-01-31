@@ -53,6 +53,37 @@ This document tracks the version history of plan documents as the Noetica/NSC/Tr
 
 ---
 
+## Coherence Thesis Document
+
+| Version | File | Status | Date |
+|---------|------|--------|------|
+| - | - | **NEW** | 2026-01-31 |
+| **v2.1** | `Technical_Data/coherence_thesis_extended_canon_v2_1.md` | SUPERSEDED | 2026-01-31 |
+| **v2.2** | `Technical_Data/coherence_thesis_extended_canon_v2_1.md` | **CURRENT** | 2026-01-31 |
+
+**v2.2 Changes:**
+- Added Section 12: Critical Implementation Notes
+
+**v2.1 Changes:**
+- Comprehensive coherence framework document
+- Law of Coherence (LoC-PRINCIPLE-v1.0) specification
+- Temporal coherence system (t vs τ)
+- PhaseLoom band coherence with Kuramoto order parameter
+- Gate unification mapping (SEM/CONS/PHY ↔ ε-family)
+- Lambda-damping with units ledger
+- Notation ledger and determinism assumptions
+- Mathematical theory connections (Clay problems)
+- Implementation reference and verification checklist
+
+**Referee Review Fixes (v2.1→v2.2):**
+- Documented multiple C_o definitions (phaseloom_octaves.py vs phaseloom_threads_gr.py)
+- Documented octave system disabled by default (history_length=2 bug)
+- Documented phase integration bug (cumsum across threads, not time)
+- Added action items for each issue
+- Updated references with ⚠️ warnings for buggy modules
+
+---
+
 ## Summary of Implementation Status
 
 | Plan | Original Tasks | Completed | Pending |
@@ -60,14 +91,18 @@ This document tracks the version history of plan documents as the Noetica/NSC/Tr
 | NSC Upgrade | 5 | 4 (80%) | 1 (CLI tooling) |
 | NSC Split | 5 | 4 (80%) | 1 (JIT/benchmarks) |
 | PhaseLoom Integration | 4 | 3 (75%) | 1 (NSC_GR dialect) |
+| Coherence Thesis | - | 1 (100%) | - |
 
-**Overall: ~80% implemented**
+**Overall: ~80% implemented (+1 completed document)**
 
 ---
 
 ## Next Planned Versions
 
 ### v3.0 (Future)
+- Complete NSC CLI tooling
+- Implement JIT hooks and benchmarks
+- Define and implement NSC_GR dialect
 - Document completion of remaining pending items
 - Add benchmark results
 - Document performance metrics
@@ -80,3 +115,9 @@ This document tracks the version history of plan documents as the Noetica/NSC/Tr
 - [`terminology_registry.json`](terminology_registry.json) — Machine-readable ontology
 - [`compliance_tests/ci_check.py`](compliance_tests/ci_check.py) — CI enforcement
 - [`tests/test_full_stack_integration.py`](tests/test_full_stack_integration.py) — 46 integration tests
+- [`Technical_Data/coherence_thesis_extended_canon_v2_1.md`](Technical_Data/coherence_thesis_extended_canon_v2_1.md) — Coherence framework thesis
+
+---
+
+*Document Version: 2.0*  
+*Updated: 2026-01-31*  

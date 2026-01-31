@@ -1,148 +1,141 @@
 # CBTSV1 - General Relativity Solver Project
 
+A 3+1 General Relativity solver with PhaseLoom coherence framework, AEONIC memory system, and NSC compiler infrastructure.
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/noeticanlabs/cbtsv1.git
+cd cbtsv1
+
+# Install dependencies
+pip install -e .[dev]
+
+# Verify installation
+pytest --version
+ruff --version
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run unit tests only (fast)
+pytest tests/ -v -m "not slow" --ignore=tests/test_full_stack_integration.py
+
+# Run with coverage
+pytest --cov=src tests/
+
+# Run specific test file
+pytest tests/test_mms_convergence.py -v
+```
+
 ## Project Structure
 
 ```
 cbtsv1/
 ├── src/                          # Primary source code
 │   ├── aeonic/                   # AEONIC memory system
-│   ├── aml/                      # AML utilities
 │   ├── common/                   # Shared utilities
 │   ├── core/                     # Core GR solver (20+ modules)
 │   ├── contracts/                # Contract implementations
 │   ├── elliptic/                 # Elliptic solvers
 │   ├── hadamard/                 # Hadamard VM
 │   ├── module/                   # Module system
-│   ├── nllc/                     # NIR/LLVM compiler
-│   ├── nsc/                      # Numerical solver compiler
 │   ├── phaseloom/                # Phaseloom integration
-│   ├── receipts/                 # Receipt system
 │   ├── solver/                   # PIR representation
 │   ├── spectral/                 # Spectral methods
-│   ├── tgs/                      # TGS design
 │   └── triaxis/                  # Triaxis lexicon
 ├── tests/                        # Test suite
-│   └── scripts/                  # Test scripts
 ├── config/                       # NSC configuration files
 ├── data/                         # Test data and receipts
-│   ├── receipts/                 # Receipt JSON files
-│   └── test_data/                # Test data files
 ├── docs/                         # Documentation
 ├── specifications/               # Technical specifications
-│   ├── glyphs/                   # Glyph codebooks and taxonomies
-│   ├── lexicon/                  # Lexicon specifications
-│   ├── praxica/                  # Praxica specifications
-│   ├── aeonica/                  # Aeonica specifications
-│   ├── contracts/                # Contract specifications
-│   └── theory/                   # Mathematical theory documents
+│   ├── glyphs/                   # Glyph codebooks
+│   ├── lexicon/                  # Lexicon specs
+│   ├── contracts/                # Contract specs
+│   └── theory/                   # Mathematical theory
 ├── scripts/                      # Utility scripts
 ├── plans/                        # Planning documents
-└── gr_solver/                    # Symlink to src/core (backward compatibility)
+└── Technical_Data/               # Research documents
 ```
 
-## Key Directories
+## Key Components
 
-### [`src/core/`](src/core)
-Core GR solver modules including:
-- `gr_solver.py` - Main solver
-- `gr_stepper.py` - Time stepper
-- `gr_constraints.py` - Constraint handling
-- `gr_geometry.py` - Geometry operations
-- `gr_clock.py`, `gr_clocks.py` - Clock systems
-- `gr_rhs.py` - Right-hand side computations
+### Core Solver ([`src/core/`](src/core))
 
-### [`src/contracts/`](src/contracts)
-Contract implementations:
-- `solver_contract.py`
-- `stepper_contract.py`
-- `phaseloom_contract.py`
-- `orchestrator_contract.py`
-- `temporal_system_contract.py`
-- `omega_ledger.py`
+| Module | Purpose |
+|--------|---------|
+| `gr_solver.py` | Main GR solver |
+| `gr_stepper.py` | Time stepper with coherence gates |
+| `gr_constraints.py` | Constraint handling (Hamiltonian/Momentum) |
+| `gr_geometry.py` | Geometry operations (Christoffel, Ricci) |
+| `gr_coherence.py` | Coherence operator with λ-damping |
+| `gr_clock.py` | Temporal coherence tracking |
 
-### [`src/nllc/`](src/nllc)
-NIR/LLVM compiler for the solver:
-- `nir.py` - NIR representation
-- `lower_nir.py` - Lowering to LLVM
-- `vm.py` - Virtual machine
-- `aeonic.py` - AEONIC integration
+### Contracts ([`src/contracts/`](src/contracts))
 
-### [`specifications/`](specifications)
-Technical specifications organized by domain:
-- **glyphs/** - Glyph taxonomies and codebooks
-- **lexicon/** - Lexicon specifications
-- **praxica/** - Praxica specifications
-- **aeonica/** - Aeonica specifications
-- **contracts/** - Contract specifications
-- **theory/** - Mathematical theory documents
+- `stepper_contract.py` - Step acceptance criteria
+- `phaseloom_contract.py` - Band coherence governance
+- `omega_ledger.py` - Immutable receipt chain
 
-### [`data/`](data)
-- **receipts/** - Receipt JSONL files for test verification
-- **test_data/** - Test configuration files (E1, E2 series)
+### PhaseLoom ([`src/phaseloom/`](src/phaseloom))
 
-### [`scripts/`](scripts)
-Utility scripts for:
-- Compilation (`compile_nllc.py`, `nsc_compile_min.py`)
-- Diagnostics (`diagnostic_*.py`)
-- Testing (`dt_sweep.py`, `phaseloom_27.py`)
+Multi-thread governance system with:
+- Dyadic band analysis
+- Kuramoto-style coherence order parameter
+- Window-level regime classification
 
-## Running Tests
+## Documentation
 
-```bash
-# Run all tests
-pytest tests/
-
-# Run specific test
-pytest tests/test_mms_convergence.py
-
-# Run with coverage
-pytest --cov=src tests/
-```
-
-## Configuration
-
-NSC configuration files are located in [`config/`](config):
-- `gr_gate_policy.nscb`
-- `policy_bundle.nscb`
-- `coupling_policy_v0.1.json`
-- `gr_constraints_nsc.py`
-- `gr_rhs.nscir.json`
+- **[Coherence Thesis](Technical_Data/coherence_thesis_extended_canon_v2_1.md)** - Comprehensive coherence framework
+- **[Plans](plans/)** - Development roadmaps
+- **[Specifications](specifications/)** - Technical specs and contracts
 
 ## Development
 
-This project uses a structured layout with clear module boundaries. When adding new code:
+### Code Style
 
-1. Place core modules in `src/core/`
-2. Place compiler-related code in `src/nllc/` or `src/nsc/`
-3. Place integration code in `src/phaseloom/`
-4. Place tests in `tests/scripts/` or categorize appropriately
-5. Place specifications in `specifications/` subdirectories
+- Python 3.10+
+- Follow PEP 8 (enforced by ruff)
+- Use type hints
+- Write docstrings
 
-## Backward Compatibility
-
-The `gr_solver/` directory is a symlink to `src/core/` for backward compatibility with existing imports:
-```bash
-gr_solver/ -> src/core/
-```
-
-## Removed Directories
-
-The following legacy directories have been removed:
-- `Technical Data/` - Consolidated into `specifications/`
-- `Project Data/` - Empty directory, removed
-- `gr_gate_policy_dir/` - Consolidated into `config/`
-- `noetica_nsc_phase1/` - Legacy, removed
-
-## Python Path Setup
-
-For development, ensure `src/` is in your Python path:
+### Linting
 
 ```bash
-export PYTHONPATH="$PWD/src:$PYTHONPATH"
+# Check code
+ruff check src/ tests/
+
+# Auto-fix
+ruff check --fix src/ tests/
 ```
 
-Or add to `pyproject.toml`:
-```toml
-[tool.poetry.packages]
-include = ["src/*"]
-```
+### CI/CD
+
+GitHub Actions runs on every PR:
+- Unit tests (Python 3.10, 3.11)
+- Linting with ruff
+- Coverage reporting
+- Syntax validation
+
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License - see [LICENSE](LICENSE)
+
+## References
+
+- Clay Mathematics Institute Problems (Yang-Mills, Navier-Stokes)
+- Numerical Relativity: Computational Methods
+- Constraint Damping in Generalized Harmonic Gauge

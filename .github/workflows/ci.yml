@@ -1,0 +1,83 @@
+name: CBTSV1 CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov ruff
+
+      - name: Lint with ruff
+        run: |
+          ruff check src/ tests/
+
+      - name: Run unit tests (fast)
+        run: |
+          pytest tests/ -v --ignore=tests/test_full_stack_integration.py -m "not slow" -x
+
+      - name: Run integration tests
+        if: github.event_name == 'push'
+        run: |
+          pytest tests/test_full_stack_integration.py -v
+
+      - name: Upload coverage
+        if: github.event_name == 'push'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for broken links (if markdownlint available)
+        run: |
+          which markdownlint || echo "markdownlint not installed, skipping"
+
+      - name: Validate YAML files
+        run: |
+          pip install pyyaml
+          python -c "import yaml; yaml.safe_load(open('config/policy_bundle.nscb'))"
+
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Python syntax
+        run: |
+          python -m py_compile src/**/*.py
+          python -m py_compile tests/**/*.py
+
+      - name: Check for committed __pycache__
+        run: |
+          if find . -type d -name "__pycache__" | grep -q .; then
+            echo "Error: __pycache__ directories found"
+            find . -type d -name "__pycache__"
+            exit 1
+          fi
