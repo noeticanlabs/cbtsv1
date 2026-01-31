@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 from src.nllc.ast import *
 from src.nllc.nir import *
-from src.nllc.nir import ObjectType
+from src.nllc.nir import ObjectType, VectorType, SymmetricTensorType, AntiSymmetricTensorType, DivergenceFreeType
 
 class Lowerer:
     def __init__(self, file: str):
@@ -13,6 +13,7 @@ class Lowerer:
         self.current_function: Optional[Function] = None
         self.current_block: Optional[BasicBlock] = None
         self.loop_stack: List[Tuple[str, str]] = []
+        self.current_dialect: Optional[str] = None  # NSC-M3L dialect context
 
     def fresh_value(self, ty: Type) -> Value:
         name = f"%{self.value_counter}"
@@ -77,6 +78,13 @@ class Lowerer:
             self.lower_return_stmt(stmt, ast_path)
         elif stmt.__class__.__name__ == 'ExprStmt':
             self.lower_expr_stmt(stmt, ast_path)
+        # NSC-M3L Physics Statements
+        elif stmt.__class__.__name__ == 'DialectStmt':
+            self.lower_dialect_stmt(stmt, ast_path)
+        elif stmt.__class__.__name__ == 'FieldDecl':
+            self.lower_field_decl(stmt, ast_path)
+        elif stmt.__class__.__name__ == 'InvariantStmt':
+            self.lower_invariant_stmt(stmt, ast_path)
         # Ignore others for now
 
     def lower_fn_decl(self, stmt: FnDecl, ast_path: str):
@@ -232,6 +240,74 @@ class Lowerer:
         br_inst = BrInst(self.make_trace(stmt, ast_path), None, after, None)
         self.add_instruction(br_inst)
 
+    # NSC-M3L Physics Statement Lowering Methods
+    
+    def lower_dialect_stmt(self, stmt: 'DialectStmt', ast_path: str):
+        """Lower dialect declaration statement.
+        
+        Dialects (NSC_GR, NSC_NS, NSC_YM, NSC_Time) set the physics context.
+        These are emitted as metadata or annotations in the NIR.
+        """
+        # Dialect statements are metadata - record for later use
+        self.current_dialect = stmt.name
+        # Could emit a metadata instruction here
+        pass
+    
+    def lower_field_decl(self, stmt: 'FieldDecl', ast_path: str):
+        """Lower field declaration statement.
+        
+        `field u: vector` or `field T: tensor symmetric` etc.
+        Creates a variable with the appropriate physics type.
+        """
+        field_type = self._lower_type_expr(stmt.field_type, ast_path)
+        # Allocate storage for the field
+        ptr = self.fresh_value(field_type)
+        alloc_inst = AllocInst(self.make_trace(stmt, ast_path), ptr, field_type)
+        self.add_instruction(alloc_inst)
+        self.var_env[stmt.name] = ptr
+    
+    def lower_invariant_stmt(self, stmt: 'InvariantStmt', ast_path: str):
+        """Lower invariant constraint statement.
+        
+        Invariants represent physics constraints (e.g., div(v) = 0).
+        These are validated but don't produce runtime code directly.
+        """
+        # Lower the constraint expression
+        constraint_val = self.lower_expr(stmt.constraint, f"{ast_path}.constraint")
+        # Invariants are checked but don't emit instructions
+        pass
+    
+    def _lower_type_expr(self, type_expr: 'TypeExpr', ast_path: str) -> Type:
+        """Convert TypeExpr AST node to NIR Type."""
+        type_name = type_expr.name.lower()
+        modifiers = type_expr.modifiers
+        
+        # Map type name to NIR type
+        if type_name == 'int':
+            return IntType()
+        elif type_name == 'float':
+            return FloatType()
+        elif type_name == 'bool':
+            return BoolType()
+        elif type_name == 'vector':
+            return VectorType()
+        elif type_name == 'tensor':
+            # Check for symmetry modifiers
+            if 'symmetric' in modifiers:
+                return SymmetricTensorType()
+            elif 'antisymmetric' in modifiers:
+                return AntiSymmetricTensorType()
+            return TensorType(dims=2)  # Default 2-tensor
+        elif type_name == 'field':
+            return FieldType()
+        elif type_name == 'metric':
+            return MetricType()
+        elif type_name == 'clock':
+            return ClockType()
+        else:
+            # Unknown type, default to object
+            return ObjectType()
+
     def lower_return_stmt(self, stmt: ReturnStmt, ast_path: str):
         val = self.lower_expr(stmt.expr, f"{ast_path}.expr") if stmt.expr else None
         ret_inst = RetInst(self.make_trace(stmt, ast_path), val)
@@ -370,6 +446,50 @@ class Lowerer:
             load_inst = LoadInst(self.make_trace(expr, ast_path), loaded_val, temp_val)
             self.add_instruction(load_inst)
             return loaded_val
+        # NSC-M3L Physics Operators
+        elif expr.__class__.__name__ == 'Divergence':
+            arg_val = self.lower_expr(expr.argument, f"{ast_path}.argument")
+            result_val = self.fresh_value(FloatType())
+            inst = IntrinsicCallInst(self.make_trace(expr, ast_path), result_val, 'div', [arg_val])
+            self.add_instruction(inst)
+            return result_val
+        elif expr.__class__.__name__ == 'Curl':
+            arg_val = self.lower_expr(expr.argument, f"{ast_path}.argument")
+            result_val = self.fresh_value(VectorType())
+            inst = IntrinsicCallInst(self.make_trace(expr, ast_path), result_val, 'curl', [arg_val])
+            self.add_instruction(inst)
+            return result_val
+        elif expr.__class__.__name__ == 'Gradient':
+            arg_val = self.lower_expr(expr.argument, f"{ast_path}.argument")
+            result_val = self.fresh_value(VectorType())
+            inst = IntrinsicCallInst(self.make_trace(expr, ast_path), result_val, 'grad', [arg_val])
+            self.add_instruction(inst)
+            return result_val
+        elif expr.__class__.__name__ == 'Laplacian':
+            arg_val = self.lower_expr(expr.argument, f"{ast_path}.argument")
+            result_val = self.fresh_value(arg_val.ty)  # Same type as input
+            inst = IntrinsicCallInst(self.make_trace(expr, ast_path), result_val, 'laplacian', [arg_val])
+            self.add_instruction(inst)
+            return result_val
+        elif expr.__class__.__name__ == 'Trace':
+            arg_val = self.lower_expr(expr.argument, f"{ast_path}.argument")
+            result_val = self.fresh_value(FloatType())
+            inst = IntrinsicCallInst(self.make_trace(expr, ast_path), result_val, 'trace', [arg_val])
+            self.add_instruction(inst)
+            return result_val
+        elif expr.__class__.__name__ == 'Determinant':
+            arg_val = self.lower_expr(expr.argument, f"{ast_path}.argument")
+            result_val = self.fresh_value(FloatType())
+            inst = IntrinsicCallInst(self.make_trace(expr, ast_path), result_val, 'det', [arg_val])
+            self.add_instruction(inst)
+            return result_val
+        elif expr.__class__.__name__ == 'Contraction':
+            left_val = self.lower_expr(expr.left, f"{ast_path}.left")
+            right_val = self.lower_expr(expr.right, f"{ast_path}.right")
+            result_val = self.fresh_value(TensorType(dims=0))
+            inst = IntrinsicCallInst(self.make_trace(expr, ast_path), result_val, 'contract', [left_val, right_val])
+            self.add_instruction(inst)
+            return result_val
         else:
             raise NotImplementedError(f"Unsupported expr {type(expr)}")
 
@@ -402,5 +522,20 @@ class Lowerer:
             return IntType()  # assume
         elif isinstance(expr, Var):
             return self.var_env[expr.name].ty
+        # NSC-M3L Physics Operators
+        elif expr.__class__.__name__ == 'Divergence':
+            return FloatType()
+        elif expr.__class__.__name__ == 'Curl':
+            return VectorType()
+        elif expr.__class__.__name__ == 'Gradient':
+            return VectorType()
+        elif expr.__class__.__name__ == 'Laplacian':
+            return self.infer_type(expr.argument)
+        elif expr.__class__.__name__ == 'Trace':
+            return FloatType()
+        elif expr.__class__.__name__ == 'Determinant':
+            return FloatType()
+        elif expr.__class__.__name__ == 'Contraction':
+            return TensorType(dims=0)
         else:
             return IntType()

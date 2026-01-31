@@ -58,6 +58,35 @@ class ClockType(Type):
     """
     pass
 
+# NSC-M3L Physics Types
+@dataclass
+class VectorType(Type):
+    """Vector type for physics fields.
+    Components: number of vector components.
+    """
+    components: int = 1
+
+@dataclass
+class SymmetricTensorType(Type):
+    """Symmetric tensor type for physics (e.g., stress-energy tensor).
+    rank: tensor rank (2 for 2-tensor, etc.)
+    """
+    rank: int = 2
+
+@dataclass
+class AntiSymmetricTensorType(Type):
+    """Antisymmetric tensor type for physics (e.g., electromagnetic field).
+    rank: tensor rank
+    """
+    rank: int = 2
+
+@dataclass
+class DivergenceFreeType(Type):
+    """Divergence-free constraint type for NS/YM constraints.
+    Used to mark fields that satisfy div(F) = 0 constraint.
+    """
+    field_name: str = ""
+
 # Trace information
 @dataclass
 class Trace:

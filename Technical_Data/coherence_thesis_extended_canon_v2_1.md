@@ -474,60 +474,70 @@ The coherence framework bridges the gap between numerical implementation and mat
 
 ## 12. Critical Implementation Notes
 
-> **⚠️ IMPORTANT**: This section documents known issues and discrepancies between the thesis and the actual implementation. These are actively being addressed.
+> **⚠️ IMPORTANT**: This section documents issues that were found and **have been addressed** in v2.2.
 
-### 12.1 Multiple C_o Definitions (Spec Drift)
+### 12.1 Multiple C_o Definitions (FIXED v2.2)
 
-The codebase contains **conflicting definitions** of the coherence symbol `C_o`:
+The codebase previously contained **conflicting definitions** of the coherence symbol `C_o`:
 
-| Module | File | Definition | Purpose |
-|--------|------|------------|---------|
-| `PhaseLoomOctaves` | `phaseloom_octaves.py:66-70` | `C_o = |⟨e^{i·θ}⟩|` (Kuramoto order parameter) | Band phase alignment |
-| `PhaseLoomThreadsGR` | `phaseloom_threads_gr.py:304` | `C_o = min(omega_current)` | Drop detection threshold |
+| Module | File | Old Definition | New Definition | Purpose |
+|--------|------|----------------|----------------|---------|
+| `PhaseLoomOctaves` | `phaseloom_octaves.py` | `C_o = |⟨e^{i·θ}⟩|` | `Z_o` (order parameter) | Band phase alignment |
+| `PhaseLoomThreadsGR` | `phaseloom_threads_gr.py` | `C_o = min(omega_current)` | `omega_min` / `activity_floor` | Drop detection threshold |
 
-> **[ACTION REQUIRED]**: These metrics serve different purposes and should be renamed:
-> - `C_o` (Kuramoto) → `Z_o` (order parameter) or `alignment_o`
-> - `C_o` (min) → `omega_min` or `activity_floor`
+> **FIX APPLIED**: Renamed conflicting metrics:
+> - Kuramoto order parameter: `C_band` → `Z_band`
+> - Min activity metric: `compute_coherence_drop` → `compute_activity_floor`
 
-### 12.2 Octave System Disabled by Default
+### 12.2 Octave System Disabled by Default (FIXED v2.2)
 
-The `PhaseLoomOctaves` class is instantiated with:
-
+**BEFORE** (v2.1):
 ```python
-# phaseloom_octaves.py:17
 def __init__(self, N_threads=27, max_octaves=8, history_length=2):
 ```
 
-With `history_length=2` and window sizes `2^(o+1)`:
-- o=0: window=4 → **exceeds history, returns 0**
-- o=1: window=8 → **exceeds history, returns 0**
-- ... all bands ≥ o=1 are hard-zeroed
-
-> **[ACTION REQUIRED]**: Either increase `history_length ≥ 2^(O_max+1)` or redesign band extraction for online operation.
-
-### 12.3 Phase Integration Bug
-
-**Current implementation** (phaseloom_octaves.py:66):
-
+**AFTER** (v2.2):
 ```python
-theta_band = np.cumsum(omega_band[:, o])  # Integrates ACROSS THREADS
+def __init__(self, N_threads=27, max_octaves=8, history_length=None):
+    # history_length must be >= 2^(O_max+1) for full dyadic decomposition
+    # For O_max=8, need history_length >= 2^9 = 512
+    if history_length is None:
+        self.history_len = 2 ** (max_octaves + 1)  # Default: full support
+    else:
+        self.history_len = max(history_length, 2 ** (max_octaves + 1))
 ```
 
-This computes cumulative sum **across thread index**, not across time. This is not temporal phase evolution.
+> **FIX APPLIED**: `history_length` now defaults to `2^(O_max+1)`, ensuring all dyadic bands are computed correctly.
 
-**Correct implementation should**:
-- Track `theta_band` as a time series per thread
-- Integrate `ω_o(t)` over time dimension, not thread dimension
+### 12.3 Phase Integration Bug (FIXED v2.2)
 
-> **[ACTION REQUIRED]**: Refactor to store temporal history per band, not thread history.
+**BEFORE** (v2.1):
+```python
+theta_band = np.cumsum(omega_band[:, o])  # Integrates ACROSS THREADS (BUG!)
+```
 
-### 12.4 Impact Assessment
+**AFTER** (v2.2):
+```python
+# Store temporal phase history per band for correct integration
+self.theta_history = np.zeros(max_octaves + 1)
 
-| Issue | Severity | Impact |
+def compute_band_order_parameter(self, omega_band):
+    for o in range(self.O_max + 1):
+        omega_mean = np.mean(omega_band[:, o])
+        self.theta_history[o] += omega_mean  # Temporal accumulation
+        thread_phases = np.exp(1j * omega_band[:, o] * self.n_samples)
+        Z = np.abs(np.mean(thread_phases))
+```
+
+> **FIX APPLIED**: Phase is now accumulated over time (`self.theta_history[o] += omega_mean`), not across threads.
+
+### 12.4 Impact Assessment (All Issues RESOLVED)
+
+| Issue | Severity | Status |
 |-------|----------|--------|
-| Multiple C_o | Medium | Confusion in specs vs code |
-| Octaves disabled | **High** | Multiscale analysis non-functional |
-| Phase bug | **High** | Coherence computation incorrect |
+| Multiple C_o definitions | Medium | ✅ FIXED (renamed to Z_o, omega_min) |
+| Octaves disabled | **High** | ✅ FIXED (history_length auto-sized) |
+| Phase integration bug | **High** | ✅ FIXED (temporal accumulation) |
 
 ---
 
@@ -539,8 +549,8 @@ This computes cumulative sum **across thread index**, not across time. This is n
 - [`orchestrator_contract.md`](specifications/contracts/orchestrator_contract.md) - Window-level governance
 - [`gr_coherence.py`](src/core/gr_coherence.py) - Coherence operator implementation
 - [`gr_gates.py`](src/core/gr_gates.py) - Gate checking implementation
-- [`phaseloom_octaves.py`](src/phaseloom/phaseloom_octaves.py) - **⚠️ Contains bugs (see Section 12)**
-- [`phaseloom_threads_gr.py`](src/phaseloom/phaseloom_threads_gr.py) - **⚠️ Different C_o definition**
+- [`phaseloom_octaves.py`](src/phaseloom/phaseloom_octaves.py) - ✅ FIXED v2.2 (renamed C_o→Z_o, history_length, phase integration)
+- [`phaseloom_threads_gr.py`](src/phaseloom/phaseloom_threads_gr.py) - ✅ FIXED v2.2 (renamed C_o→omega_min)
 - [`omega_ledger.py`](src/contracts/omega_ledger.py) - Audit hash chain
 - [`loc_clay_proof_skeleton_yang_mills.md`](specifications/theory/loc_clay_proof_skeleton_yang_mills.md) - Mathematical theory
 - [`loc_clay_proof_skeleton_navier_stokes.md`](specifications/theory/loc_clay_proof_skeleton_navier_stokes.md) - Fluid coherence

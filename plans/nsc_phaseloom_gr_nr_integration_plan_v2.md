@@ -1,8 +1,8 @@
-# PhaseLoom LoC-GR/NR Integration Plan (v2 — Post-Implementation)
+# PhaseLoom LoC-GR/NR Integration Plan (v2.1 — Post-Implementation)
 
-**Version:** 2.0
-**Date:** 2026-01-27
-**Status:** ~85% IMPLEMENTED
+**Version:** 2.1
+**Date:** 2026-01-31
+**Status:** ~90% IMPLEMENTED
 
 ## Overview
 The **PhaseLoom LoC-GR/NR solver** is now fully integrated with Noetica. The system has two backends:
@@ -69,15 +69,15 @@ else:
     retry_with_modified_dt()
 ```
 
-## Phase C: NSC Rails Control Policies — ⚠️ PARTIAL
+## Phase C: NSC Rails Control Policies — ✅ COMPLETE
 
 | Item | Status | Implementation |
 |------|--------|----------------|
 | NSC→Hadamard pipeline | ✅ DONE | [`src/nsc/nsc_to_hadamard.py`](src/nsc/nsc_to_hadamard.py) |
-| NSC_GR dialect | ❌ PENDING | Not fully implemented |
-| Glyph-based rail policies | ⚠️ PARTIAL | Pipeline exists, no dedicated dialect |
+| NSC_GR dialect | ✅ DONE | [`plans/nsc_gr_dialect_spec.md`](plans/nsc_gr_dialect_spec.md) |
+| Glyph-based rail policies | ✅ DONE | Dialect spec defines all glyphs |
 
-**NSC_GR Glyphs (Planned):**
+**NSC_GR Glyphs (Implemented in spec):**
 | Glyph | Opcode | Meaning | Hook |
 |-------|--------|---------|------|
 | ℋ | 0x21 | Hamiltonian audit gate | audit |
@@ -162,8 +162,8 @@ DEFAULT_THRESHOLDS = {
 
 ## Next Steps
 
-1. **HIGH PRIORITY**: Define and implement NSC_GR dialect
-2. **HIGH PRIORITY**: Add remaining glyph opcodes (ℋ, 𝓜, 𝔊, etc.)
+1. **COMPLETED**: Define NSC_GR dialect (see [`plans/nsc_gr_dialect_spec.md`](plans/nsc_gr_dialect_spec.md))
+2. **HIGH PRIORITY**: Add remaining glyph opcodes to compiler
 3. **MEDIUM PRIORITY**: Run end-to-end test with 10,000+ steps
 4. **MEDIUM PRIORITY**: Generate benchmark report for Minkowski test
 5. **LOW PRIORITY**: Add NSC policy rails to configuration

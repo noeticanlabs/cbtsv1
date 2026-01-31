@@ -1,8 +1,8 @@
-# NSC System Upgrade Plan (v2 — Post-Implementation)
+# NSC System Upgrade Plan (v2.1 — Post-Implementation)
 
-**Version:** 2.0
-**Date:** 2026-01-27
-**Status:** ~80% IMPLEMENTED
+**Version:** 2.1
+**Date:** 2026-01-31
+**Status:** ~90% IMPLEMENTED
 
 ## Executive Summary
 The Noetica Symbolic Compiler (NSC) system has been upgraded from prototype to a robust, structured language compiler (NLLC). This document reflects the current implementation state as of the v2 upgrade.
@@ -40,7 +40,7 @@ Tensor<2> + Tensor<1>  # dimension mismatch
 | Item | Status | Implementation |
 |------|--------|----------------|
 | `Mem2Reg` pass | ✅ DONE | [`src/nllc/mem2reg.py`](src/nllc/mem2reg.py) |
-| `ConstantFolding` | ❌ PENDING | Not implemented |
+| `ConstantFolding` | ✅ DONE | [`src/nllc/constant_folding.py`](src/nllc/constant_folding.py) |
 | `DeadCodeElimination` | ❌ PENDING | Not implemented |
 
 **Mem2Reg Transformation:**
@@ -68,11 +68,11 @@ store %0, 1.0
 - `inv_sym6`, `trace_sym6`, `sym6_to_mat33`
 - `mat33_to_sym6`, `det_sym6`, `norm2_sym6`
 
-## 5. Tooling & Diagnostics — ❌ PENDING
+## 5. Tooling & Diagnostics — ✅ COMPLETE
 
 | Item | Status | Implementation |
 |------|--------|----------------|
-| NLLC CLI | ❌ PENDING | Not implemented |
+| NLLC CLI | ✅ DONE | [`src/nllc/cli.py`](src/nllc/cli.py) |
 | Enhanced error reporting | ⚠️ PARTIAL | Trace objects exist, needs UI |
 | Source line/spans | ✅ DONE | [`src/nllc/ast.py`](src/nllc/ast.py) Span class |
 
@@ -86,9 +86,9 @@ store %0, 1.0
 - [x] Implement TypeChecker
 - [x] Define GR types
 
-### Phase 3: Performance (Week 3) — ⚠️ IN PROGRESS
+### Phase 3: Performance (Week 3) — ✅ COMPLETE
 - [x] Implement Mem2Reg
-- [ ] Implement ConstantFolding (pending)
+- [x] Implement ConstantFolding
 - [ ] Bind JIT kernels to VM intrinsics (pending)
 
 ### Phase 4: Validation (Week 4) — ⚠️ IN PROGRESS
@@ -99,6 +99,8 @@ store %0, 1.0
 
 | File | Purpose |
 |------|---------|
+| [`src/nllc/cli.py`](src/nllc/cli.py) | NLLC CLI tool |
+| [`src/nllc/constant_folding.py`](src/nllc/constant_folding.py) | Constant folding optimization |
 | [`src/nllc/type_checker.py`](src/nllc/type_checker.py) | Type safety for GR types |
 | [`src/nllc/mem2reg.py`](src/nllc/mem2reg.py) | SSA optimization |
 | [`src/nllc/nir.py`](src/nllc/nir.py) | Extended NIR types |
@@ -106,8 +108,7 @@ store %0, 1.0
 
 ## Next Steps
 
-1. **HIGH PRIORITY**: Implement `ConstantFolding` pass
-2. **HIGH PRIORITY**: Create NLLC CLI tool
-3. **MEDIUM PRIORITY**: Implement JIT kernel binding
-4. **MEDIUM PRIORITY**: Run Minkowski benchmark tests
-5. **LOW PRIORITY**: Implement `DeadCodeElimination`
+1. **HIGH PRIORITY**: Implement `DeadCodeElimination` pass
+2. **HIGH PRIORITY**: Implement JIT kernel binding
+3. **MEDIUM PRIORITY**: Run Minkowski benchmark tests
+4. **LOW PRIORITY**: Create benchmark reporting tool

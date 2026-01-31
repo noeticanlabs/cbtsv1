@@ -10,7 +10,7 @@ from typing import Dict, Any, Tuple, Optional
 import numpy as np
 import logging
 from .logging_config import Timer
-from src.phaseloom.phaseloom_threads_gr import compute_omega_current, compute_coherence_drop
+from src.phaseloom.phaseloom_threads_gr import compute_omega_current, compute_activity_floor
 from src.receipts.receipt_schemas import Kappa
 from .gr_clock import UnifiedClockState
 
@@ -299,7 +299,7 @@ class CommitPhase(OrchestratorPhase):
                     a_vals, b_vals = orch.adapter.extract_thread_signals(orch.fields, orch.constraints, orch.geometry)
                     theta_phase, phi_amp, omega_phase = orch.adapter.compute_theta_rho_omega(a_vals, b_vals, state.t + state.dt, state.dt)
                     spectral_omega = compute_omega_current(orch.fields, orch.prev_K, orch.prev_gamma, orch.spectral_cache)
-                    C_o, coherence_drop = compute_coherence_drop(spectral_omega, orch.prev_omega_current, threshold=0.1)
+                    C_o, coherence_drop = compute_activity_floor(spectral_omega, orch.prev_omega_current, threshold=0.1)
                     state.loom_data = orch.octaves.process_sample(spectral_omega)
                     state.loom_data.update({'C_o': C_o, 'coherence_drop': coherence_drop})
                     

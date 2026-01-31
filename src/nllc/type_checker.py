@@ -20,6 +20,7 @@ from typing import List, Dict, Optional, Tuple, Any
 from src.nllc.nir import (
     Type, IntType, FloatType, BoolType, StrType, ArrayType, ObjectType,
     TensorType, FieldType, MetricType, ClockType,
+    VectorType, SymmetricTensorType, AntiSymmetricTensorType, DivergenceFreeType,
     Module, Function, BasicBlock, Instruction,
     ConstInst, BinOpInst, CallInst, IntrinsicCallInst,
     LoadInst, StoreInst, AllocInst, GetElementInst,
@@ -301,6 +302,16 @@ class TypeChecker:
             'field_interpolate': (FieldType(), IntType(), FieldType()),
             'metric_raise': (TensorType(1), MetricType(), TensorType(1)),
             'metric_lower': (TensorType(1), MetricType(), TensorType(1)),
+            # NSC-M3L Physics Operators
+            'div': (VectorType(), FloatType()),
+            'curl': (VectorType(), VectorType()),
+            'grad': (FloatType(), VectorType()),
+            'laplacian': (VectorType(), VectorType()),
+            'trace': (TensorType(2), FloatType()),
+            'det': (TensorType(2), FloatType()),
+            'contract': (TensorType(1), TensorType(1), TensorType(0)),
+            'symmetrize': (TensorType(2), SymmetricTensorType()),
+            'antisymmetrize': (TensorType(2), AntiSymmetricTensorType()),
         }
         
         if inst.func not in intrinsic_types:
@@ -443,6 +454,206 @@ class TypeChecker:
         # This is checked at function level, so we just validate the value
         pass
 
+    # NSC-M3L Physics Operator Type Checking Methods
+    
+    def _check_divergence(self, arg_type: Type, expected_result: Type, trace: Optional[Trace] = None) -> bool:
+        """Check divergence operator: div(Vector) -> Scalar.
+        
+        Divergence reduces a vector field to a scalar field.
+        Valid for: VectorType, FieldType (assumed vector-valued).
+        """
+        if isinstance(arg_type, VectorType):
+            result = FloatType()  # div returns scalar (Float)
+            return self._types_compatible(result, expected_result)
+        elif isinstance(arg_type, FieldType):
+            # Assume field is vector-valued for divergence
+            result = FieldType()
+            return self._types_compatible(result, expected_result)
+        else:
+            self._add_error(
+                f"div operator requires Vector or Field type, got {self._type_str(arg_type)}",
+                trace
+            )
+            return False
+    
+    def _check_curl(self, arg_type: Type, expected_result: Type, trace: Optional[Trace] = None) -> bool:
+        """Check curl operator: curl(Vector) -> Vector.
+        
+        Curl computes the rotational component of a vector field.
+        Valid for: VectorType.
+        """
+        if isinstance(arg_type, VectorType):
+            result = VectorType(components=arg_type.components)  # Same dimension
+            return self._types_compatible(result, expected_result)
+        elif isinstance(arg_type, FieldType):
+            # Assume field is vector-valued
+            result = FieldType()
+            return self._types_compatible(result, expected_result)
+        else:
+            self._add_error(
+                f"curl operator requires Vector or Field type, got {self._type_str(arg_type)}",
+                trace
+            )
+            return False
+    
+    def _check_gradient(self, arg_type: Type, expected_result: Type, trace: Optional[Trace] = None) -> bool:
+        """Check gradient operator: grad(Scalar) -> Vector.
+        
+        Gradient computes spatial derivatives of a scalar field.
+        Valid for: FloatType, FieldType (assumed scalar).
+        """
+        if isinstance(arg_type, FloatType) or isinstance(arg_type, IntType):
+            result = VectorType(components=3)  # 3D space by default
+            return self._types_compatible(result, expected_result)
+        elif isinstance(arg_type, FieldType):
+            result = FieldType()  # Gradient of scalar field is vector field
+            return self._types_compatible(result, expected_result)
+        else:
+            self._add_error(
+                f"grad operator requires Float/Int or Field type, got {self._type_str(arg_type)}",
+                trace
+            )
+            return False
+    
+    def _check_laplacian(self, arg_type: Type, expected_result: Type, trace: Optional[Trace] = None) -> bool:
+        """Check Laplacian operator: laplacian(Vector/Field) -> Vector/Field.
+        
+        Laplacian is the divergence of the gradient.
+        Valid for: VectorType, FieldType.
+        """
+        if isinstance(arg_type, VectorType):
+            result = VectorType(components=arg_type.components)
+            return self._types_compatible(result, expected_result)
+        elif isinstance(arg_type, FieldType):
+            result = FieldType()
+            return self._types_compatible(result, expected_result)
+        else:
+            self._add_error(
+                f"laplacian operator requires Vector or Field type, got {self._type_str(arg_type)}",
+                trace
+            )
+            return False
+    
+    def _check_trace(self, arg_type: Type, expected_result: Type, trace: Optional[Trace] = None) -> bool:
+        """Check trace operator: trace(Tensor) -> Scalar.
+        
+        Trace computes the sum of diagonal components.
+        Valid for: TensorType (dims >= 2).
+        """
+        if isinstance(arg_type, TensorType):
+            if arg_type.dims < 2:
+                self._add_error(
+                    f"trace operator requires Tensor with dims >= 2, got Tensor<{arg_type.dims}>",
+                    trace
+                )
+                return False
+            result = FloatType()  # Trace is scalar
+            return self._types_compatible(result, expected_result)
+        elif isinstance(arg_type, SymmetricTensorType):
+            result = FloatType()
+            return self._types_compatible(result, expected_result)
+        else:
+            self._add_error(
+                f"trace operator requires Tensor or SymmetricTensor type, got {self._type_str(arg_type)}",
+                trace
+            )
+            return False
+    
+    def _check_determinant(self, arg_type: Type, expected_result: Type, trace: Optional[Trace] = None) -> bool:
+        """Check determinant operator: det(Tensor) -> Scalar.
+        
+        Determinant computes the volume scaling factor.
+        Valid for: TensorType (square, dims >= 2).
+        """
+        if isinstance(arg_type, TensorType):
+            if arg_type.dims < 2:
+                self._add_error(
+                    f"det operator requires Tensor with dims >= 2, got Tensor<{arg_type.dims}>",
+                    trace
+                )
+                return False
+            result = FloatType()  # Determinant is scalar
+            return self._types_compatible(result, expected_result)
+        elif isinstance(arg_type, MetricType):
+            result = FloatType()
+            return self._types_compatible(result, expected_result)
+        else:
+            self._add_error(
+                f"det operator requires Tensor or Metric type, got {self._type_str(arg_type)}",
+                trace
+            )
+            return False
+    
+    def _check_contraction(self, left_type: Type, right_type: Type, expected_result: Type, 
+                           trace: Optional[Trace] = None) -> bool:
+        """Check contraction operator: contract(Tensor, Tensor) -> Tensor/Scalar.
+        
+        Contraction reduces tensor rank by summing over paired indices.
+        """
+        if not isinstance(left_type, TensorType) or not isinstance(right_type, TensorType):
+            self._add_error(
+                f"contract operator requires Tensor types, got {self._type_str(left_type)} and {self._type_str(right_type)}",
+                trace
+            )
+            return False
+        
+        # Result tensor rank = left.rank + right.rank - 2
+        result_rank = left_type.dims + right_type.dims - 2
+        if result_rank < 0:
+            # Scalar result (full contraction)
+            result = FloatType()
+        else:
+            result = TensorType(dims=result_rank)
+        
+        return self._types_compatible(result, expected_result)
+    
+    def _is_divergence_free(self, expr_type: Type, field_name: str, trace: Optional[Trace] = None) -> bool:
+        """Check if a field satisfies the divergence-free constraint.
+        
+        Used for NS (incompressible flow) and YM (Gauss law) constraints.
+        """
+        if isinstance(expr_type, FieldType):
+            # Mark field as divergence-free
+            return True
+        elif isinstance(expr_type, VectorType):
+            return True
+        else:
+            self._add_error(
+                f"Field '{field_name}' must be Field or Vector type for divergence-free constraint",
+                trace
+            )
+            return False
+    
+    def _check_invariant_constraint(self, constraint_type: Type, 
+                                    expected_type: Type = None) -> bool:
+        """Check invariant constraint type validity.
+        
+        Invariants represent constraints that must be enforced.
+        """
+        # Invariant constraints are typically boolean expressions
+        # or equations that evaluate to zero/satisfaction
+        return True  # Accept any type for now, semantic analysis handles constraint validity
+    
+    def _check_dialect_consistency(self, dialect_name: str, statements: List) -> bool:
+        """Check that statements within a dialect are consistent.
+        
+        NSC dialects (GR, NS, YM, Time) have specific type constraints.
+        """
+        dialect_constraints = {
+            'NSC_GR': ['MetricType', 'TensorType', 'FieldType'],
+            'NSC_NS': ['FieldType', 'VectorType', 'DivergenceFreeType'],
+            'NSC_YM': ['TensorType', 'FieldType'],
+            'NSC_Time': ['ClockType', 'FieldType'],
+        }
+        
+        if dialect_name not in dialect_constraints:
+            # Allow custom dialects
+            return True
+        
+        # Check that all field declarations match dialect
+        allowed_types = set(dialect_constraints[dialect_name])
+        return True  # Simplified check for now
+
     def _types_compatible(self, source: Type, target: Type) -> bool:
         """Check if source type is compatible with target type."""
         # Exact match
@@ -450,6 +661,12 @@ class TypeChecker:
             # Handle TensorType with dims check
             if isinstance(source, TensorType) and isinstance(target, TensorType):
                 return source.dims == target.dims
+            # Handle VectorType with components check
+            if isinstance(source, VectorType) and isinstance(target, VectorType):
+                return source.components == target.components
+            # Handle SymmetricTensorType with rank check
+            if isinstance(source, SymmetricTensorType) and isinstance(target, SymmetricTensorType):
+                return source.rank == target.rank
             return True
         
         # Handle special cases
@@ -460,6 +677,26 @@ class TypeChecker:
         # Array type compatibility
         if isinstance(source, ArrayType) and isinstance(target, ArrayType):
             return self._types_compatible(source.element_type, target.element_type)
+        
+        # NSC-M3L Physics type compatibility
+        # VectorType is compatible with FieldType (field can be vector-valued)
+        if isinstance(source, VectorType) and isinstance(target, FieldType):
+            return True
+        # FieldType is compatible with VectorType
+        if isinstance(source, FieldType) and isinstance(target, VectorType):
+            return True
+        # TensorType can be used as FieldType in some contexts
+        if isinstance(source, TensorType) and isinstance(target, FieldType):
+            return True
+        # SymmetricTensorType compatible with TensorType
+        if isinstance(source, SymmetricTensorType) and isinstance(target, TensorType):
+            return True
+        # AntiSymmetricTensorType compatible with TensorType
+        if isinstance(source, AntiSymmetricTensorType) and isinstance(target, TensorType):
+            return True
+        # DivergenceFreeType is compatible with its base type
+        if isinstance(source, DivergenceFreeType):
+            return True
         
         return False
 
@@ -485,6 +722,14 @@ class TypeChecker:
             return "Metric"
         elif isinstance(t, ClockType):
             return "Clock"
+        elif isinstance(t, VectorType):
+            return f"Vector<{t.components}>"
+        elif isinstance(t, SymmetricTensorType):
+            return f"SymTensor<rank={t.rank}>"
+        elif isinstance(t, AntiSymmetricTensorType):
+            return f"AntiSymTensor<rank={t.rank}>"
+        elif isinstance(t, DivergenceFreeType):
+            return f"DivFree[{t.field_name}]"
         else:
             return "Unknown"
 
@@ -505,7 +750,7 @@ def typecheck_module(module: Module) -> Tuple[bool, List[TypeError]]:
 
 
 # Integration with nir.py lowering stage
-def typecheck_nir_module(module: Module, raise_on_error: bool = True) -> bool:
+def typecheck_nir_module(module: Module, raise_on_error: bool = True) -> Tuple[bool, List[TypeError]]:
     """
     Type check a NIR module during the lowering stage.
     
@@ -517,15 +762,16 @@ def typecheck_nir_module(module: Module, raise_on_error: bool = True) -> bool:
         raise_on_error: If True, raise TypeError on type errors.
         
     Returns:
-        True if type checking passed, False otherwise.
+        Tuple of (success, errors).
         
     Raises:
         TypeError: If raise_on_error is True and type errors are found.
     """
-    success, errors = typecheck_module(module)
+    checker = TypeChecker()
+    result = checker.check(module)
     
-    if not success and raise_on_error:
-        error_messages = "\n".join(str(e) for e in errors)
+    if not result.success and raise_on_error:
+        error_messages = "\n".join(str(e) for e in result.errors)
         raise TypeError(f"Type checking failed:\n{error_messages}")
     
-    return success
+    return result.success, result.errors

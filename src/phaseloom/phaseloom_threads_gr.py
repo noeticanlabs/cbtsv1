@@ -298,13 +298,21 @@ def compute_omega_current(fields, prev_K=None, prev_gamma=None, spectral_cache=N
 
     return omega_current
 
-def compute_coherence_drop(omega_current, prev_omega_current=None, threshold=0.1):
-    """Compute spectral coherence C_o and check for drop below threshold."""
-    # Define C_o as the minimum spectral bin activity (coherence measure)
-    C_o = np.min(omega_current) if len(omega_current) > 0 else 0.0
+def compute_activity_floor(omega_current, prev_omega_current=None, threshold=0.1):
+    """
+    Compute activity floor (omega_min) and check for drop below threshold.
+    
+    FIX v2.2: Renamed from compute_coherence_drop to avoid conflict with
+    Kuramoto order parameter Z_o in phaseloom_octaves.py.
+    
+    This metric measures the minimum spectral bin activity across the 27 bins.
+    A drop indicates loss of activity in previously active spectral regions.
+    """
+    # Activity floor: minimum spectral bin activity
+    omega_min = np.min(omega_current) if len(omega_current) > 0 else 0.0
     drop_detected = False
     if prev_omega_current is not None:
-        prev_C_o = np.min(prev_omega_current)
-        if C_o < threshold * prev_C_o:
+        prev_omega_min = np.min(prev_omega_current)
+        if omega_min < threshold * prev_omega_min:
             drop_detected = True
-    return C_o, drop_detected
+    return omega_min, drop_detected

@@ -1,5 +1,5 @@
 {
-  "version": "1.3",
+  "version": "1.4",
   "name": "Triaxis Terminology Registry",
   "description": "Central terminology registry for Triaxis Noetica ecosystem",
   "ghll": {
@@ -346,6 +346,206 @@
         "status": "implemented",
         "description": "Safe mode on repeat fail policy mapping v1",
         "specification": "GHLL_GLYPH_LIBRARY_DICTIONARY.md"
+      },
+      "DOMAIN_NAVIER_STOKES": {
+        "id": "N:DOMAIN.NAVIER_STOKES",
+        "category": "domain",
+        "status": "reserved",
+        "description": "3D incompressible Navier–Stokes domain (LoC/GCAT controlled)"
+      },
+      "DOMAIN_YM": {
+        "id": "N:DOMAIN.YM",
+        "category": "domain",
+        "status": "reserved",
+        "description": "Yang–Mills domain (classical + Clay-ledger obligations)"
+      },
+      "INV_GR_HAMILTONIAN_CONSTRAINT": {
+        "id": "N:INV.gr.hamiltonian_constraint",
+        "category": "invariant",
+        "status": "implemented",
+        "description": "Hamiltonian constraint residual bounded (eps_H <= eps_H_max). Source metric: eps_H."
+      },
+      "INV_GR_MOMENTUM_CONSTRAINT": {
+        "id": "N:INV.gr.momentum_constraint",
+        "category": "invariant",
+        "status": "implemented",
+        "description": "Momentum constraint residual bounded (eps_M <= eps_M_max). Source metric: eps_M."
+      },
+      "INV_GR_DET_GAMMA_POSITIVE": {
+        "id": "N:INV.gr.det_gamma_positive",
+        "category": "invariant",
+        "status": "implemented",
+        "description": "Spatial metric determinant stays positive (det_gamma_min > 0). Prevents signature/volume-form failure."
+      },
+      "INV_GR_CURVATURE_BOUNDED": {
+        "id": "N:INV.gr.curvature_bounded",
+        "category": "invariant",
+        "status": "implemented",
+        "description": "Scalar curvature indicator bounded (R_max <= R_max_limit). Source metric: R_max."
+      },
+      "INV_GR_ENERGY_DRIFT_BOUNDED": {
+        "id": "N:INV.gr.energy_drift_bounded",
+        "category": "invariant",
+        "status": "implemented",
+        "description": "Constraint-energy drift bounded per step (dH <= dH_max). Source metric: dH."
+      },
+      "INV_GR_LAPSE_POSITIVE": {
+        "id": "N:INV.gr.lapse_positive",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "Lapse remains positive (alpha_min > 0). Recommended PHY hard gate for stable slicing."
+      },
+      "MAP_INV_GR_HAMILTONIAN_CONSTRAINT_V1": {
+        "id": "N:MAP.inv.gr.hamiltonian_constraint.v1",
+        "category": "map",
+        "status": "implemented",
+        "description": "Maps invariant N:INV.gr.hamiltonian_constraint to receipt residuals.eps_H and gate thresholds."
+      },
+      "MAP_INV_GR_MOMENTUM_CONSTRAINT_V1": {
+        "id": "N:MAP.inv.gr.momentum_constraint.v1",
+        "category": "map",
+        "status": "implemented",
+        "description": "Maps invariant N:INV.gr.momentum_constraint to receipt residuals.eps_M and gate thresholds."
+      },
+      "MAP_INV_GR_DET_GAMMA_POSITIVE_V1": {
+        "id": "N:MAP.inv.gr.det_gamma_positive.v1",
+        "category": "map",
+        "status": "implemented",
+        "description": "Maps invariant N:INV.gr.det_gamma_positive to receipt metrics.det_gamma_min and positivity rule."
+      },
+      "MAP_INV_GR_CURVATURE_BOUNDED_V1": {
+        "id": "N:MAP.inv.gr.curvature_bounded.v1",
+        "category": "map",
+        "status": "implemented",
+        "description": "Maps invariant N:INV.gr.curvature_bounded to receipt metrics.R_max and configured limit."
+      },
+      "MAP_INV_GR_ENERGY_DRIFT_BOUNDED_V1": {
+        "id": "N:MAP.inv.gr.energy_drift_bounded.v1",
+        "category": "map",
+        "status": "implemented",
+        "description": "Maps invariant N:INV.gr.energy_drift_bounded to receipt metrics.dH and configured drift cap."
+      },
+      "INV_NS_DIV_FREE": {
+        "id": "N:INV.ns.div_free",
+        "category": "invariant",
+        "status": "implemented",
+        "description": "Incompressibility: ||div u|| bounded. Alias of N:INV.pde.div_free.",
+        "aliases": ["N:INV.pde.div_free"]
+      },
+      "INV_NS_ENERGY_NONINCREASING": {
+        "id": "N:INV.ns.energy_nonincreasing",
+        "category": "invariant",
+        "status": "implemented",
+        "description": "Viscous dissipation: kinetic energy non-increasing (or decreases within budget). Alias of N:INV.pde.energy_nonincreasing.",
+        "aliases": ["N:INV.pde.energy_nonincreasing"]
+      },
+      "INV_NS_CFL_STABILITY": {
+        "id": "N:INV.ns.cfl_stability",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "CFL stability condition holds (dt <= cfl_limit). Gate uses u_max, dx, nu as configured."
+      },
+      "INV_NS_TAIL_BARRIER": {
+        "id": "N:INV.ns.tail_barrier",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "LoC spectral tail barrier holds (high-k energy tail stays bounded; no forward cascade to infinity)."
+      },
+      "INV_NS_ENSTROPHY_BUDGET": {
+        "id": "N:INV.ns.enstrophy_budget",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "Enstrophy (||curl u||^2) stays within declared budget on each step/window."
+      },
+      "MAP_INV_NS_DIV_FREE_V1": {
+        "id": "N:MAP.inv.ns.div_free.v1",
+        "category": "map",
+        "status": "implemented",
+        "description": "Maps N:INV.ns.div_free to receipt residuals.eps_div (or eps_div_L2) and threshold."
+      },
+      "MAP_INV_NS_ENERGY_NONINCREASING_V1": {
+        "id": "N:MAP.inv.ns.energy_nonincreasing.v1",
+        "category": "map",
+        "status": "implemented",
+        "description": "Maps N:INV.ns.energy_nonincreasing to receipt metrics.E, metrics.dE and tolerance/budget."
+      },
+      "MAP_INV_NS_CFL_STABILITY_V1": {
+        "id": "N:MAP.inv.ns.cfl_stability.v1",
+        "category": "map",
+        "status": "reserved",
+        "description": "Maps N:INV.ns.cfl_stability to receipt metrics.cfl_ratio (<= 1)."
+      },
+      "MAP_INV_NS_TAIL_BARRIER_V1": {
+        "id": "N:MAP.inv.ns.tail_barrier.v1",
+        "category": "map",
+        "status": "reserved",
+        "description": "Maps N:INV.ns.tail_barrier to receipt metrics.S_j_max, metrics.j_crit, residuals.eps_tail."
+      },
+      "MAP_INV_NS_ENSTROPHY_BUDGET_V1": {
+        "id": "N:MAP.inv.ns.enstrophy_budget.v1",
+        "category": "map",
+        "status": "reserved",
+        "description": "Maps N:INV.ns.enstrophy_budget to receipt metrics.enstrophy, metrics.d_enstrophy."
+      },
+      "INV_YM_GAUSS_LAW": {
+        "id": "N:INV.ym.gauss_law",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "Gauss constraint holds: ||D_i E_i|| bounded. Receipt residual: eps_G."
+      },
+      "INV_YM_BIANCHI_IDENTITY": {
+        "id": "N:INV.ym.bianchi_identity",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "Bianchi identity coherent: ||D_[i F_jk]|| bounded. Receipt residual: eps_BI."
+      },
+      "INV_YM_WARD_IDENTITY": {
+        "id": "N:INV.ym.ward_identity",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "Ward identity residual bounded (gauge-coherence witness). Receipt residual: eps_W."
+      },
+      "INV_YM_ENERGY_BUDGET": {
+        "id": "N:INV.ym.energy_budget",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "Yang–Mills energy budget holds: E_total drift stays within declared tolerance/budget."
+      },
+      "INV_YM_GAUGE_CONDITION": {
+        "id": "N:INV.ym.gauge_condition",
+        "category": "invariant",
+        "status": "reserved",
+        "description": "Chosen gauge condition residual bounded (e.g., Lorenz gauge). Receipt residual: eps_gauge."
+      },
+      "MAP_INV_YM_GAUSS_LAW_V1": {
+        "id": "N:MAP.inv.ym.gauss_law.v1",
+        "category": "map",
+        "status": "reserved",
+        "description": "Maps N:INV.ym.gauss_law to receipt residuals.eps_G and threshold."
+      },
+      "MAP_INV_YM_BIANCHI_IDENTITY_V1": {
+        "id": "N:MAP.inv.ym.bianchi_identity.v1",
+        "category": "map",
+        "status": "reserved",
+        "description": "Maps N:INV.ym.bianchi_identity to receipt residuals.eps_BI and threshold."
+      },
+      "MAP_INV_YM_WARD_IDENTITY_V1": {
+        "id": "N:MAP.inv.ym.ward_identity.v1",
+        "category": "map",
+        "status": "reserved",
+        "description": "Maps N:INV.ym.ward_identity to receipt residuals.eps_W and threshold."
+      },
+      "MAP_INV_YM_ENERGY_BUDGET_V1": {
+        "id": "N:MAP.inv.ym.energy_budget.v1",
+        "category": "map",
+        "status": "reserved",
+        "description": "Maps N:INV.ym.energy_budget to receipt metrics.E_total, metrics.dE and tolerance/budget."
+      },
+      "MAP_INV_YM_GAUGE_CONDITION_V1": {
+        "id": "N:MAP.inv.ym.gauge_condition.v1",
+        "category": "map",
+        "status": "reserved",
+        "description": "Maps N:INV.ym.gauge_condition to receipt residuals.eps_gauge and threshold."
       }
     }
   },

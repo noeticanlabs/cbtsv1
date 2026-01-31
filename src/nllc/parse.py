@@ -61,6 +61,19 @@ class Parser:
             return self.parse_return()
         elif tok.kind == TokenKind.THREAD:
             return self.parse_thread()
+        # NSC-M3L Phase 2: New statement types
+        elif tok.kind == TokenKind.DIALECT:
+            return self.parse_dialect()
+        elif tok.kind == TokenKind.FIELD:
+            return self.parse_field()
+        elif tok.kind == TokenKind.TENSOR:
+            return self.parse_tensor()
+        elif tok.kind == TokenKind.METRIC:
+            return self.parse_metric()
+        elif tok.kind == TokenKind.INVARIANT:
+            return self.parse_invariant()
+        elif tok.kind == TokenKind.GAUGE:
+            return self.parse_gauge()
         elif tok.kind == TokenKind.IDENT:
             start_pos = self.pos
             try:
@@ -80,6 +93,148 @@ class Parser:
                 return self.parse_expr_stmt()
         else:
             return self.parse_expr_stmt()
+
+    # NSC-M3L Phase 2: New parsing methods
+
+    def parse_dialect(self) -> DialectStmt:
+        """Parse dialect declaration: dialect ns | gr | ym;"""
+        start = self.current().span.start
+        self.expect(TokenKind.DIALECT)
+        name_tok = self.expect(TokenKind.IDENT)  # ns, gr, or ym
+        self.expect(TokenKind.SEMI)
+        end = self.current().span.end
+        return DialectStmt(Span(start, end), name_tok.value)
+
+    def parse_type_annotation(self) -> TypeExpr:
+        """Parse type annotation: Vector | Scalar | Tensor(symmetric) | Field[Vector]"""
+        start = self.current().span.start
+        
+        # First type-like token is the base type
+        if self.current().kind == TokenKind.IDENT:
+            type_name = self.current().value
+            self.advance()
+            modifiers = []
+        elif self.current().kind in [TokenKind.VECTOR, TokenKind.SCALAR, 
+                                       TokenKind.TENSOR, TokenKind.FIELD]:
+            type_name = self.current().value
+            self.advance()
+            modifiers = []
+        else:
+            raise ParseError(f"Expected type name, got {self.current().kind}")
+        
+        # Check for type modifiers after the base type
+        while self.current().kind in [TokenKind.SYMMETRIC, TokenKind.ANTISYMMETRIC]:
+            modifiers.append(self.current().value)
+            self.advance()
+        
+        return TypeExpr(
+            Span(start, self.pos - 1),
+            name=type_name,
+            modifiers=modifiers
+        )
+
+    def parse_field(self) -> FieldDecl:
+        """Parse field declaration: field u: Vector;"""
+        start = self.current().span.start
+        self.expect(TokenKind.FIELD)
+        name_tok = self.expect(TokenKind.IDENT)
+        self.expect(TokenKind.COLON)
+        field_type = self.parse_type_annotation()
+        self.expect(TokenKind.SEMI)
+        end = self.current().span.end
+        return FieldDecl(Span(start, end), name_tok.value, field_type)
+
+    def parse_tensor(self) -> TensorDecl:
+        """Parse tensor declaration: tensor F: symmetric;"""
+        start = self.current().span.start
+        self.expect(TokenKind.TENSOR)
+        name_tok = self.expect(TokenKind.IDENT)
+        self.expect(TokenKind.COLON)
+        tensor_type = self.parse_type_annotation()
+        self.expect(TokenKind.SEMI)
+        end = self.current().span.end
+        return TensorDecl(Span(start, end), name_tok.value, tensor_type)
+
+    def parse_metric(self) -> MetricDecl:
+        """Parse metric declaration: metric g: Schwarzschild;"""
+        start = self.current().span.start
+        self.expect(TokenKind.METRIC)
+        name_tok = self.expect(TokenKind.IDENT)
+        self.expect(TokenKind.COLON)
+        metric_type_tok = self.expect(TokenKind.IDENT)
+        self.expect(TokenKind.SEMI)
+        end = self.current().span.end
+        return MetricDecl(Span(start, end), name_tok.value, metric_type_tok.value)
+
+    def parse_invariant(self) -> InvariantStmt:
+        """Parse invariant: invariant div_free [with EXPR] [require GATES];"""
+        start = self.current().span.start
+        self.expect(TokenKind.INVARIANT)
+        name_tok = self.expect(TokenKind.IDENT)
+        
+        # Make 'with' clause optional
+        constraint = None
+        if self.current().kind == TokenKind.WITH:
+            self.expect(TokenKind.WITH)
+            constraint = self.parse_expr()
+        
+        # Make 'require' clause optional
+        gates = []
+        if self.current().kind == TokenKind.REQUIRE:
+            self.expect(TokenKind.REQUIRE)
+            while self.current().kind != TokenKind.SEMI:
+                if self.current().kind == TokenKind.CONS:
+                    gates.append('cons')
+                    self.advance()
+                elif self.current().kind == TokenKind.SEM:
+                    gates.append('sem')
+                    self.advance()
+                elif self.current().kind == TokenKind.PHY:
+                    gates.append('phy')
+                    self.advance()
+                else:
+                    raise ParseError(f"Expected cons, sem, or phy, got {self.current().kind}")
+                
+                if self.current().kind == TokenKind.COMMA:
+                    self.advance()
+        
+        self.expect(TokenKind.SEMI)
+        end = self.current().span.end
+        
+        # Create a dummy constraint if not provided
+        if constraint is None:
+            zero = IntLit(Span(start, start), 0)
+            constraint = zero
+        
+        return InvariantStmt(Span(start, end), name_tok.value, constraint, gates)
+
+    def parse_gauge(self) -> GaugeStmt:
+        """Parse gauge: gauge coulomb with EXPR require GATES;"""
+        start = self.current().span.start
+        self.expect(TokenKind.GAUGE)
+        name_tok = self.expect(TokenKind.IDENT)
+        self.expect(TokenKind.WITH)
+        condition = self.parse_expr()
+        self.expect(TokenKind.REQUIRE)
+        
+        gates = []
+        while self.current().kind != TokenKind.SEMI:
+            if self.current().kind == TokenKind.CONS:
+                gates.append('cons')
+            elif self.current().kind == TokenKind.PHY:
+                gates.append('phy')
+            else:
+                raise ParseError(f"Expected cons or phy, got {self.current().kind}")
+            self.advance()
+            if self.current().kind == TokenKind.COMMA:
+                self.advance()
+        
+        self.expect(TokenKind.SEMI)
+        end = self.current().span.end
+        
+        return GaugeStmt(Span(start, end), name_tok.value, condition, gates)
+
+    # Existing parsing methods (unchanged)
 
     def parse_import(self) -> ImportStmt:
         start = self.current().span.start
@@ -142,20 +297,16 @@ class Parser:
         while self.current().kind != TokenKind.RPAREN:
             param_tok = self.expect(TokenKind.IDENT)
             params.append(param_tok.value)
-            # Skip optional type annotation
             if self.current().kind == TokenKind.COLON:
                 self.expect(TokenKind.COLON)
                 self.expect(TokenKind.IDENT)
             if self.current().kind == TokenKind.COMMA:
                 self.advance()
         self.expect(TokenKind.RPAREN)
-        # Optional return type annotation
         if self.current().kind == TokenKind.MINUS:
-            # Look ahead for "->"
             if self.peek().kind == TokenKind.GT:
-                self.advance()  # consume MINUS
-                self.expect(TokenKind.GT)  # consume GT (which is the -> operator)
-                # Skip the type identifier
+                self.advance()
+                self.expect(TokenKind.GT)
                 self.expect(TokenKind.IDENT)
         self.expect(TokenKind.LBRACE)
         body = []
@@ -285,7 +436,75 @@ class Parser:
 
     def parse_atom(self) -> Expr:
         tok = self.current()
-        if tok.kind == TokenKind.CALL:
+        
+        # NSC-M3L Phase 2: Physics operators
+        if tok.kind == TokenKind.DIVERGENCE:
+            start = tok.span.start
+            self.expect(TokenKind.DIVERGENCE)
+            self.expect(TokenKind.LPAREN)
+            arg = self.parse_expr()
+            self.expect(TokenKind.RPAREN)
+            return Divergence(Span(start, self.current().span.end), arg)
+        
+        elif tok.kind == TokenKind.CURL:
+            start = tok.span.start
+            self.expect(TokenKind.CURL)
+            self.expect(TokenKind.LPAREN)
+            arg = self.parse_expr()
+            self.expect(TokenKind.RPAREN)
+            return Curl(Span(start, self.current().span.end), arg)
+        
+        elif tok.kind == TokenKind.LAPLACIAN:
+            start = tok.span.start
+            self.expect(TokenKind.LAPLACIAN)
+            self.expect(TokenKind.LPAREN)
+            arg = self.parse_expr()
+            self.expect(TokenKind.RPAREN)
+            return Laplacian(Span(start, self.current().span.end), arg)
+        
+        elif tok.kind == TokenKind.GRAD:
+            start = tok.span.start
+            self.expect(TokenKind.GRAD)
+            self.expect(TokenKind.LPAREN)
+            arg = self.parse_expr()
+            self.expect(TokenKind.RPAREN)
+            return Gradient(Span(start, self.current().span.end), arg)
+        
+        elif tok.kind == TokenKind.TRACE:
+            start = tok.span.start
+            self.expect(TokenKind.TRACE)
+            self.expect(TokenKind.LPAREN)
+            arg = self.parse_expr()
+            self.expect(TokenKind.RPAREN)
+            return Trace(Span(start, self.current().span.end), arg)
+        
+        elif tok.kind == TokenKind.DET:
+            start = tok.span.start
+            self.expect(TokenKind.DET)
+            self.expect(TokenKind.LPAREN)
+            arg = self.parse_expr()
+            self.expect(TokenKind.RPAREN)
+            return Determinant(Span(start, self.current().span.end), arg)
+        
+        elif tok.kind == TokenKind.CONTRACT:
+            start = tok.span.start
+            self.expect(TokenKind.CONTRACT)
+            self.expect(TokenKind.LPAREN)
+            arg = self.parse_expr()
+            # Parse optional index list
+            indices = []
+            if self.current().kind == TokenKind.COMMA:
+                self.advance()
+                while self.current().kind != TokenKind.RPAREN:
+                    if self.current().kind == TokenKind.IDENT:
+                        indices.append(self.current().value)
+                        self.advance()
+                    if self.current().kind == TokenKind.COMMA:
+                        self.advance()
+            self.expect(TokenKind.RPAREN)
+            return Contraction(Span(start, self.current().span.end), arg, indices)
+        
+        elif tok.kind == TokenKind.CALL:
             start = tok.span.start
             self.expect(TokenKind.CALL)
             func_tok = self.expect(TokenKind.IDENT)
@@ -299,22 +518,28 @@ class Parser:
             self.expect(TokenKind.RPAREN)
             end = self.current().span.end
             return Call(Span(start, end), func_name, args)
+        
         elif tok.kind == TokenKind.INT:
             self.advance()
             return IntLit(tok.span, int(tok.value))
+        
         elif tok.kind == TokenKind.FLOAT:
             self.advance()
             return FloatLit(tok.span, float(tok.value))
+        
         elif tok.kind == TokenKind.TRUE:
             self.advance()
             return BoolLit(tok.span, True)
+        
         elif tok.kind == TokenKind.FALSE:
             self.advance()
             return BoolLit(tok.span, False)
+        
         elif tok.kind == TokenKind.STRING:
             self.advance()
             value = tok.value[1:-1]
             return StrLit(tok.span, value)
+        
         elif tok.kind == TokenKind.IDENT:
             name = tok.value
             self.advance()
@@ -329,6 +554,7 @@ class Parser:
                 return Call(Span(tok.span.start, self.current().span.end), name, args)
             else:
                 return Var(tok.span, name)
+        
         elif tok.kind == TokenKind.LBRACKET:
             start = tok.span.start
             self.expect(TokenKind.LBRACKET)
@@ -340,13 +566,16 @@ class Parser:
             self.expect(TokenKind.RBRACKET)
             end = self.current().span.end
             return ArrayLit(Span(start, end), elements)
+        
         elif tok.kind == TokenKind.LBRACE:
             return self.parse_object()
+        
         elif tok.kind == TokenKind.LPAREN:
             self.expect(TokenKind.LPAREN)
             expr = self.parse_expr()
             self.expect(TokenKind.RPAREN)
             return expr
+        
         elif tok.kind == TokenKind.IF:
             start = tok.span.start
             self.expect(TokenKind.IF)
@@ -362,6 +591,7 @@ class Parser:
                 self.expect(TokenKind.RBRACE)
             end = self.current().span.end
             return IfExpr(Span(start, end), cond, body, else_body)
+        
         else:
             raise ParseError(f"Unexpected token in atom: {tok.kind}")
 
