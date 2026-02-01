@@ -1,0 +1,10 @@
+{
+  "christoffel": "PASS",
+  "ricci": "PASS",
+  "curvature": "FAIL: Metric determinant too small or non-positive",
+  "factory": "PASS",
+  "cache": "PASS",
+  "ricci_kernel": "PASS",
+  "connection_coeff": "PASS",
+  "det_constraint": "FAIL: 'GRGeometry' object has no attribute 'enforce_det_gamma_tilde'"
+}

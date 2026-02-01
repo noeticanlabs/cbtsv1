@@ -1,0 +1,269 @@
+"""
+NSC-M3L Multigrid V-Cycle Solver Specification
+===============================================
+
+This file specifies the multigrid V-cycle solver for elliptic PDEs
+in GR constraint equations using NSC-M3L syntax.
+
+This specification targets:
+- DISC: Finite difference discretization
+- CALC: PDE residual computation  
+- LEDGER: Convergence invariant checking
+- EXEC: Runtime execution via PhaseLoom
+"""
+
+# ============================================================================
+# HEADER AND MODEL SELECTION
+# ============================================================================
+
+@model(DISC, CALC, LEDGER, EXEC);
+
+# ============================================================================
+# TYPE DECLARATIONS
+# ============================================================================
+
+u :: Field[Scalar] on (M, t);           # Solution field
+f :: Field[Scalar] on (M, t);           # Right-hand side
+bc_dirichlet :: Field[Scalar] on (∂M);  # Dirichlet boundary values
+bc_neumann :: Field[Scalar] on (∂M);    # Neumann boundary values (normal derivative)
+
+h :: Scalar;                            # Grid spacing
+nu1 :: Scalar = 3;                      # Pre-smoothing iterations  
+nu2 :: Scalar = 3;                      # Post-smoothing iterations
+tol :: Scalar = 1e-8;                   # Convergence tolerance
+
+levels :: List[GridLevel];              # Multigrid levels
+restrict_op :: Operator;                # Restriction operator
+prolong_op :: Operator;                 # Prolongation operator
+smoother :: Operator;                   # GS-RB smoother
+
+# ============================================================================
+# BOUNDARY CONDITION MODES
+# ============================================================================
+
+bc_mode :: Enum("periodic", "dirichlet", "neumann");
+
+# ============================================================================
+# V-CYCLE DEFINITION
+# ============================================================================
+
+@inv(N:INV.mg.convergence, N:INV.mg.residual_reduction)
+@vcycle(u: Field[Scalar], f: Field[Scalar], level: Integer, bc: bc_mode) ::= {
+    
+    # Base case: coarsest level - solve via many smoothing iterations
+    if level == max(levels) then
+        for i in 1:100 do
+            u = smoother(u, f, h[level], nu=10, bc_type=bc);
+        end;
+        return u;
+    end;
+    
+    # Pre-smoothing
+    u = smoother(u, f, h[level], nu=nu1, bc_type=bc);
+    
+    # Compute residual: r = f + Δu (for -Δu = f)
+    res = f + laplacian(u, h[level], bc_type=bc);
+    
+    # Restrict residual to coarse grid
+    res_c = restrict(res, h[level], bc_type=bc);
+    
+    # Coarse grid correction
+    u_c = zero(Grid(levels[level+1]));
+    u_c = vcycle(u_c, res_c, level+1, bc);
+    
+    # Prolong correction to fine grid
+    corr = prolong(u_c, h[level]);
+    
+    # Apply correction
+    u = u + corr;
+    
+    # Post-smoothing
+    u = smoother(u, f, h[level], nu=nu2, bc_type=bc);
+    
+    return u;
+}
+
+# ============================================================================
+# SOLVER ENTRY POINT
+# ============================================================================
+
+@solve_multigrid(
+    f: Field[Scalar], 
+    u0: Field[Scalar] = zero,
+    bc_type: bc_mode = "periodic",
+    bc_values: Field[Scalar] = zero
+) ::= Field[Scalar] @model(CALC, EXEC) {
+    
+    # Initialize
+    u = u0;
+    
+    # Enforce initial boundary conditions
+    if bc_type == "dirichlet" then
+        u[∂M] = bc_values;
+    end;
+    
+    # V-cycle iterations
+    residual_history :: List[Scalar] = [];
+    
+    for cycle in 1:50 do
+        u = vcycle(u, f, level=0, bc=bc_type);
+        
+        # Compute residual for convergence check
+        res = f + laplacian(u, h[0], bc_type=bc_type);
+        res_norm = L2_norm(res);
+        append(residual_history, res_norm);
+        
+        # Convergence check
+        if res_norm < tol then
+            break;
+        end;
+    end;
+    
+    # Ledger: emit convergence receipt
+    @receipt(
+        method="multigrid_vcycle",
+        bc_type=bc_type,
+        iterations=length(residual_history),
+        final_residual=residual_history[-1],
+        converged=(residual_history[-1] < tol)
+    );
+    
+    return u;
+}
+
+# ============================================================================
+# OPERATOR DEFINITIONS
+# ============================================================================
+
+# Gauss-Seidel Red-Black Smoother
+@operator(gs_rb_smoother)
+@stencil(pattern="red_black")
+gs_rb_smoother(u: Field[Scalar], f: Field[Scalar], h: Scalar, nu: Integer, bc_type: bc_mode) 
+    ::= Field[Scalar] @model(DISC) {
+    
+    result = copy(u);
+    
+    for iter in 1:nu do
+        # Red cells (i+j even)
+        for i, j in interior_grid do
+            if (i+j) mod 2 == 0 then
+                neighbors = get_neighbors(i, j, bc_type);
+                result[i,j] = (h*h*f[i,j] + sum(neighbors)) / 4.0;
+            end;
+        end;
+        
+        # Black cells (i+j odd)
+        for i, j in interior_grid do
+            if (i+j) mod 2 == 1 then
+                neighbors = get_neighbors(i, j, bc_type);
+                result[i,j] = (h*h*f[i,j] + sum(neighbors)) / 4.0;
+            end;
+        end;
+        
+        # Enforce boundary conditions
+        if bc_type == "dirichlet" then
+            result[∂M] = bc_values;
+        end;
+    end;
+    
+    return result;
+}
+
+# Full-Weighting Restriction
+@operator(full_weighting_restriction)
+@stencil(stencil_2d="[[1,2,1],[2,4,2],[1,2,1]]/16")
+restrict(u: Field[Scalar], h: Scalar, bc_type: bc_mode) ::= Field[Scalar] @model(DISC) {
+    
+    u_coarse = downsample(u, factor=2, bc_type=bc_type);
+    return u_coarse;
+}
+
+# Bilinear Prolongation
+@operator(bilinear_prolongation)
+@interpolation(order=2)
+prolong(u_c: Field[Scalar], h_fine: Scalar) ::= Field[Scalar] @model(DISC) {
+    
+    u_fine = upsample(u_c, factor=2);
+    return u_fine;
+}
+
+# Discrete Laplacian with BC support
+@operator(discrete_laplacian)
+@laplacian(scheme="five_point")
+laplacian(u: Field[Scalar], h: Scalar, bc_type: bc_mode) ::= Field[Scalar] @model(DISC) {
+    
+    lap = zeros_like(u);
+    
+    for i, j in interior_points do
+        neighbors = get_neighbors(i, j, bc_type);
+        lap[i,j] = (sum(neighbors) - 4*u[i,j]) / (h*h);
+    end;
+    
+    return lap;
+}
+
+# Neighbor access with BC handling
+@operator(bc_neighbor_access)
+get_neighbors(i: Integer, j: Integer, bc_type: bc_mode) ::= List[Scalar] @model(DISC) {
+    
+    if bc_type == "periodic" then
+        return [u[(i+1) mod n, j], u[(i-1) mod n, j], 
+                u[i, (j+1) mod n], u[i, (j-1) mod n]];
+    else
+        # Clamp to boundary for non-periodic
+        return [u[min(i+1,n-1), j], u[max(i-1,0), j],
+                u[i, min(j+1,n-1)], u[i, max(j-1,0)]];
+    end;
+}
+
+# ============================================================================
+# INVARIANT DEFINITIONS
+# ============================================================================
+
+# Multigrid convergence invariant
+@inv(N:INV.mg.convergence)
+convergence_invariant(u: Field[Scalar], f: Field[Scalar]) ::= Boolean @model(LEDGER) {
+    res = f + laplacian(u);
+    return L2_norm(res) < tol;
+}
+
+# Residual reduction invariant  
+@inv(N:INV.mg.residual_reduction)
+residual_reduction_invariant(residual_history: List[Scalar]) ::= Boolean @model(LEDGER) {
+    if length(residual_history) < 2 then return true; end;
+    return residual_history[-1] < residual_history[-2];
+}
+
+# ============================================================================
+# COMPILATION TARGETS
+# ============================================================================
+
+# Compile to CALC for residual computation
+⇒ (CALC);
+
+# Compile to DISC for finite difference operators
+⇒ (DISC);
+
+# Compile to LEDGER for invariant checking
+⇒ (LEDGER);
+
+# Compile to EXEC for runtime execution
+⇒ (EXEC);
+
+"""
+COMPILATION NOTES:
+==================
+
+1. The NSC specification above defines the multigrid solver abstractly.
+
+2. When compiled:
+   - DISC model → generates stencil operators for GS, restrict, prolong
+   - CALC model → generates PDE residual expressions
+   - LEDGER model → generates invariant checking code and receipts
+   - EXEC model → generates PhaseLoom thread structure for iterations
+
+3. Boundary conditions are handled by the bc_mode enum and get_neighbors operator.
+
+4. For HPC/GPU execution, additional @parallel annotations would be added
+   to the operators for automatic parallelization.
+"""
