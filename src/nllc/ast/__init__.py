@@ -1,26 +1,23 @@
 """
 NLLC Abstract Syntax Tree
 
-This module has been refactored into submodules for better organization.
-The original file is kept for backward compatibility.
+This module has been modularized into submodules:
+- base: Span, Node, Program, Statement, Expr
+- statements: ImportStmt, LetStmt, AssignStmt, IfStmt, etc.
+- expressions: IntLit, FloatLit, Var, Call, BinOp, etc.
 
-New module structure:
-- src/nllc/ast/base.py: Span, Node, Program, Statement, Expr
-- src/nllc/ast/statements.py: ImportStmt, LetStmt, AssignStmt, IfStmt, etc.
-- src/nllc/ast/expressions.py: IntLit, FloatLit, Var, Call, BinOp, etc.
-
-For new code, import directly from submodules:
-    from src/nllc.ast import Program  # Still works (backward compatible)
-    from src.nllc.ast.base import Program  # New recommended style
+For backward compatibility, all exports are also available from this module.
 """
 
-# For backward compatibility, re-export all classes from submodules
-from .ast import (
+from .base import (
     Span,
     Node,
     Program,
     Statement,
-    Expr,
+    Expr
+)
+
+from .statements import (
     ImportStmt,
     LetStmt,
     MutStmt,
@@ -37,7 +34,10 @@ from .ast import (
     TensorDecl,
     MetricDecl,
     InvariantStmt,
-    GaugeStmt,
+    GaugeStmt
+)
+
+from .expressions import (
     IntLit,
     FloatLit,
     BoolLit,
@@ -60,11 +60,13 @@ from .ast import (
 )
 
 __all__ = [
+    # Base
     'Span',
     'Node',
     'Program',
     'Statement',
     'Expr',
+    # Statements
     'ImportStmt',
     'LetStmt',
     'MutStmt',
@@ -82,6 +84,7 @@ __all__ = [
     'MetricDecl',
     'InvariantStmt',
     'GaugeStmt',
+    # Expressions
     'IntLit',
     'FloatLit',
     'BoolLit',

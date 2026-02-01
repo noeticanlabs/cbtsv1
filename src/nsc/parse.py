@@ -88,6 +88,12 @@ class Parser:
             return False
         return True
     
+    def peek(self) -> Optional[tuple[str, str]]:
+        """Look ahead without consuming."""
+        if self.pos + 1 >= len(self.tokens):
+            return None
+        return self.tokens[self.pos + 1]
+    
     def parse_program(self) -> Program:
         """Parse complete NSC program."""
         start = self.pos
@@ -97,7 +103,6 @@ class Parser:
             try:
                 statements.append(self.parse_statement())
             except ParseError as e:
-                # Skip to next statement on error
                 self.pos += 1
                 continue
         
@@ -111,7 +116,6 @@ class Parser:
         if self.at_end():
             raise ParseError("Empty statement", start)
         
-        # Check for directives first (they start with @ or ⇒)
         token_type, token_value = self.current()
         
         if token_type == 'KW_MODEL':
@@ -125,20 +129,17 @@ class Parser:
         elif token_type == 'KW_J':
             return self.parse_functional(start)
         elif token_type == 'TOK_IDENT' and token_value == 'C':
-            # Potential constraint, but check if followed by '('
             next_token = self.peek()
             if next_token and next_token[0] == 'TOK_LPAREN':
                 return self.parse_constraint(start)
         
-        # Check for declaration (look ahead for :: without consuming)
         if token_type == 'TOK_IDENT':
             ident = token_value
             next_token = self.peek()
             if next_token and next_token[0] == 'TOK_COLON_COLON':
-                self.advance()  # consume identifier
+                self.advance()
                 return self.parse_decl(start, ident)
         
-        # Otherwise, parse as equation
         return self.parse_equation(start)
     
     def parse_decl(self, start: int, ident: Optional[str] = None) -> Decl:
@@ -149,7 +150,6 @@ class Parser:
         self.expect('TOK_COLON_COLON')
         decl_type = self.parse_type()
         
-        # Optional metadata
         meta = None
         if self.match('TOK_COLON'):
             self.advance()
@@ -172,7 +172,6 @@ class Parser:
             if type_name == 'Scalar':
                 return ScalarType(start=start, end=self.pos)
             elif type_name == 'Vector':
-                # Check for optional dimension: Vector[n]
                 if self.match('TOK_LBRACKET'):
                     self.advance()
                     dim_token = self.expect('TOK_NUMBER')
@@ -181,7 +180,6 @@ class Parser:
                     return VectorType(start=start, end=self.pos, dim=dim)
                 return VectorType(start=start, end=self.pos)
             elif type_name == 'Tensor':
-                # Tensor(k, l) syntax
                 self.expect('TOK_LPAREN')
                 k = int(self.expect('TOK_NUMBER')[1])
                 self.expect('TOK_COMMA')
@@ -189,19 +187,16 @@ class Parser:
                 self.expect('TOK_RPAREN')
                 return TensorType(start=start, end=self.pos, k=k, l=l)
             elif type_name == 'Field':
-                # Field[Type] syntax
                 self.expect('TOK_LBRACKET')
                 value_type = self.parse_type()
                 self.expect('TOK_RBRACKET')
                 return FieldType(start=start, end=self.pos, value_type=value_type)
             elif type_name == 'Form':
-                # Form[p] syntax
                 self.expect('TOK_LBRACKET')
                 p = int(self.expect('TOK_NUMBER')[1])
                 self.expect('TOK_RBRACKET')
                 return FormType(start=start, end=self.pos, p=p)
             elif type_name == 'Operator':
-                # Operator(Domain -> Codomain) syntax
                 self.expect('TOK_LPAREN')
                 domain = self.parse_type()
                 self.expect('TOK_ARROW')
@@ -209,19 +204,16 @@ class Parser:
                 self.expect('TOK_RPAREN')
                 return OperatorType(start=start, end=self.pos, domain=domain, codomain=codomain)
             elif type_name == 'Manifold':
-                # Manifold(dim, signature) syntax
                 self.expect('TOK_LPAREN')
                 dim = int(self.expect('TOK_NUMBER')[1])
                 signature = None
                 if self.match('TOK_COMMA'):
                     self.advance()
-                    # Parse signature identifier
                     sig_token = self.expect('TOK_IDENT')
                     signature = sig_token[1]
                 self.expect('TOK_RPAREN')
                 return ManifoldType(start=start, end=self.pos, dim=dim, signature=signature)
             elif type_name == 'Metric':
-                # Metric(dim, signature) syntax (optional params)
                 metric_type = MetricType(start=start, end=self.pos)
                 if self.match('TOK_LPAREN'):
                     self.advance()
@@ -238,17 +230,14 @@ class Parser:
                     self.expect('TOK_RPAREN')
                 return metric_type
             elif type_name == 'LieAlgebra':
-                # LieAlgebra(name) syntax
                 self.expect('TOK_LPAREN')
                 name_token = self.expect('TOK_IDENT')
                 self.expect('TOK_RPAREN')
                 return LieAlgebraType(start=start, end=self.pos, name=name_token[1])
             elif type_name == 'Connection':
-                # Connection syntax (optional flags)
                 conn_type = ConnectionType(start=start, end=self.pos)
                 if self.match('TOK_LPAREN'):
                     self.advance()
-                    # Parse options
                     while not self.match('TOK_RPAREN'):
                         if self.match('TOK_IDENT'):
                             key = self.expect('TOK_IDENT')[1]
@@ -271,7 +260,7 @@ class Parser:
         while self.match('TOK_IDENT'):
             key = self.expect('TOK_IDENT')[1]
             self.expect('TOK_EQUAL')
-            value = self.expect('TOK_IDENT')  # Could be other types too
+            value = self.expect('TOK_IDENT')
             pairs[key] = value[1]
         
         return Meta(start=self.pos, end=self.pos, pairs=pairs)
@@ -283,7 +272,6 @@ class Parser:
         self.expect('TOK_EQUAL')
         rhs = self.parse_expr()
         
-        # Optional metadata
         meta = None
         if self.match('TOK_COLON'):
             self.advance()
@@ -315,7 +303,6 @@ class Parser:
         
         expr = self.parse_expr()
         
-        # Optional metadata
         meta = None
         if self.match('TOK_COLON'):
             self.advance()
@@ -328,16 +315,14 @@ class Parser:
     
     def parse_constraint(self, start: int) -> Constraint:
         """Parse constraint: C "(" Ident ")" ":=" Predicate [ ":" Meta ] ";" """
-        self.expect('TOK_IDENT')  # C
+        self.expect('TOK_IDENT')
         self.expect('TOK_LPAREN')
         ident = self.expect('TOK_IDENT')[1]
         self.expect('TOK_RPAREN')
         self.expect('TOK_ASSIGN')
         
-        # Parse predicate (simple expression for now)
         predicate = self.parse_expr()
         
-        # Optional metadata
         meta = None
         if self.match('TOK_COLON'):
             self.advance()
@@ -415,7 +400,6 @@ class Parser:
         while not self.match('TOK_RPAREN'):
             if invariants:
                 self.expect('TOK_COMMA')
-            # Parse invariant reference (e.g., N:INV.gr.hamiltonian_constraint)
             if self.match('TOK_IDENT'):
                 inv = self.expect('TOK_IDENT')[1]
                 invariants.append(inv)
@@ -433,7 +417,6 @@ class Parser:
                 self.expect('TOK_COMMA')
             key = self.expect('TOK_IDENT')[1]
             self.expect('TOK_EQUAL')
-            # Value can be IDENT or NUMBER
             value_token = self.current()
             if value_token[0] in ('TOK_IDENT', 'TOK_NUMBER'):
                 self.advance()
@@ -446,7 +429,6 @@ class Parser:
     
     def parse_target_list(self) -> Set[Model]:
         """Parse target list for ⇒ directive."""
-        # Skip TOK_LPAREN if present
         if self.match('TOK_LPAREN'):
             self.advance()
         
@@ -462,13 +444,10 @@ class Parser:
                     continue
             break
         
-        # Skip TOK_RPAREN if present
         if self.match('TOK_RPAREN'):
             self.advance()
         
         return models
-    
-    # === Expression Parsing ===
     
     def parse_expr(self) -> Expr:
         """Parse expression: Term { ("+"|"-") Term }"""
@@ -479,7 +458,7 @@ class Parser:
             op = self.advance()[1]
             right = self.parse_term()
             left = BinaryOp(start=self.pos, end=self.pos, op=op, left=left, right=right)
-            start = self.pos  # Reset start for chained ops
+            start = self.pos
         
         return left
     
@@ -502,7 +481,6 @@ class Parser:
         token_type = self.current_type()
         
         if token_type == 'OP':
-            # Operator call: Op(Expr)
             op = self.advance()[1]
             self.expect('TOK_LPAREN')
             arg = self.parse_expr()
@@ -510,21 +488,18 @@ class Parser:
             return OpCall(start=start, end=self.pos, op=op, arg=arg)
         
         elif token_type == 'TOK_LPAREN':
-            # Group: (Expr)
             self.advance()
             inner = self.parse_expr()
             self.expect('TOK_RPAREN')
             return Group(start=start, end=self.pos, delim='()', inner=inner)
         
         elif token_type == 'TOK_LBRACKET':
-            # Bracket group: [Expr]
             self.advance()
             inner = self.parse_expr()
             self.expect('TOK_RBRACKET')
             return Group(start=start, end=self.pos, delim='[]', inner=inner)
         
         else:
-            # Atom: Ident | Number | Tensor | FieldAccess
             return self.parse_atom()
     
     def parse_atom(self) -> Atom:
@@ -537,12 +512,6 @@ class Parser:
             return Atom(start=start, end=self.pos, value=token_value)
         
         raise ParseError(f"Expected atom, got {token_type}", start)
-    
-    def peek(self) -> Optional[tuple[str, str]]:
-        """Look ahead without consuming."""
-        if self.pos + 1 >= len(self.tokens):
-            return None
-        return self.tokens[self.pos + 1]
 
 
 # === Public API ===

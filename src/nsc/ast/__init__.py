@@ -1,27 +1,21 @@
 """
 NSC-M3L Abstract Syntax Tree
 
-This module has been refactored into submodules for better organization.
-The original file is kept for backward compatibility.
+This module has been modularized. The following submodules are available:
+- enums: SemanticType, Model, SmoothnessClass, DirectiveType
+- base: Span, Node, Type
+- expr: Atom, Group, OpCall, BinaryOp, Expr
+- types: ScalarType, VectorType, TensorType, FieldType, FormType, OperatorType, ManifoldType, MetricType, LieAlgebraType, ConnectionType
+- statements: Meta, Decl, Equation, Binding, Functional, Constraint, Predicate
+- directives: ModelSelector, InvariantList, GateSpec, TargetList, Directive
+- program: Program
 
-New module structure:
-- src/nsc/ast/enums.py: SemanticType, Model, SmoothnessClass, DirectiveType
-- src/nsc/ast/base.py: Span, Node, Type
-- src/nsc/ast/expr.py: Atom, Group, OpCall, BinaryOp, Expr
-- src/nsc/ast/types.py: ScalarType, VectorType, TensorType, FieldType, FormType, etc.
-- src/nsc/ast/statements.py: Meta, Decl, Equation, Binding, Functional, Constraint
-- src/nsc/ast/directives.py: ModelSelector, InvariantList, GateSpec, TargetList, Directive
-- src/nsc/ast/program.py: Program, Statement
-
-For new code, import directly from submodules:
-    from src.nsc.ast import Program  # Still works (backward compatible)
-    from src.nsc.ast.program import Program  # New recommended style
-    from src.nsc.ast.enums import Model  # New recommended style
+For backward compatibility, all exports are also available from this module.
 """
 
-# For backward compatibility, re-export all classes from submodules
-# This ensures existing imports continue to work
+from typing import Union
 
+# Re-export enums
 from .enums import (
     SemanticType,
     Model,
@@ -29,12 +23,14 @@ from .enums import (
     DirectiveType
 )
 
+# Re-export base classes
 from .base import (
     Span,
     Node,
     Type
 )
 
+# Re-export expression nodes
 from .expr import (
     Atom,
     Group,
@@ -43,6 +39,7 @@ from .expr import (
     Expr
 )
 
+# Re-export type nodes
 from .types import (
     ScalarType,
     VectorType,
@@ -56,6 +53,7 @@ from .types import (
     ConnectionType
 )
 
+# Re-export statement nodes
 from .statements import (
     Meta,
     Decl,
@@ -66,6 +64,7 @@ from .statements import (
     Predicate
 )
 
+# Re-export directive nodes
 from .directives import (
     ModelSelector,
     InvariantList,
@@ -74,10 +73,14 @@ from .directives import (
     Directive
 )
 
-from .program import (
-    Program,
-    Statement
-)
+# Re-export Program (Statement is defined below to avoid circular import)
+from .program import Program
+
+
+# Define Statement type union AFTER all imports to avoid circular dependency
+# Statement = Union of all statement types including Directive
+Statement = Union[Decl, Equation, Functional, Constraint, Directive]
+
 
 __all__ = [
     # Enums
