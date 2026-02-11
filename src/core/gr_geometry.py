@@ -17,6 +17,33 @@ from .gr_geometry_nsc import compute_christoffels_compiled, compute_ricci_compil
 
 
 # ============================================================================
+# ARRAY BOUNDS VALIDATION UTILITY
+# ============================================================================
+
+def _validate_array_size(arr: np.ndarray, min_size: int, name: str = "array"):
+    """
+    Validate array has minimum required size.
+    
+    Use this before accessing arr[-n] to ensure the array has enough elements.
+    For example, before using arr[-2], arr[-3], call with min_size equal to
+    the maximum negative index (2, 3, etc.).
+    
+    Args:
+        arr: Array to validate
+        min_size: Minimum required size (0-indexed, so min_size=4 allows arr[-4])
+        name: Name of array for error messages
+        
+    Raises:
+        ValueError: If array is smaller than min_size
+    """
+    if arr.size < min_size:
+        raise ValueError(
+            f"{name} has insufficient size: {arr.size} < {min_size} required. "
+            f"Shape: {arr.shape}. Cannot access index -{min_size} safely."
+        )
+
+
+# ============================================================================
 # COMPACT FINITE DIFFERENCE SCHEMES
 # ============================================================================
 
@@ -42,8 +69,14 @@ class CompactFD:
         alpha * f'_{i-1} + f'_i + alpha * f'_{i+1} = rhs_i
         
         where rhs_i = (3/(2h)) * (f_{i+1} - f_{i-1})
+        
+        Raises:
+            ValueError: If array is too small for stencil
         """
         n = len(f)
+        # Validate minimum size: need at least 2 elements for f[1], f[0], f[-2], f[-1]
+        _validate_array_size(f, 2, "f (first_derivative)")
+        
         alpha = self.alpha
         
         # Build RHS

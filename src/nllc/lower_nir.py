@@ -160,7 +160,11 @@ class Lowerer:
             inst = StoreInst(self.make_trace(stmt, ast_path), ptr_val, index_val, val)
             self.add_instruction(inst)
         else:
-            raise NotImplementedError("Unsupported lvalue type")
+            # TASK 4: Add error handling with specific type information
+            raise TypeError(
+                f"Unsupported lvalue type in lowering: {type(stmt.lvalue).__name__}. "
+                f"Expected one of: Var, Index. Got: {stmt.lvalue}"
+            )
 
     def lower_if_stmt(self, stmt: IfStmt, ast_path: str):
         cond_val = self.lower_expr(stmt.cond, f"{ast_path}.cond")
@@ -223,7 +227,10 @@ class Lowerer:
         self.loop_stack.append((header_name, after_name))
         for i, s in enumerate(stmt.body):
             self.lower_statement(s, f"{ast_path}.body[{i}]")
-        self.loop_stack.pop()
+        if self.loop_stack:
+            self.loop_stack.pop()
+        else:
+            raise IndexError("loop_stack is empty")
         if not self.is_terminated():
             br_back = BrInst(self.make_trace(stmt, f"{ast_path}.body"), None, header_name, None)
             self.add_instruction(br_back)

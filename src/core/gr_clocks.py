@@ -125,8 +125,45 @@ class MultiRateBandManager:
         else:
             self._unified_clock.tick(dt)
     
+    def _verify_state_consistency(self):
+        """
+        Validate band state consistency with unified clock.
+        
+        Before major operations, verify that band_steps matches the unified_clock
+        state. Raises AssertionError with diagnostic info if desynchronized.
+        """
+        assert self._unified_clock is not None, "Unified clock not initialized"
+        assert self._unified_clock.state is not None, "Clock state missing"
+        assert self.band_steps is not None, "Band steps not initialized"
+        
+        # Verify band array sizes match
+        expected_octaves = len(self._unified_clock.state.band_steps)
+        actual_octaves = len(self.band_steps)
+        assert expected_octaves == actual_octaves, \
+            f"Band step size mismatch: unified_clock has {expected_octaves} octaves, " \
+            f"band manager has {actual_octaves}. May indicate desynchronization."
+        
+        # Verify state arrays are valid
+        assert np.all(np.isfinite(self.band_steps)), "Non-finite values in band_steps"
+        assert np.all(np.isfinite(self.band_times)), "Non-finite values in band_times"
+        
+        # Log warning if significant divergence detected
+        global_step = self._unified_clock.state.global_step
+        if global_step > 0:
+            band_max_step = np.max(self.band_steps)
+            if band_max_step > global_step:
+                raise AssertionError(
+                    f"Band step ahead of global step: {band_max_step} > {global_step}. "
+                    f"Indicates timing mismatch or concurrent modification."
+                )
+    
     def compute_clocks(self, dt_candidate: float, fields) -> Tuple[Dict, float]:
-        """Compute CFL-aware clocks with multi-rate support (delegates to unified clock)."""
+        """
+        Compute CFL-aware clocks with multi-rate support.
+        
+        Verifies state consistency before delegating to unified clock.
+        """
+        self._verify_state_consistency()
         return self._unified_clock.compute_dt_constraints(dt_candidate, fields)
     
     def get_bands_to_update(self, dominant_band: int = 0, amplitude: float = 0.0) -> np.ndarray:

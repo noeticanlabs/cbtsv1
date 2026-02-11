@@ -70,7 +70,10 @@ class VM:
             self.receipts.append(step_receipt)
 
             if isinstance(inst, RetInst):
-                self.call_stack.pop()
+                if self.call_stack:
+                    self.call_stack.pop()
+                else:
+                    raise IndexError("call_stack is empty")
                 return inst.value and frame['env'].get(inst.value.name) if inst.value else None
             elif isinstance(inst, BrInst):
                 if inst.cond is None:
@@ -101,12 +104,19 @@ class VM:
             else:
                 env[inst.result.name] = inst.value
         elif isinstance(inst, BinOpInst):
+            # TASK 3: Improve error handling with better context and fallback logic
             try:
                 left = env[inst.left.name]
                 right = env[inst.right.name]
             except KeyError as e:
-                print(f"KeyError in BinOpInst: {e}, inst: {inst}, env keys: {list(env.keys())}")
-                raise
+                missing_var = str(e).strip("'")
+                available_vars = list(env.keys())
+                error_msg = (
+                    f"Variable '{missing_var}' not found in environment during BinOpInst execution. "
+                    f"Available variables: {available_vars}. "
+                    f"Instruction: {inst}"
+                )
+                raise RuntimeError(error_msg) from e
             if inst.op == '+':
                 result = left + right
             elif inst.op == '-':

@@ -150,24 +150,26 @@ def apply_hamiltonian_constraint_operator(phi_correction, dx=1.0):
         if delta_gamma is not None:
             # Metric contribution to linearized Hamiltonian
             # Approximate as Laplacian of conformal metric perturbation
-            gamma_xx = delta_gamma[..., 0] if delta_gamma.shape[-1] >= 1 else None
-            if gamma_xx is not None:
-                # ∂²/∂x² contribution
-                result[1:-1, :, :] += (
-                    gamma_xx[2:, :, :] + gamma_xx[:-2, :, :] - 2*gamma_xx[1:-1, :, :]
-                ) / dx_**2
-                
-            gamma_yy = delta_gamma[..., 1] if delta_gamma.shape[-1] >= 2 else None
-            if gamma_yy is not None:
-                result[:, 1:-1, :] += (
-                    gamma_yy[:, 2:, :] + gamma_yy[:, :-2, :] - 2*gamma_yy[:, 1:-1, :]
-                ) / dy_**2
-                
-            gamma_zz = delta_gamma[..., 2] if delta_gamma.shape[-1] >= 3 else None
-            if gamma_zz is not None:
-                result[:, :, 1:-1] += (
-                    gamma_zz[:, :, 2:] + gamma_zz[:, :, :-2] - 2*gamma_zz[:, :, 1:-1]
-                ) / dz_**2
+            # TASK 1: Add explicit dimension validation before slicing operations
+            if delta_gamma.ndim >= 4 and delta_gamma.shape[0] >= 3:
+                gamma_xx = delta_gamma[..., 0] if delta_gamma.shape[-1] >= 1 else None
+                if gamma_xx is not None:
+                    # ∂²/∂x² contribution
+                    result[1:-1, :, :] += (
+                        gamma_xx[2:, :, :] + gamma_xx[:-2, :, :] - 2*gamma_xx[1:-1, :, :]
+                    ) / dx_**2
+                    
+                gamma_yy = delta_gamma[..., 1] if delta_gamma.shape[-1] >= 2 else None
+                if gamma_yy is not None:
+                    result[:, 1:-1, :] += (
+                        gamma_yy[:, 2:, :] + gamma_yy[:, :-2, :] - 2*gamma_yy[:, 1:-1, :]
+                    ) / dy_**2
+                    
+                gamma_zz = delta_gamma[..., 2] if delta_gamma.shape[-1] >= 3 else None
+                if gamma_zz is not None:
+                    result[:, :, 1:-1] += (
+                        gamma_zz[:, :, 2:] + gamma_zz[:, :, :-2] - 2*gamma_zz[:, :, 1:-1]
+                    ) / dz_**2
         
         if delta_K is not None:
             # Extrinsic curvature contribution: 2K δK (trace part)

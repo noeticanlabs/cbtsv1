@@ -4,7 +4,7 @@ from dataclasses import dataclass, asdict
 from typing import List, Dict, Any, Optional
 from src.nllc.vm import VM
 from src.nllc.nir import *
-from receipt_schemas import OmegaReceipt
+from src.receipts.receipt_schemas import OmegaReceipt
 
 @dataclass
 class ThreadBlock:

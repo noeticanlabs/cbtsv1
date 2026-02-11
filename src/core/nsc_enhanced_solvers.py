@@ -18,6 +18,33 @@ import warnings
 
 
 # ============================================================================
+# ARRAY BOUNDS VALIDATION UTILITY
+# ============================================================================
+
+def _validate_array_size(arr: np.ndarray, min_size: int, name: str = "array"):
+    """
+    Validate array has minimum required size.
+    
+    Use this before accessing arr[-n] to ensure the array has enough elements.
+    For example, before using arr[-2], arr[-3], call with min_size equal to
+    the maximum negative index (2, 3, etc.).
+    
+    Args:
+        arr: Array to validate
+        min_size: Minimum required size (0-indexed, so min_size=4 allows arr[-4])
+        name: Name of array for error messages
+        
+    Raises:
+        ValueError: If array is smaller than min_size
+    """
+    if arr.size < min_size:
+        raise ValueError(
+            f"{name} has insufficient size: {arr.size} < {min_size} required. "
+            f"Shape: {arr.shape}. Cannot access index -{min_size} safely."
+        )
+
+
+# ============================================================================
 # COMPACT FINITE DIFFERENCE SCHEMES (Higher Order)
 # ============================================================================
 
@@ -76,8 +103,14 @@ class CompactFD:
             
         Returns:
             df/dx on same grid
+            
+        Raises:
+            ValueError: If array is too small for stencil
         """
         n = len(f)
+        # Validate minimum size: need at least 2 points for f[0], f[1], f[-2], f[-1]
+        _validate_array_size(f, 2, "f (first_derivative)")
+        
         alpha, beta, gamma = self.alpha, self.beta, self.gamma
         
         # Build tridiagonal system
@@ -87,12 +120,14 @@ class CompactFD:
         rhs = np.zeros(n)
         rhs[1:-1] = beta * (f[2:] - f[:-2]) / (2*h)
         if gamma != 0:
+            # For 6th order scheme, validate we have 4 elements for f[...-4]
+            _validate_array_size(f, 4, "f (first_derivative with gamma)")
             rhs[2:-2] += gamma * (f[4:] - f[:-4]) / (4*h)
         
         # Boundary handling (one-sided 2nd order)
         # Forward
         rhs[0] = (f[1] - f[0]) / h
-        # Backward  
+        # Backward
         rhs[-1] = (f[-1] - f[-2]) / h
         
         # Solve tridiagonal system
@@ -104,14 +139,20 @@ class CompactFD:
         """
         Compute second derivative using compact scheme.
         
-        For 4th order: alpha*f''_{i-1} + f''_i + alpha*f''_{i+1} = 
-                      (f_{i+1} - 2f_i + f_{i-1}) / h^2
+        For 4th order: alpha*f''_{i-1} + f''_i + alpha*f''_{i+1} =
+                       (f_{i+1} - 2f_i + f_{i-1}) / h^2
         
         For 6th order: More complex, uses wider stencil.
+        
+        Raises:
+            ValueError: If array is too small for stencil
         """
         n = len(f)
         
         if self.order == 4:
+            # Validate: need at least 3 elements for f[2], f[1], f[0], f[-1], f[-2], f[-3]
+            _validate_array_size(f, 3, "f (second_derivative 4th order)")
+            
             alpha = 1/10
             beta = 6/5
             
@@ -124,7 +165,9 @@ class CompactFD:
             
             return self._solve_tridiagonal(alpha, 1.0, alpha, rhs)
         else:
-            # 6th order scheme
+            # 6th order scheme: need 5 elements for f[5:], f[4:], f[-4], f[-5]
+            _validate_array_size(f, 5, "f (second_derivative 6th order)")
+            
             alpha = 2/11
             beta = 12/11
             
@@ -142,11 +185,17 @@ class CompactFD:
     
     def fourth_derivative(self, f: np.ndarray, h: float) -> np.ndarray:
         """
-        Compute fourth derivative (forbihigh-order schemes).
+        Compute fourth derivative (for high-order schemes).
         
         4th order compact scheme for f''''.
+        
+        Raises:
+            ValueError: If array is too small for 4th derivative stencil
         """
         n = len(f)
+        # Validate: need at least 5 elements for f[4:], f[3], f[2], f[1], f[0], f[-1], ..., f[-4]
+        _validate_array_size(f, 5, "f (fourth_derivative)")
+        
         alpha = 1/6
         beta = 1
         

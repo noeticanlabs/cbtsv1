@@ -38,7 +38,7 @@ class GRScheduler:
     of truth for time state.
     """
     
-    def __init__(self, fields, c=1.0, Lambda=0.0, rho_target=0.8, 
+    def __init__(self, fields, c=1.0, Lambda=0.0, rho_target=0.8,
                  unified_clock: Optional[UnifiedClock] = None):
         """
         Initialize the scheduler.
@@ -64,6 +64,10 @@ class GRScheduler:
             self._use_unified = True
         else:
             self._use_unified = False
+        
+        # State synchronization tracking
+        self._last_synced_step = -1
+        self._last_synced_time = -1.0
     
     @property
     def unified_clock(self) -> Optional[UnifiedClock]:
@@ -74,6 +78,40 @@ class GRScheduler:
         """Set the unified clock for shared time state."""
         self._unified_clock = clock
         self._use_unified = clock is not None
+    
+    def _verify_clock_consistency(self):
+        """
+        Verify scheduler clock state matches unified clock.
+        
+        This synchronization point ensures that the scheduler and unified clock
+        remain coherent throughout evolution. Called before major operations
+        to detect desynchronization early.
+        
+        Raises:
+            AssertionError: If clock state is inconsistent or missing
+        """
+        if self._unified_clock is None:
+            return  # No unified clock, skip check
+        
+        # Verify unified clock state exists
+        assert self._unified_clock.state is not None, "Clock state missing"
+        
+        # Check if global step has advanced (synchronization needed)
+        current_step = self._unified_clock.state.global_step
+        if current_step != self._last_synced_step:
+            self._last_synced_step = current_step
+            self._last_synced_time = self._unified_clock.state.global_time
+            # Update scheduler's time state if needed
+            if self.time_state is not None:
+                self.time_state.n = current_step
+                self.time_state.t = self._last_synced_time
+        
+        # Verify fields object is initialized
+        assert self.fields is not None, "Fields not initialized"
+        
+        # Additional coherence checks
+        assert self._unified_clock.state.global_step >= 0, "Invalid global step"
+        assert self._unified_clock.state.global_time >= 0, "Invalid global time"
     
     def compute_dt(self, eps_H, eps_M):
         """Aeonic dt = min(CFL, curv, constraint, gauge, Lambda, phys). Stub."""
@@ -195,6 +233,9 @@ class GRScheduler:
         Returns:
             Tuple of (clocks_dict, dt_used)
         """
+        # Verify clock state consistency before computation
+        self._verify_clock_consistency()
+        
         # Use unified clock if available
         if self._use_unified and self._unified_clock is not None:
             return self._unified_clock.compute_dt_constraints(dt_candidate, self.fields, lambda_val)

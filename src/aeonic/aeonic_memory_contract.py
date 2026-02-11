@@ -226,12 +226,51 @@ class AeonicMemoryContract:
         """Evaluate promotion to canon."""
         # Simple gate: check residuals below threshold
         if gate_result.get('pass', False):
+            # TASK 2: Implement quantile and dominance histogram computation
+            # Extract step metrics from receipts
+            eps_H_hist = []
+            eps_M_hist = []
+            dt_hist = []
+            step_data = []
+            
+            for receipt in step_receipts:
+                if hasattr(receipt, 'eps_H'):
+                    eps_H_hist.append(receipt.eps_H)
+                if hasattr(receipt, 'eps_M'):
+                    eps_M_hist.append(receipt.eps_M)
+                if hasattr(receipt, 'dt_used'):
+                    dt_hist.append(receipt.dt_used)
+                
+                # Track dominant thread if available
+                step_data.append({
+                    'step_id': receipt.step_id,
+                    'dominant_thread': getattr(receipt, 'dominant_thread', None)
+                })
+            
+            # Compute quantiles of step metrics
+            quantiles = {}
+            if eps_H_hist and eps_M_hist and dt_hist:
+                quantiles = {
+                    'eps_H': [np.percentile(eps_H_hist, q) for q in [25, 50, 75]],
+                    'eps_M': [np.percentile(eps_M_hist, q) for q in [25, 50, 75]],
+                    'dt': [np.percentile(dt_hist, q) for q in [25, 50, 75]]
+                }
+            
+            # Compute dominance histogram (frequency of each thread being dominant)
+            dominance_histogram = {}
+            if step_data:
+                dominant_threads = {s['dominant_thread'] for s in step_data if s['dominant_thread'] is not None}
+                dominance_histogram = {
+                    thread_id: len([s for s in step_data if s['dominant_thread'] == thread_id])
+                    for thread_id in dominant_threads
+                }
+            
             # Create orch receipt
             orch_receipt = MOrchReceipt(
                 o=max(r.kappa.o for r in step_receipts) + 1,
                 window_steps=[r.step_id for r in step_receipts],
-                quantiles={},  # TODO: compute
-                dominance_histogram={},
+                quantiles=quantiles,
+                dominance_histogram=dominance_histogram,
                 chatter_score=0.0,
                 regime_label='stable',
                 promotions=[],

@@ -14,6 +14,8 @@ LEXICON_SYMBOLS = {
 
 import numpy as np
 import json
+from src.core.gr_gates import GateChecker
+from src.core.gr_core_fields import det_sym6, eigenvalues_sym6, cond_sym6, inv_sym6
 
 class GRPhaseLoomRails:
     def __init__(self, fields, nsc_policy_path="gr_gate_policy.nsc", alpha_floor=1e-8, H_max=1e-4, M_max=1e-4, R_max=1e6, warning_threshold=0.8, lambda_floor=1e-8, kappa_max=1e12):
@@ -31,8 +33,7 @@ class GRPhaseLoomRails:
             self.gate_thresholds = {}
 
         # Link to NSC glyph policies from gr_gates.py for dynamic gates
-        from src.core.gr_gates import GateChecker
-        # Assuming constraints are passed or available; for now, create a placeholder
+        # GateChecker imported at module level (see imports at top)
         self.gate_checker = None  # Will need to set this with actual constraints
 
         # Override defaults with policy if available
@@ -61,7 +62,7 @@ class GRPhaseLoomRails:
                 return self.cached_det_gamma, self.cached_eigvals, self.cached_kappa
 
         # Compute fresh
-        from src.core.gr_core_fields import det_sym6, eigenvalues_sym6, cond_sym6
+        # Functions imported at module level (see imports at top)
         det_gamma = det_sym6(gamma)
         eigvals = eigenvalues_sym6(gamma)
         kappa = cond_sym6(gamma)

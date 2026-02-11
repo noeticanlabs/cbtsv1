@@ -12,11 +12,11 @@ import hashlib
 import threading
 import copy
 from dataclasses import dataclass
-from aeonic_memory_contract import AeonicMemoryContract
-from aeonic_memory_bank import AeonicMemoryBank
-from receipt_schemas import Kappa, MSolveReceipt, MStepReceipt, MOrchReceipt, SEMFailure
-from aeonic_receipts import AeonicReceipts
-from aeonic_clocks import AeonicClockPack
+from src.aeonic.aeonic_memory_contract import AeonicMemoryContract
+from src.aeonic.aeonic_memory_bank import AeonicMemoryBank
+from src.receipts.receipt_schemas import Kappa, MSolveReceipt, MStepReceipt, MOrchReceipt, SEMFailure
+from src.aeonic.aeonic_receipts import AeonicReceipts
+from src.aeonic.aeonic_clocks import AeonicClockPack
 import numpy as np
 
 @dataclass

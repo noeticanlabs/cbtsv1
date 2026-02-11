@@ -18,6 +18,34 @@ import numpy as np
 from typing import Callable, Tuple, Optional
 import warnings
 
+
+# ============================================================================
+# ARRAY BOUNDS VALIDATION UTILITY
+# ============================================================================
+
+def _validate_array_size(arr: np.ndarray, min_size: int, name: str = "array"):
+    """
+    Validate array has minimum required size.
+    
+    Use this before accessing arr[-n] to ensure the array has enough elements.
+    For example, before using arr[-2], arr[-3], call with min_size equal to
+    the maximum negative index (2, 3, etc.).
+    
+    Args:
+        arr: Array to validate
+        min_size: Minimum required size (0-indexed, so min_size=4 allows arr[-4])
+        name: Name of array for error messages
+        
+    Raises:
+        ValueError: If array is smaller than min_size
+    """
+    if arr.size < min_size:
+        raise ValueError(
+            f"{name} has insufficient size: {arr.size} < {min_size} required. "
+            f"Shape: {arr.shape}. Cannot access index -{min_size} safely."
+        )
+
+
 try:
     from scipy.linalg import solve
     HAS_SCIPY = True
@@ -148,7 +176,7 @@ class CompactFD:
         Compute first derivative using compact scheme.
         
         The scheme is:
-            α*f'_{i-1} + f'_i + α*f'_{i+1} = 
+            α*f'_{i-1} + f'_i + α*f'_{i+1} =
                 a*(f_{i+1} - f_{i-1})/h + b*(f_{i+2} - f_{i-2})/(2h)
         
         Args:
@@ -157,8 +185,14 @@ class CompactFD:
             
         Returns:
             df/dx
+            
+        Raises:
+            ValueError: If array is too small for stencil
         """
         n = len(f)
+        # Validate minimum size for boundary conditions (need f[4])
+        _validate_array_size(f, 5, "f (first_derivative)")
+        
         alpha = self.params['alpha']
         a = self.params['a']
         b = self.params.get('b', 0.0)  # 6th order schemes have 'b'
@@ -201,12 +235,13 @@ class CompactFD:
             
             # Simpler approach: use 4th order explicit for boundaries
             # i=0: f'_0 ≈ (-25f_0 + 48f_1 - 36f_2 + 16f_3 - 3f_4)/(12h)
+            # Size already validated to be >= 5
             rhs[0] = (-25*f[0] + 48*f[1] - 36*f[2] + 16*f[3] - 3*f[4]) / (12*h)
             # i=1: f'_1 ≈ (-3f_0 - 10f_1 + 18f_2 - 6f_3 + f_4)/(12h)
             rhs[1] = (-3*f[0] - 10*f[1] + 18*f[2] - 6*f[3] + f[4]) / (12*h)
             # i=n-2: similar to i=1 from right
             rhs[-2] = (3*f[-1] + 10*f[-2] - 18*f[-3] + 6*f[-4] - f[-5]) / (12*h)
-            # i=n-1: similar to i=0 from right  
+            # i=n-1: similar to i=0 from right
             rhs[-1] = (25*f[-1] - 48*f[-2] + 36*f[-3] - 16*f[-4] + 3*f[-5]) / (12*h)
             
             # Solve non-periodic system
@@ -218,8 +253,14 @@ class CompactFD:
         
         4th Order scheme (α = 1/10):
             (1/10)f''_{i-1} + f''_i + (1/10)f''_{i+1_{i+1} = (f} - 2f_i + f_{i-1})/h²
+            
+        Raises:
+            ValueError: If array is too small for stencil
         """
         n = len(f)
+        # Validate minimum size for boundary conditions (need f[4])
+        _validate_array_size(f, 5, "f (second_derivative)")
+        
         alpha = 0.1  # 1/10 for 4th order
         
         a_diag = alpha * np.ones(n)
@@ -234,6 +275,7 @@ class CompactFD:
         else:
             rhs[1:-1] = (f[2:] - 2*f[1:-1] + f[:-2]) / h**2
             # 4th order boundaries
+            # Size already validated to be >= 5
             rhs[0] = (25*f[0] - 48*f[1] + 36*f[2] - 16*f[3] + 3*f[4]) / (12*h**2)
             rhs[1] = (3*f[0] + 10*f[1] - 18*f[2] + 6*f[3] - f[4]) / (12*h**2)
             rhs[-2] = (-3*f[-1] - 10*f[-2] + 18*f[-3] - 6*f[-4] + f[-5]) / (12*h**2)

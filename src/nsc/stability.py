@@ -301,12 +301,18 @@ def estimate_condition_number(matrix: np.ndarray,
     if method == "exact" or matrix.shape[0] < 100:
         # Compute exact condition number using SVD
         singular_values = np.linalg.svd(matrix, compute_uv=False)
+        # Guard against division by zero for ill-conditioned matrices
+        if singular_values[-1] < 1e-14:
+            return float('inf')
         return singular_values[0] / singular_values[-1]
     
     elif method == "power_iteration":
         # Estimate largest and smallest singular values
         sigma_max = _power_iteration_largest_singular(matrix)
         sigma_min = _inverse_iteration_smallest_singular(matrix)
+        # Guard against division by zero for singular or near-singular matrices
+        if sigma_min < 1e-14:
+            return float('inf')
         return sigma_max / sigma_min
     
     else:
@@ -478,10 +484,12 @@ def analyze_stability(stencil: Stencil, grid: Grid,
     elif spectral_radius <= 1.0 + 1e-10:
         # Marginally stable
         stability.is_stable = True
-        stability.CFL_limit = 1.0 / spectral_radius
+        # Guard against division by zero for near-singular operators
+        stability.CFL_limit = float('inf') if spectral_radius < 1e-14 else 1.0 / spectral_radius
     else:
         stability.is_stable = False
-        stability.CFL_limit = 1.0 / spectral_radius
+        # Guard against division by zero for near-singular operators
+        stability.CFL_limit = float('inf') if spectral_radius < 1e-14 else 1.0 / spectral_radius
     
     # Compute condition number (estimate)
     try:
