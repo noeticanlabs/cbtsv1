@@ -2,6 +2,7 @@ import numpy as np
 import logging
 from typing import Tuple, Dict, Any, Optional
 from enum import Enum
+from src.core.gate_policy import GatePolicy
 
 logger = logging.getLogger('gr_solver.gates')
 
@@ -42,13 +43,14 @@ def should_hard_fail(gate) -> bool:
     return kind in {GateKind.CONSTRAINT, GateKind.NONFINITE, GateKind.UNINITIALIZED}
 
 class GateChecker:
-    def __init__(self, constraints, analysis_mode=False):
+    def __init__(self, constraints, analysis_mode=False, policy: Optional[GatePolicy] = None):
         self.constraints = constraints
         self.analysis_mode = analysis_mode
+        self.policy = policy if policy is not None else GatePolicy()
         self.eps_H_state = 'normal'  # Track state for eps_H hysteresis: 'normal', 'warn', 'fail'
 
     def check_gates_internal(self, rails_policy=None):
-        """Check step gates. Return (accepted, hard_fail, penalty, reasons, margins, corrections)."""
+        """Check step gates. Return (accepted, hard_fail, penalty, reasons, margins, corrections, debt_decomposition)."""
         if rails_policy is None:
             rails_policy = {}
         return self.check_gates()
@@ -80,18 +82,19 @@ class GateChecker:
         eps_proj = float(self.constraints.eps_proj)
         eps_clk = float(self.constraints.eps_clk) if self.constraints.eps_clk is not None else 0.0
 
-        eps_H_warn = 5e-4
-        eps_H_fail = 1e-3
-        eps_M_soft_max = 1e-2
-        eps_M_hard_max = 1e-1
-        eps_proj_soft_max = 1e-2
-        eps_proj_hard_max = 1e-1
-        eps_clk_soft_max = 1e-2
-        eps_clk_hard_max = 1e-1
+        # Use policy thresholds instead of hardcoded values (Axiom A3)
+        eps_H_warn = self.policy.eps_H['warn']
+        eps_H_fail = self.policy.eps_H['fail']
+        eps_M_soft_max = self.policy.eps_M['soft']
+        eps_M_hard_max = self.policy.eps_M['hard']
+        eps_proj_soft_max = self.policy.eps_proj['soft']
+        eps_proj_hard_max = self.policy.eps_proj['hard']
+        eps_clk_soft_max = self.policy.eps_clk['soft']
+        eps_clk_hard_max = self.policy.eps_clk['hard']
 
         if np.isnan(eps_H) or np.isinf(eps_H) or np.isnan(eps_M) or np.isinf(eps_M) or np.isnan(eps_proj) or np.isinf(eps_proj) or np.isnan(eps_clk) or np.isinf(eps_clk):
             logger.error("Hard fail: NaN or infinite residuals in gates")
-            return False, True, float('inf'), ["NaN/inf residuals"], {}, {}, {}
+            return False, True, float('inf'), ["NaN/inf residuals"], {}, {}, {}, {}
 
         accepted = True
         hard_fail = False
@@ -100,10 +103,10 @@ class GateChecker:
         margins = {}
         corrections = {}
 
-        # Hysteresis for eps_H
-        enter_warn = 5e-4
-        exit_warn = 4e-4
-        enter_fail = 1e-3
+        # Hysteresis for eps_H (from policy)
+        enter_warn = self.policy.eps_H['warn']
+        exit_warn = self.policy.eps_H['warn_exit']
+        enter_fail = self.policy.eps_H['fail']
 
         if self.eps_H_state == 'normal':
             if eps_H > enter_warn:
@@ -173,8 +176,9 @@ class GateChecker:
             'alpha_spike': np.max(np.abs(np.gradient(self.constraints.fields.alpha))),
             'K_spike': np.max(np.abs(np.gradient(self.constraints.fields.K_sym6)))
         }
-        spike_soft_max = 1e2
-        spike_hard_max = 1e3
+        spike_soft_max = self.policy.spike['soft']
+        spike_hard_max = self.policy.spike['hard']
+        spike_penalty = 0.0
         for field, spike in spike_norms.items():
             if np.isnan(spike) or np.isinf(spike):
                 hard_fail = True
@@ -187,8 +191,17 @@ class GateChecker:
                 reasons.append(f"{field} spike = {spike:.2e} > {spike_hard_max:.2e}")
                 margins[field] = spike_hard_max - spike
             elif spike > spike_soft_max:
-                penalty += (spike - spike_soft_max) / spike_soft_max
+                spike_penalty += (spike - spike_soft_max) / spike_soft_max
                 reasons.append(f"Soft: {field} spike = {spike:.2e} > {spike_soft_max:.2e}")
                 margins[field] = spike_soft_max - spike
 
-        return accepted, hard_fail, penalty, reasons, margins, corrections
+        # Compute debt decomposition per Axiom A2 (Attribution)
+        debt_decomposition = {
+            'conservation_defect': float(eps_H ** 2),
+            'reconstruction_error': float(eps_M ** 2),
+            'tool_mismatch': float(eps_proj ** 2),
+            'thrash_penalty': float(spike_penalty),
+            'total_debt': float(eps_H ** 2 + eps_M ** 2 + eps_proj ** 2 + spike_penalty)
+        }
+
+        return accepted, hard_fail, penalty, reasons, margins, corrections, debt_decomposition

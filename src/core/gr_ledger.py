@@ -3,6 +3,7 @@ import json
 import inspect
 from datetime import datetime
 import numpy as np
+from src.core.gr_receipts import compute_debt_from_residuals
 
 class GRLedger:
     def __init__(self, receipts_file="aeonic_receipts.jsonl"):
@@ -52,7 +53,7 @@ class GRLedger:
         }
         self._emit(receipt)
 
-    def emit_stage_rhs_receipt(self, step, t, dt, stage, stage_time, rhs_norms, fields, compute_rhs_method):
+    def emit_stage_rhs_receipt(self, step, t, dt, stage, stage_time, rhs_norms, fields, compute_rhs_method, debt_decomposition=None):
         # Compute operator hash (simplified - hash of compute_rhs method source)
         try:
             operator_code = inspect.getsource(compute_rhs_method)
@@ -91,6 +92,8 @@ class GRLedger:
 
         # Add rhs norms
         receipt['rhs_norms'] = rhs_norms
+        if debt_decomposition is not None:
+            receipt['debt_decomposition'] = debt_decomposition
         self._emit(receipt)
 
     def emit_clock_decision_receipt(self, step, t, dt, fields, clocks):
@@ -114,7 +117,7 @@ class GRLedger:
         }
         self._emit(receipt)
 
-    def emit_ledger_eval_receipt(self, step, t, dt, fields, ledgers):
+    def emit_ledger_eval_receipt(self, step, t, dt, fields, ledgers, debt_decomposition=None):
         receipt = {
             'run_id': 'gr_solver_run_001',
             'step': step,
@@ -133,9 +136,11 @@ class GRLedger:
             'ledgers': ledgers,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
+        if debt_decomposition is not None:
+            receipt['debt_decomposition'] = debt_decomposition
         self._emit(receipt)
 
-    def emit_step_receipt(self, step, t, dt, fields, accepted, ledgers, gates, stage_eps_H=None, rejection_reason=None, corrections_applied=None):
+    def emit_step_receipt(self, step, t, dt, fields, accepted, ledgers, gates, stage_eps_H=None, rejection_reason=None, corrections_applied=None, debt_decomposition=None):
         event = 'STEP_ACCEPT' if accepted else 'STEP_REJECT'
         receipt = {
             'run_id': 'gr_solver_run_001',
@@ -159,4 +164,6 @@ class GRLedger:
             'corrections_applied': corrections_applied or {},
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
+        if debt_decomposition is not None:
+            receipt['debt_decomposition'] = debt_decomposition
         self._emit(receipt)

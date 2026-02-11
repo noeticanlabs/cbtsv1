@@ -1,0 +1,39 @@
+{
+  "eps_H": {
+    "warn": 5e-4,
+    "fail": 1e-3,
+    "warn_exit": 4e-4
+  },
+  "eps_M": {
+    "soft": 1e-2,
+    "hard": 1e-1
+  },
+  "eps_proj": {
+    "soft": 1e-2,
+    "hard": 1e-1
+  },
+  "eps_clk": {
+    "soft": 1e-2,
+    "hard": 1e-1
+  },
+  "spike": {
+    "soft": 1e2,
+    "hard": 1e3
+  },
+  "theorem_validation": {
+    "enabled": true,
+    "gamma": 0.8,
+    "b": 1e-4,
+    "halt_on_violation": false
+  },
+  "retry_policy": {
+    "max_retries": 3,
+    "initial_dt_reduction": 0.8,
+    "max_attempts_hard_fail": 4
+  },
+  "hard_invariants": {
+    "check_before_acceptance": true,
+    "tolerance": 1e-14,
+    "halt_on_violation": false
+  }
+}

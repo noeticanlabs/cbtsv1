@@ -2,8 +2,38 @@ import hashlib
 import json
 import logging
 from datetime import datetime
+import numpy as np
 
 logger = logging.getLogger('gr_solver.receipts')
+
+
+def compute_debt_from_residuals(eps_H, eps_M, eps_proj, spike_norms):
+    """
+    Compute canonical debt decomposition per Spec 04_Coherence_Functionals.
+    
+    Per Axiom A2 (Attribution), all debt is decomposed into named causes:
+    - conservation_defect: Hamiltonian constraint violation (ε_H²)
+    - reconstruction_error: Momentum constraint violation (ε_M²)
+    - tool_mismatch: Projection error (ε_proj²)
+    - thrash_penalty: Aggregate spike violations (max of spike norms)
+    
+    Args:
+        eps_H (float): Hamiltonian constraint residual
+        eps_M (float): Momentum constraint residual
+        eps_proj (float): Projection constraint residual
+        spike_norms (dict): Dictionary of spike norms (field -> norm value)
+    
+    Returns:
+        dict: Debt decomposition with four named components and total_debt
+    """
+    spike_penalty = float(max(spike_norms.values()) if spike_norms else 0.0)
+    return {
+        'conservation_defect': float(eps_H ** 2),
+        'reconstruction_error': float(eps_M ** 2),
+        'tool_mismatch': float(eps_proj ** 2),
+        'thrash_penalty': spike_penalty,
+        'total_debt': float(eps_H ** 2 + eps_M ** 2 + eps_proj ** 2 + spike_penalty)
+    }
 
 class ReceiptEmitter:
     def __init__(self, receipts_file="aeonic_receipts.jsonl"):
@@ -20,7 +50,7 @@ class ReceiptEmitter:
         with open(self.receipts_file, 'a') as f:
             f.write(json.dumps(receipt) + '\n')
 
-    def emit_stage_rhs_receipt(self, step, t, dt, stage, stage_time, rhs_norms, fields):
+    def emit_stage_rhs_receipt(self, step, t, dt, stage, stage_time, rhs_norms, fields, debt_decomposition=None):
         operator_code = hashlib.sha256(b"compute_rhs").hexdigest()
         operator_hash = hashlib.sha256(operator_code.encode()).hexdigest()
         state_str = f"{fields.alpha.sum():.6e}_{fields.gamma_sym6.sum():.6e}"
@@ -51,6 +81,8 @@ class ReceiptEmitter:
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
         receipt['rhs_norms'] = rhs_norms
+        if debt_decomposition is not None:
+            receipt['debt_decomposition'] = debt_decomposition
         self._emit_receipt(receipt)
 
     def emit_clock_decision_receipt(self, step, t, dt, clocks):
@@ -69,7 +101,7 @@ class ReceiptEmitter:
         }
         self._emit_receipt(receipt)
 
-    def emit_ledger_eval_receipt(self, step, t, dt, ledgers, fields):
+    def emit_ledger_eval_receipt(self, step, t, dt, ledgers, fields, debt_decomposition=None):
         receipt = {
             'run_id': 'gr_solver_run_001',
             'step': step,
@@ -88,9 +120,11 @@ class ReceiptEmitter:
             'ledgers': ledgers,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
+        if debt_decomposition is not None:
+            receipt['debt_decomposition'] = debt_decomposition
         self._emit_receipt(receipt)
 
-    def emit_step_receipt(self, step, t, dt, accepted, ledgers, gates, rejection_reason, fields):
+    def emit_step_receipt(self, step, t, dt, accepted, ledgers, gates, rejection_reason, fields, debt_decomposition=None):
         event = 'STEP_ACCEPT' if accepted else 'STEP_REJECT'
         receipt = {
             'run_id': 'gr_solver_run_001',
@@ -112,4 +146,6 @@ class ReceiptEmitter:
             'rejection_reason': rejection_reason,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
+        if debt_decomposition is not None:
+            receipt['debt_decomposition'] = debt_decomposition
         self._emit_receipt(receipt)

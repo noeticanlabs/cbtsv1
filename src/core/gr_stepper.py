@@ -49,9 +49,60 @@ from .gr_rhs import GRRhs
 from .gr_ledger import GRLedger
 from .gr_scheduler import GRScheduler
 from .gr_gates import GateChecker
+from .gr_receipts import compute_debt_from_residuals
 from .hpc_kernels import fused_evolution_kernel
+from .theorem_validators import TheoremValidator
+from .gate_policy import GatePolicy
+from .hard_invariants import HardInvariantChecker
 
 logger = logging.getLogger('gr_solver.stepper')
+
+
+class RetryCounter:
+    """Enforces retry bounds per Theorem Lemma 2 (Bounded Work Inflation).
+    
+    Lemma 2 constraint: attempts ≤ (1 + N_retry) where N_retry is the max number
+    of retries allowed per accepted step.
+    
+    This class maintains a counter and enforces hard failure when the limit is exceeded.
+    """
+    
+    def __init__(self, max_retries: int = 3):
+        """Initialize retry counter.
+        
+        Args:
+            max_retries: N_retry from Lemma 2 (maximum number of retry attempts)
+                        Defaults to 3
+        """
+        self.max_retries = max_retries
+        self.attempt = 0
+        self.max_attempts = 1 + max_retries
+    
+    def increment(self):
+        """Increment attempt counter and check for hard failure.
+        
+        Raises:
+            RuntimeError: If attempts exceed max_attempts limit
+        """
+        self.attempt += 1
+        if self.attempt > self.max_attempts:
+            raise RuntimeError(
+                f"Retry limit exceeded: {self.attempt} > {self.max_attempts} "
+                f"(max_retries={self.max_retries})"
+            )
+    
+    def reset(self):
+        """Reset counter for next step."""
+        self.attempt = 0
+    
+    def can_retry(self) -> bool:
+        """Check if another retry attempt is allowed.
+        
+        Returns:
+            bool: True if attempt < max_attempts, False otherwise
+        """
+        return self.attempt < self.max_attempts
+
 
 class GRStepper(StepperContract):
     def __init__(self, fields, geometry, constraints, gauge, memory_contract=None, phaseloom=None, aeonic_mode=True, max_attempts=20, dt_floor=1e-8, temporal_system=None, analysis_mode=False):
@@ -75,6 +126,28 @@ class GRStepper(StepperContract):
         self.ledger = GRLedger()
         self.scheduler = GRScheduler(fields, Lambda=fields.Lambda)
         self.gatekeeper = GateChecker(constraints, analysis_mode=analysis_mode)
+
+        # Initialize theorem validator with config from GatePolicy
+        gate_policy = GatePolicy()
+        self.policy = gate_policy  # Store policy for retry_policy access
+        tv_config = gate_policy.theorem_validation
+        if tv_config.get('enabled', True):
+            self.theorem_validator = TheoremValidator(
+                gamma=tv_config.get('gamma', 0.8),
+                b=tv_config.get('b', 1e-4),
+                enable_halt_on_violation=tv_config.get('halt_on_violation', False)
+            )
+        else:
+            self.theorem_validator = None
+        
+        # Initialize hard invariant checker per Theorem Lemma 1
+        hi_config = gate_policy.hard_invariants
+        self.invariant_checker = HardInvariantChecker(
+            tolerance=hi_config.get('tolerance', 1e-14)
+        )
+        
+        # Track debt across steps for contraction validation
+        self.last_accepted_debt = 0.0
 
         # Multi-rate stepping parameters
         self.slow_fields = ['phi', 'Z', 'Z_i']
@@ -226,7 +299,7 @@ class GRStepper(StepperContract):
 
 
     def check_gates_internal(self, rails_policy=None):
-        """Check step gates. Return (accepted, hard_fail, penalty, reasons, margins, corrections)."""
+        """Check step gates. Return (accepted, hard_fail, penalty, reasons, margins, corrections, debt_decomposition)."""
         return self.gatekeeper.check_gates_internal(rails_policy)
 
     def check_gates(self, rails_policy) -> Tuple[bool, str, Dict[str, Any]]:
@@ -686,7 +759,7 @@ class GRStepper(StepperContract):
                     'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
                 }
             }
-            self.ledger.emit_ledger_eval_receipt(self.current_step, self.current_t + self.current_dt, self.current_dt, self.fields, final_ledgers)
+            self.ledger.emit_ledger_eval_receipt(self.current_step, self.current_t + self.current_dt, self.current_dt, self.fields, final_ledgers, debt_decomposition=None)
 
             # ========================================================================
             # GATE CHECKING PHASE
@@ -705,9 +778,46 @@ class GRStepper(StepperContract):
             #   margins: float - how close to thresholds
             #   corrections: dict - recommended parameter adjustments
             
-            accepted_gates, hard_fail_gates, penalty_gates, reasons, margins, corrections = self.check_gates_internal(rails_policy)
+            accepted_gates, hard_fail_gates, penalty_gates, reasons, margins, corrections, debt_decomposition = self.check_gates_internal(rails_policy)
             if corrections:
                 self.apply_corrections(corrections)
+
+            # ========================================================================
+            # HARD INVARIANT VALIDATION (Theorem Lemma 1)
+            # ========================================================================
+            # Enforce hard invariants before accepting step:
+            # If hard invariants hold in initial state and accepted states must
+            # satisfy hard invariants, then every accepted state satisfies them.
+            
+            hi_config = self.policy.hard_invariants
+            if hi_config.get('check_before_acceptance', True):
+                logger.debug(
+                    f"Checking hard invariants at step {self.current_step}",
+                    extra={"extra_data": {"step": self.current_step, "t": self.current_t}}
+                )
+                
+                is_valid, violations, margins_inv = self.invariant_checker.check_hard_invariants(self.fields)
+                
+                if not is_valid:
+                    logger.warning(
+                        f"Hard invariant violation at step {self.current_step}: {violations}",
+                        extra={
+                            "extra_data": {
+                                "step": self.current_step,
+                                "violations": violations,
+                                "margins": margins_inv
+                            }
+                        }
+                    )
+                    # Reject step due to hard invariant violation
+                    accepted_gates = False
+                    hard_fail_gates = True
+                    reasons.append(f"Hard invariant violation: {', '.join(violations)}")
+                else:
+                    logger.debug(
+                        f"Hard invariants satisfied at step {self.current_step}",
+                        extra={"extra_data": {"margins": margins_inv}}
+                    )
 
             accepted = accepted_gates
             hard_fail = hard_fail_gates
@@ -756,9 +866,20 @@ class GRStepper(StepperContract):
                 })
                 
                 # Emit step receipt for accepted step
-                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields, 
-                                              accepted=True, ledgers=ledgers_for_receipt, gates=gates_for_receipt, 
-                                              stage_eps_H=stage_eps_H, corrections_applied=corrections)
+                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields,
+                                              accepted=True, ledgers=ledgers_for_receipt, gates=gates_for_receipt,
+                                              stage_eps_H=stage_eps_H, corrections_applied=corrections, debt_decomposition=debt_decomposition)
+                
+                # Validate Lemma 3 (Debt Boundedness Under Contractive Repair)
+                if self.theorem_validator is not None:
+                    debt_after = debt_decomposition.get('total_debt', 0.0)
+                    is_valid, margin, msg = self.theorem_validator.validate_contraction(
+                        debt_before=self.last_accepted_debt,
+                        debt_after=debt_after,
+                        step_num=self.current_step
+                    )
+                    # Update debt tracking for next step
+                    self.last_accepted_debt = debt_after
                 
                 # Increment step count for multi-rate stepping
                 self.step_count += 1
@@ -786,10 +907,10 @@ class GRStepper(StepperContract):
                 rejection_reason = f"Gates failed: {', '.join(reasons)}"
                 
                 # Emit step receipt for rejected step
-                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields, 
-                                              accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt, 
-                                              rejection_reason=rejection_reason, stage_eps_H=stage_eps_H, 
-                                              corrections_applied=corrections)
+                self.ledger.emit_step_receipt(self.current_step, self.current_t, self.current_dt, self.fields,
+                                              accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt,
+                                              rejection_reason=rejection_reason, stage_eps_H=stage_eps_H,
+                                              corrections_applied=corrections, debt_decomposition=debt_decomposition)
 
                 # Suggest smaller timestep for retry
                 # Exponential backoff with floor at dt_floor (typically 1e-8)
@@ -809,19 +930,60 @@ class GRStepper(StepperContract):
 
     def step(self, X_n, t_n, dt_candidate, rails_policy, phaseloom_caps):
         """
-        Implement StepperContract.step using step_ufe.
-        This ensures consistency and removes code duplication.
+        Implement StepperContract.step using step_ufe with bounded retry enforcement.
+        
+        This method enforces Theorem Lemma 2 (Bounded Work Inflation) by limiting
+        the number of retry attempts to max_retries, ensuring the total number of
+        attempts does not exceed 1 + N_retry.
+        
+        Raises:
+            RuntimeError: If retry limit is exceeded
         """
         # X_n is ignored as we operate on self.fields directly
 
         dt = dt_candidate
         rejection_reason = None
+        
+        # Create RetryCounter per Theorem Lemma 2
+        max_retries = self.policy.retry_policy.get('max_retries', 3)
+        retry_counter = RetryCounter(max_retries=max_retries)
 
-        # Attempt loop
-        for attempt in range(self.max_attempts):
+        # Bounded retry loop with hard failure at limit
+        while True:
+            try:
+                retry_counter.increment()
+            except RuntimeError as e:
+                # Hard fail when max attempts exceeded
+                logger.error(
+                    f"Step hard fail - retry limit exceeded: {e}",
+                    extra={
+                        "extra_data": {
+                            "attempt": retry_counter.attempt,
+                            "max_attempts": retry_counter.max_attempts,
+                            "max_retries": retry_counter.max_retries,
+                            "rejection_reason": rejection_reason
+                        }
+                    }
+                )
+                raise
+            
+            # Log retry attempt if not the first attempt
+            if retry_counter.attempt > 1:
+                logger.info(
+                    f"Retry attempt {retry_counter.attempt}/{retry_counter.max_attempts}",
+                    extra={
+                        "extra_data": {
+                            "attempt": retry_counter.attempt,
+                            "max_attempts": retry_counter.max_attempts,
+                            "dt": dt,
+                            "previous_rejection": rejection_reason
+                        }
+                    }
+                )
+            
             # step_ufe performs one attempt
             # It handles: clock decision, RHS, update, gauge (at end), gates, receipts
-            success, _, dt_new, reason, stage_eps_H = self.step_ufe(dt, t_n, rails_policy) # Added stage_eps_H to unpack
+            success, _, dt_new, reason, stage_eps_H = self.step_ufe(dt, t_n, rails_policy)
 
             # Prepare final ledgers for step receipt (copied from step_ufe for consistency)
             ledgers_for_receipt = {
@@ -837,20 +999,50 @@ class GRStepper(StepperContract):
                     'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
                 }
             }
-            accepted_gates, hard_fail_gates, penalty_gates, reasons_gates, margins_gates, corrections_gates = self.check_gates_internal(rails_policy)
+            accepted_gates, hard_fail_gates, penalty_gates, reasons_gates, margins_gates, corrections_gates, debt_decomposition_gates = self.check_gates_internal(rails_policy)
             gates_for_receipt = {'pass': accepted_gates, 'penalty': penalty_gates, 'reasons': reasons_gates, 'margins': margins_gates}
 
-
             if success:
-                self.ledger.emit_step_receipt(self.current_step, t_n + dt, dt, self.fields, accepted=True, ledgers=ledgers_for_receipt, gates=gates_for_receipt, stage_eps_H=stage_eps_H, corrections_applied=corrections_gates)
+                # Step accepted - log completion with attempt count
+                if retry_counter.attempt > 1:
+                    logger.info(
+                        f"Step accepted after {retry_counter.attempt} attempts",
+                        extra={
+                            "extra_data": {
+                                "total_attempts": retry_counter.attempt,
+                                "max_attempts": retry_counter.max_attempts,
+                                "eps_H": float(self.constraints.eps_H)
+                            }
+                        }
+                    )
+                
+                self.ledger.emit_step_receipt(self.current_step, t_n + dt, dt, self.fields, accepted=True, ledgers=ledgers_for_receipt, gates=gates_for_receipt, stage_eps_H=stage_eps_H, corrections_applied=corrections_gates, debt_decomposition=debt_decomposition_gates)
                 return True, None, dt, None
             else:
-                self.ledger.emit_step_receipt(self.current_step, t_n + dt, dt, self.fields, accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt, rejection_reason=reason, stage_eps_H=stage_eps_H, corrections_applied=corrections_gates)
-                # Retry with new dt suggested by step_ufe
-                dt = dt_new
+                # Step rejected - check if we can retry
                 rejection_reason = reason
-
-        return False, None, dt, rejection_reason
+                
+                if not retry_counter.can_retry():
+                    # No more retries allowed - hard fail
+                    logger.error(
+                        f"Step hard fail - all {retry_counter.max_attempts} attempts exhausted",
+                        extra={
+                            "extra_data": {
+                                "total_attempts": retry_counter.attempt,
+                                "max_attempts": retry_counter.max_attempts,
+                                "max_retries": retry_counter.max_retries,
+                                "final_rejection": rejection_reason
+                            }
+                        }
+                    )
+                    self.ledger.emit_step_receipt(self.current_step, t_n + dt, dt, self.fields, accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt, rejection_reason=rejection_reason, stage_eps_H=stage_eps_H, corrections_applied=corrections_gates, debt_decomposition=debt_decomposition_gates)
+                    raise RuntimeError(
+                        f"Step failed after {retry_counter.max_attempts} attempts - hard fail"
+                    )
+                
+                # Prepare for retry with reduced dt
+                self.ledger.emit_step_receipt(self.current_step, t_n + dt, dt, self.fields, accepted=False, ledgers=ledgers_for_receipt, gates=gates_for_receipt, rejection_reason=reason, stage_eps_H=stage_eps_H, corrections_applied=corrections_gates, debt_decomposition=debt_decomposition_gates)
+                dt = dt_new  # Use new dt suggested by step_ufe
 
     def attempt_receipt(self, X_n, t_n, dt_candidate, rails_policy, phaseloom_caps) -> Tuple[bool, Any, float, Any]:
         """
@@ -878,3 +1070,20 @@ class GRStepper(StepperContract):
         # Sync components
         self.rhs_computer.lambda_val = self.lambda_val
         self.loc_operator.lambda_val = self.lambda_val
+    
+    def get_theorem_validation_report(self) -> Dict[str, Any]:
+        """Retrieve theorem validation report from the validator.
+        
+        Returns:
+            Dictionary containing validation results:
+                - 'num_violations': Count of contractions violated
+                - 'violations': List of violation tuples (step, debt_before, debt_after, threshold)
+                - 'status': Status message
+                
+            Returns None if theorem_validator is not enabled.
+        """
+        if self.theorem_validator is None:
+            logger.info("Theorem validation disabled")
+            return {'status': 'Theorem validation disabled'}
+        
+        return self.theorem_validator.get_violation_report()
