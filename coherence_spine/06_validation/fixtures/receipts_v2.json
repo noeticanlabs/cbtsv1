@@ -1,0 +1,331 @@
+[
+  {
+    "id": "receipt-001",
+    "version": "2.0.0",
+    "receipt_hash": "abc123def456abc123def456abc123def456abc123def456abc123def456abc1",
+    "parent_hash": null,
+    "timestamp": "2026-02-11T03:00:00Z",
+    "run_id": "run-genesis",
+    "step_id": 0,
+    "step_size": 0.01,
+    "state_summary": {
+      "hash_before": "state123state123state123state123state123state123state123state123state12",
+      "hash_after": "state124state124state124state124state124state124state124state124state12",
+      "summary": {
+        "residuals_norm": 0.0,
+        "state_norm": 1.0
+      }
+    },
+    "residuals": {
+      "cons": 0.0,
+      "rec": 0.0,
+      "tool": 0.0,
+      "phys_rms": 0.0
+    },
+    "debt": 0.0,
+    "debt_decomposition": {
+      "cons": 0.0,
+      "rec": 0.0,
+      "tool": 0.0,
+      "thrash": 0.0
+    },
+    "gates": {
+      "hard": {
+        "nan_free": {
+          "pass": true,
+          "reason": "No NaN values detected",
+          "residual": 0.0,
+          "threshold": 0.0
+        }
+      },
+      "soft": {
+        "phys_rms": {
+          "pass": true,
+          "reason": "Physical RMS within bounds",
+          "residual": 0.0,
+          "threshold": 0.01
+        }
+      },
+      "decision": "accept"
+    },
+    "actions": []
+  },
+  {
+    "id": "receipt-002",
+    "version": "2.0.0",
+    "receipt_hash": "bcd234efd567bcd234efd567bcd234efd567bcd234efd567bcd234efd567bcd2",
+    "parent_hash": "abc123def456abc123def456abc123def456abc123def456abc123def456abc1",
+    "timestamp": "2026-02-11T03:00:01Z",
+    "run_id": "run-genesis",
+    "step_id": 1,
+    "step_size": 0.01,
+    "state_summary": {
+      "hash_before": "state124state124state124state124state124state124state124state124state12",
+      "hash_after": "state125state125state125state125state125state125state125state125state12",
+      "summary": {
+        "residuals_norm": 0.5,
+        "state_norm": 1.5
+      }
+    },
+    "residuals": {
+      "cons": 0.1,
+      "rec": 0.2,
+      "tool": 0.05,
+      "phys_rms": 0.3
+    },
+    "debt": 0.65,
+    "debt_decomposition": {
+      "cons": 0.1,
+      "rec": 0.2,
+      "tool": 0.05,
+      "thrash": 0.3
+    },
+    "gates": {
+      "hard": {
+        "nan_free": {
+          "pass": true,
+          "reason": "No NaN values detected",
+          "residual": 0.0,
+          "threshold": 0.0
+        }
+      },
+      "soft": {
+        "phys_rms": {
+          "pass": true,
+          "reason": "Physical RMS within bounds",
+          "residual": 0.3,
+          "threshold": 0.5
+        }
+      },
+      "decision": "accept"
+    },
+    "actions": []
+  },
+  {
+    "id": "receipt-003-fail",
+    "version": "2.0.0",
+    "receipt_hash": "cde345fge678cde345fge678cde345fge678cde345fge678cde345fge678cde3",
+    "parent_hash": "bcd234efd567bcd234efd567bcd234efd567bcd234efd567bcd234efd567bcd2",
+    "timestamp": "2026-02-11T03:00:02Z",
+    "run_id": "run-genesis",
+    "step_id": 2,
+    "step_size": 0.01,
+    "state_summary": {
+      "hash_before": "state125state125state125state125state125state125state125state125state12",
+      "hash_after": "state126state126state126state126state126state126state126state126state12",
+      "summary": {
+        "residuals_norm": 2.5,
+        "state_norm": 5.0
+      }
+    },
+    "residuals": {
+      "cons": 0.8,
+      "rec": 0.9,
+      "tool": 0.4,
+      "phys_rms": 1.5
+    },
+    "debt": 3.6,
+    "debt_decomposition": {
+      "cons": 0.8,
+      "rec": 0.9,
+      "tool": 0.4,
+      "thrash": 1.5
+    },
+    "gates": {
+      "hard": {
+        "nan_free": {
+          "pass": true,
+          "reason": "No NaN values detected",
+          "residual": 0.0,
+          "threshold": 0.0
+        }
+      },
+      "soft": {
+        "phys_rms": {
+          "pass": false,
+          "reason": "Physical RMS exceeded threshold",
+          "residual": 1.5,
+          "threshold": 0.5
+        }
+      },
+      "decision": "retry"
+    },
+    "actions": [
+      {
+        "rail": "reduce_dt",
+        "bounds": {
+          "factor": 0.5,
+          "min_dt": 0.001
+        },
+        "before": {
+          "dt": 0.01,
+          "phys_rms": 1.5
+        },
+        "after": {
+          "dt": 0.005,
+          "phys_rms": 0.4
+        }
+      }
+    ]
+  },
+  {
+    "id": "receipt-004-hard-fail",
+    "version": "2.0.0",
+    "receipt_hash": "def456ghf789def456ghf789def456ghf789def456ghf789def456ghf789def456",
+    "parent_hash": "cde345fge678cde345fge678cde345fge678cde345fge678cde345fge678cde3",
+    "timestamp": "2026-02-11T03:00:03Z",
+    "run_id": "run-genesis",
+    "step_id": 3,
+    "step_size": 0.01,
+    "state_summary": {
+      "hash_before": "state126state126state126state126state126state126state126state126state12",
+      "hash_after": null,
+      "summary": {
+        "residuals_norm": null,
+        "state_norm": null
+      }
+    },
+    "residuals": {},
+    "debt": null,
+    "debt_decomposition": {},
+    "gates": {
+      "hard": {
+        "nan_free": {
+          "pass": false,
+          "reason": "NaN detected in state - hard failure",
+          "residual": null,
+          "threshold": 0.0
+        }
+      },
+      "soft": {},
+      "decision": "abort"
+    },
+    "actions": []
+  },
+  {
+    "id": "receipt-minimal",
+    "version": "2.0.0",
+    "receipt_hash": "aaaaaabbbbbbccccccddddddeeeeeeffffffffgggggghhhhhhhiiiiiijjjjjjkkk",
+    "parent_hash": null,
+    "timestamp": "2026-02-11T03:00:00Z",
+    "state_summary": {
+      "hash_before": "aaaa",
+      "hash_after": "bbbb"
+    },
+    "residuals": {},
+    "debt": 0.0,
+    "gates": {
+      "hard": {},
+      "soft": {},
+      "decision": "accept"
+    }
+  },
+  {
+    "id": "receipt-maximal",
+    "version": "2.0.0",
+    "receipt_hash": "zzzzzzyyyyyywwwwwwvvvvvvuuuuuuttttttssssssrrrrrrqqqqqqppppppoooooo",
+    "parent_hash": "aaaaaabbbbbbccccccddddddeeeeeeffffffffgggggghhhhhhhiiiiiijjjjjjkkk",
+    "timestamp": "2026-02-11T03:01:00Z",
+    "run_id": "run-comprehensive",
+    "step_id": 999,
+    "step_size": 0.001,
+    "state_summary": {
+      "hash_before": "state_before_hash_123456789012345678901234567890123456789012345678",
+      "hash_after": "state_after_hash_1234567890123456789012345678901234567890123456789",
+      "summary": {
+        "residuals_components": {
+          "cons": 0.5,
+          "rec": 0.3,
+          "tool": 0.1,
+          "phys_rms": 0.7,
+          "mag": 0.4,
+          "phase": 0.2
+        },
+        "state_statistics": {
+          "mean": 1.5,
+          "std": 0.5,
+          "min": 0.1,
+          "max": 3.2
+        }
+      }
+    },
+    "residuals": {
+      "cons": 0.5,
+      "rec": 0.3,
+      "tool": 0.1,
+      "phys_rms": 0.7,
+      "mag": 0.4,
+      "phase": 0.2,
+      "custom_1": 0.15,
+      "custom_2": 0.08
+    },
+    "debt": 2.82,
+    "debt_decomposition": {
+      "cons": 0.5,
+      "rec": 0.3,
+      "tool": 0.1,
+      "thrash": 1.92,
+      "penalty": 0.0
+    },
+    "gates": {
+      "hard": {
+        "nan_free": {
+          "pass": true,
+          "reason": "All values finite",
+          "residual": 0.0,
+          "threshold": 0.0
+        },
+        "stability": {
+          "pass": true,
+          "reason": "Hessian positive definite",
+          "residual": 0.05,
+          "threshold": 0.5
+        }
+      },
+      "soft": {
+        "phys_rms": {
+          "pass": true,
+          "reason": "Physical error below advisory threshold",
+          "residual": 0.7,
+          "threshold": 1.0
+        },
+        "debt_advisory": {
+          "pass": false,
+          "reason": "Debt trending toward limit",
+          "residual": 2.82,
+          "threshold": 2.5
+        }
+      },
+      "decision": "retry"
+    },
+    "actions": [
+      {
+        "rail": "increase_safety_margin",
+        "bounds": {
+          "margin_increase": 0.2,
+          "new_threshold": 3.0
+        },
+        "before": {
+          "debt_threshold": 2.5,
+          "safety_margin": 0.5
+        },
+        "after": {
+          "debt_threshold": 3.0,
+          "safety_margin": 0.7
+        }
+      },
+      {
+        "rail": "damping",
+        "bounds": {
+          "damping_coefficient": 0.1
+        },
+        "before": {
+          "oscillation_amplitude": 0.5
+        },
+        "after": {
+          "oscillation_amplitude": 0.35
+        }
+      }
+    ]
+  }
+]

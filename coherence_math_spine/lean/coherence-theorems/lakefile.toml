@@ -1,0 +1,9 @@
+name = "coherence-theorems"
+version = "0.1.0"
+
+[[lean_lib]]
+name = "CoherenceTheorems"
+
+[[lean_exe]]
+name = "coherence-theorems"
+root = "Main"

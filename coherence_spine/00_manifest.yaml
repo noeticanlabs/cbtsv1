@@ -1,0 +1,39 @@
+name: Coherence Doc Spine
+version: 1.0.0
+stamp: "2026-02-05 America/Chicago"
+purpose: >
+  Canonical documentation spine defining Coherence as: (L0) principle,
+  (L1–L2) measurable residual/debt discipline, (L4–L5) enforceable runtime contract.
+layers:
+  - L0: Axioms / Philosophy (LoC-style)
+  - L1: Mathematics / Field Theory
+  - L2: Control & Time Geometry
+  - L3: Symbolic Language Binding (optional hook points only)
+  - L4: Runtime & Infrastructure
+  - L5: Proof & Verification
+projection_rules:
+  allowed:
+    - L0_to_L1: "Axiom -> equations/invariants; must preserve stated invariants"
+    - L1_to_L2: "Equations -> gate thresholds, controllers; timescales explicit"
+    - L2_to_L4: "Controllers -> scheduler/rails implementation; bounded actions"
+    - L3_to_L4: "Symbols -> deterministic mapping; receipts must record namespaces"
+    - L4_to_L5: "Runtime -> verifiable artifacts; tests + receipts required"
+  forbidden:
+    - "Reverse projection without explicit theorem/certificate"
+build_order:
+  - README.md
+  - 01_principle/axioms.md
+  - 01_principle/definitions.md
+  - 02_math/coherence_functionals.md
+  - 02_math/lemmas_and_theorems.md
+  - 03_measurement/residuals_metrics.md
+  - 03_measurement/telemetry_and_receipts.md
+  - 04_control/gates_and_rails.md
+  - 04_control/scheduler_and_multiclock.md
+  - 05_runtime/interfaces_and_schemas.md
+  - 05_runtime/reference_implementations.md
+  - 06_validation/test_plan.md
+  - 06_validation/minimal_tests.py
+  - 07_glossary/glossary.md
+  - 08_appendix/references.md
+  - CHANGELOG.md

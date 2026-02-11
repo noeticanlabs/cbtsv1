@@ -1,0 +1,126 @@
+[
+  {
+    "id": "state-equilibrium",
+    "description": "System at equilibrium with zero residuals",
+    "state_vector": [0.0, 0.0, 0.0],
+    "residuals": {
+      "cons": 0.0,
+      "rec": 0.0,
+      "tool": 0.0,
+      "phys_rms": 0.0
+    },
+    "state_norm": 0.0,
+    "residual_norm": 0.0,
+    "expected_debt": 0.0,
+    "state_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  {
+    "id": "state-small-perturbation",
+    "description": "Small perturbation from equilibrium",
+    "state_vector": [0.1, 0.05, -0.02],
+    "residuals": {
+      "cons": 0.01,
+      "rec": 0.005,
+      "tool": 0.002,
+      "phys_rms": 0.008
+    },
+    "state_norm": 0.1225,
+    "residual_norm": 0.015,
+    "expected_debt": 0.0225,
+    "state_hash": "ssssssmallssssmallssssmallssssmallssssmallssssmallssssmallssssmall"
+  },
+  {
+    "id": "state-moderate-deviation",
+    "description": "Moderate deviation within acceptable bounds",
+    "state_vector": [0.5, 0.3, -0.2],
+    "residuals": {
+      "cons": 0.25,
+      "rec": 0.15,
+      "tool": 0.08,
+      "phys_rms": 0.2
+    },
+    "state_norm": 0.625,
+    "residual_norm": 0.68,
+    "expected_debt": 0.4624,
+    "state_hash": "mmmmmmmoderatmmmmmmmoderatmmmmmmmoderatmmmmmmmoderatmmmmmmmmoderat"
+  },
+  {
+    "id": "state-high-residual",
+    "description": "High residual state - near soft gate failure",
+    "state_vector": [1.5, 1.2, -0.8],
+    "residuals": {
+      "cons": 0.8,
+      "rec": 0.6,
+      "tool": 0.3,
+      "phys_rms": 0.9
+    },
+    "state_norm": 1.9365,
+    "residual_norm": 2.1,
+    "expected_debt": 4.41,
+    "state_hash": "highhhighhhighhhighhhighhhighhhighhhighhhighhhighhhighhhighhhighh"
+  },
+  {
+    "id": "state-critical",
+    "description": "Critical state - approaching hard gate failure",
+    "state_vector": [3.0, 2.5, -2.0],
+    "residuals": {
+      "cons": 2.0,
+      "rec": 1.5,
+      "tool": 1.0,
+      "phys_rms": 2.5
+    },
+    "state_norm": 4.717,
+    "residual_norm": 7.0,
+    "expected_debt": 49.0,
+    "state_hash": "critscritscritscritscritscritscritscritscritscritscritscritscrits"
+  },
+  {
+    "id": "state-oscillatory",
+    "description": "Oscillatory state with periodic residuals",
+    "state_vector": [1.0, 0.0, 0.0],
+    "residuals": {
+      "cons": 0.5,
+      "rec": 0.866,
+      "tool": 0.0,
+      "phys_rms": 0.433
+    },
+    "state_norm": 1.0,
+    "residual_norm": 1.0,
+    "expected_debt": 1.0,
+    "state_hash": "oscoscoscoscoscoscoscoscoscoscoscoscoscoscoscoscoscoscoscoscoscoscosc"
+  },
+  {
+    "id": "state-coupled-kuramoto",
+    "description": "Coupled oscillator state (Kuramoto model)",
+    "state_vector": [0.5, 1.2, 0.3, -0.8, 1.1, -0.4],
+    "residuals": {
+      "cons": 0.15,
+      "rec": 0.22,
+      "tool": 0.08,
+      "phys_rms": 0.35,
+      "phase_coherence": 0.12,
+      "frequency_spread": 0.05
+    },
+    "state_norm": 1.635,
+    "residual_norm": 0.47,
+    "expected_debt": 0.2209,
+    "state_hash": "kurakurakurakurakurakurakurakurakurakurakurakurakurakurakurakura"
+  },
+  {
+    "id": "state-multiscale",
+    "description": "State with multiscale components",
+    "state_vector": [1e-3, 1e-2, 0.1, 1.0],
+    "residuals": {
+      "cons": 0.05,
+      "rec": 0.1,
+      "tool": 0.2,
+      "phys_rms": 0.15,
+      "fast_scale": 0.3,
+      "slow_scale": 0.05
+    },
+    "state_norm": 1.005,
+    "residual_norm": 0.42,
+    "expected_debt": 0.1764,
+    "state_hash": "multmultmultmultmultmultmultmultmultmultmultmultmultmultmultmult"
+  }
+]

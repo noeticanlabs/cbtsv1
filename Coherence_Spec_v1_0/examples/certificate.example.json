@@ -1,0 +1,16 @@
+{
+  "run_id": "run-2025-01-01",
+  "version": "1.0.0",
+  "pass": true,
+  "maxima": {
+    "debt": 1.8,
+    "residuals": {
+      "cons": 0.95,
+      "rec": 0.88,
+      "tool": 0.4
+    }
+  },
+  "final_hash": "finalhash-789",
+  "config_hash": "confighash-321",
+  "notes": "All hard gates passed; soft gates mitigated via rails."
+}

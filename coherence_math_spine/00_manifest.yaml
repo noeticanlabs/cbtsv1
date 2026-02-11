@@ -1,0 +1,28 @@
+name: Coherence Mathematical Spine
+version: 2.0.0
+stamp: "2026-02-10 America/Chicago"
+scope: >
+  Mathematical core for Coherence: state spaces, residual maps, debt functionals,
+  gated/rail dynamics, stability and small-gain theorems, multiscale barrier methods,
+  certificate patterns (SOS/interval/WZ), and UFE (Universal Field Equation) integration
+  with BridgeCert pattern, GR observer specialization, canon relationships, worked examples,
+  and PDE framework mappings.
+files:
+  - README.md
+  - 01_notation.md
+  - 02_state_spaces.md
+  - 03_residual_maps.md
+  - 04_debt_functionals.md
+  - 05_gated_dynamics.md
+  - 06_stability_theorems.md
+  - 07_multiscale_barriers.md
+  - 08_certificates.md
+  - 09_examples.md
+  - 10_canon_relationships.md
+  - 11_pde_relationships.md
+  - lean/SmallGain.lean
+  - lean/UFEOp.lean
+  - lean/DiscreteRuntime.lean
+  - lean/BridgeCert.lean
+  - lean/GRObserver.lean
+  - lean/UFEAll.lean

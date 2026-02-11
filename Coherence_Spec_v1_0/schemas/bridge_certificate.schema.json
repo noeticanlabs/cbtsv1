@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bridge Certificate",
+  "type": "object",
+  "required": [
+    "certificate_id",
+    "certificate_version",
+    "error_bound_function",
+    "error_bound_params",
+    "verification_proof",
+    "created_at",
+    "expires_at"
+  ],
+  "properties": {
+    "certificate_id": {
+      "type": "string",
+      "description": "Unique identifier for this certificate"
+    },
+    "certificate_version": {
+      "type": "string",
+      "description": "Version of the certificate schema"
+    },
+    "ufe_operator": {
+      "type": "object",
+      "description": "UFEOp specification this cert applies to",
+      "required": ["Lphys_type", "Sgeo_type"],
+      "properties": {
+        "Lphys_type": { "type": "string" },
+        "Sgeo_type": { "type": "string" },
+        "drive_types": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "discrete_scheme": {
+      "type": "string",
+      "enum": ["forward_euler", "backward_euler", "rk4", "custom"],
+      "description": "Discrete scheme used"
+    },
+    "error_bound_function": {
+      "type": "string",
+      "description": "Name of error bound function (e.g., 'forward_euler_lipschitz')"
+    },
+    "error_bound_params": {
+      "type": "object",
+      "description": "Parameters for the error bound function",
+      "properties": {
+        "lipschitz_constant": { "type": "number" },
+        "order": { "type": "integer" },
+        "local_error_constant": { "type": "number" }
+      }
+    },
+    "error_bound_formula": {
+      "type": "string",
+      "description": "LaTeX formula for the error bound"
+    },
+    "verification_proof": {
+      "type": "object",
+      "description": "Reference to verification artifact",
+      "properties": {
+        "proof_type": {
+          "type": "string",
+          "enum": ["lean", "coq", "manual", "interval_arithmetic"]
+        },
+        "proof_location": { "type": "string" },
+        "proof_hash": { "type": "string" },
+        "last_verified": { "type": "string" }
+      }
+    },
+    "applies_to": {
+      "type": "array",
+      "description": "List of system configurations this cert applies to",
+      "items": { "type": "string" }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "revoked", "expired"],
+      "default": "active"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about this certificate"
+    }
+  },
+  "additionalProperties": false
+}

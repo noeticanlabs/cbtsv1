@@ -1,0 +1,180 @@
+[
+  {
+    "id": "debt-origin",
+    "description": "Debt at origin (equilibrium)",
+    "residuals": {
+      "cons": 0.0,
+      "rec": 0.0,
+      "tool": 0.0,
+      "phys_rms": 0.0
+    },
+    "debt_value": 0.0,
+    "debt_decomposition": {
+      "cons": 0.0,
+      "rec": 0.0,
+      "tool": 0.0,
+      "thrash": 0.0,
+      "penalty": 0.0
+    },
+    "debt_norm": 0.0,
+    "debt_norm_relative": 0.0
+  },
+  {
+    "id": "debt-small",
+    "description": "Small debt from minimal residuals",
+    "residuals": {
+      "cons": 0.1,
+      "rec": 0.05,
+      "tool": 0.02,
+      "phys_rms": 0.08
+    },
+    "debt_value": 0.0225,
+    "debt_decomposition": {
+      "cons": 0.01,
+      "rec": 0.0025,
+      "tool": 0.0004,
+      "thrash": 0.0096,
+      "penalty": 0.0
+    },
+    "debt_norm": 0.0225,
+    "debt_norm_relative": 0.225
+  },
+  {
+    "id": "debt-moderate",
+    "description": "Moderate debt within safe bounds",
+    "residuals": {
+      "cons": 0.4,
+      "rec": 0.3,
+      "tool": 0.15,
+      "phys_rms": 0.35
+    },
+    "debt_value": 0.3625,
+    "debt_decomposition": {
+      "cons": 0.16,
+      "rec": 0.09,
+      "tool": 0.0225,
+      "thrash": 0.1225,
+      "penalty": 0.0
+    },
+    "debt_norm": 0.3625,
+    "debt_norm_relative": 1.0
+  },
+  {
+    "id": "debt-high",
+    "description": "High debt approaching soft gate threshold",
+    "residuals": {
+      "cons": 0.8,
+      "rec": 0.6,
+      "tool": 0.4,
+      "phys_rms": 0.9
+    },
+    "debt_value": 1.81,
+    "debt_decomposition": {
+      "cons": 0.64,
+      "rec": 0.36,
+      "tool": 0.16,
+      "thrash": 0.81,
+      "penalty": 0.0
+    },
+    "debt_norm": 1.81,
+    "debt_norm_relative": 5.0
+  },
+  {
+    "id": "debt-critical",
+    "description": "Critical debt at or near hard gate failure",
+    "residuals": {
+      "cons": 2.0,
+      "rec": 1.5,
+      "tool": 1.0,
+      "phys_rms": 2.5
+    },
+    "debt_value": 12.25,
+    "debt_decomposition": {
+      "cons": 4.0,
+      "rec": 2.25,
+      "tool": 1.0,
+      "thrash": 6.25,
+      "penalty": 0.0
+    },
+    "debt_norm": 12.25,
+    "debt_norm_relative": 33.78
+  },
+  {
+    "id": "debt-with-penalty",
+    "description": "Debt with constraint violation penalty",
+    "residuals": {
+      "cons": 0.5,
+      "rec": 0.4,
+      "tool": 0.2,
+      "phys_rms": 0.6
+    },
+    "debt_value": 1.08,
+    "debt_decomposition": {
+      "cons": 0.25,
+      "rec": 0.16,
+      "tool": 0.04,
+      "thrash": 0.36,
+      "penalty": 0.27
+    },
+    "debt_norm": 1.08,
+    "debt_norm_relative": 2.975
+  },
+  {
+    "id": "debt-lyapunov-step",
+    "description": "Debt values from multi-step Lyapunov trajectory",
+    "residuals_sequence": [
+      {"cons": 0.0, "rec": 0.0, "tool": 0.0, "phys_rms": 0.0},
+      {"cons": 0.1, "rec": 0.08, "tool": 0.05, "phys_rms": 0.12},
+      {"cons": 0.15, "rec": 0.12, "tool": 0.08, "phys_rms": 0.18},
+      {"cons": 0.18, "rec": 0.14, "tool": 0.09, "phys_rms": 0.2},
+      {"cons": 0.19, "rec": 0.15, "tool": 0.095, "phys_rms": 0.22},
+      {"cons": 0.19, "rec": 0.15, "tool": 0.095, "phys_rms": 0.21}
+    ],
+    "debt_sequence": [0.0, 0.0332, 0.0749, 0.1076, 0.1336, 0.1354],
+    "debt_trend": "monotone_increasing_then_stabilizing",
+    "monotone_decrease_property": "satisfied_after_step_5"
+  },
+  {
+    "id": "debt-coercivity-verification",
+    "description": "Debt values at varying distances from origin (coercivity check)",
+    "distance_sequence": [0.0, 0.5, 1.0, 2.0, 3.0, 5.0, 10.0],
+    "debt_at_distance": [0.0, 0.25, 1.0, 4.0, 9.0, 25.0, 100.0],
+    "coercivity_property": "C(x) = ||x||^2 as expected",
+    "asymptotic_growth": "C(x) → ∞ as ||x|| → ∞"
+  },
+  {
+    "id": "debt-multiscale",
+    "description": "Debt decomposition across multiscale components",
+    "residuals": {
+      "fast_scale": 0.3,
+      "slow_scale": 0.05,
+      "coupled": 0.1
+    },
+    "debt_value": 0.1034,
+    "debt_decomposition": {
+      "fast_scale_component": 0.09,
+      "slow_scale_component": 0.0025,
+      "coupling_component": 0.01,
+      "interaction": 0.0009
+    },
+    "debt_norm": 0.1034,
+    "scale_separation": 6.0
+  },
+  {
+    "id": "debt-kuramoto",
+    "description": "Debt for coupled oscillator system",
+    "residuals": {
+      "phase_error": 0.2,
+      "frequency_spread": 0.1,
+      "amplitude_variation": 0.05
+    },
+    "debt_value": 0.0625,
+    "debt_decomposition": {
+      "phase_coherence_penalty": 0.04,
+      "frequency_synchronization": 0.01,
+      "amplitude_uniformity": 0.0025
+    },
+    "order_parameter_R": 0.95,
+    "mean_field_phase": 1.5708
+  }
+]

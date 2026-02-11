@@ -1,0 +1,87 @@
+{
+  "id": "step-0042",
+  "version": "2.0.0",
+  "timestamp": "2025-01-01T00:00:00Z",
+  "run_id": "run-abc123def456",
+  "step_id": 42,
+  "step_size": 0.05,
+  "receipt_hash": "abcd1234ef5678ab9012cd34ef567890abcd1234ef567890abcd1234ef567890",
+  "parent_hash": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "state_summary": {
+    "hash_before": "0000000000000000000000000000000000000000000000000000000000000001",
+    "hash_after": "0000000000000000000000000000000000000000000000000000000000000002",
+    "summary": {
+      "norm": 1.5,
+      "max_component": 0.8
+    }
+  },
+  "residuals": {
+    "cons": 0.9,
+    "rec": 0.7,
+    "tool": 0.2
+  },
+  "debt": 1.42,
+  "debt_decomposition": {
+    "cons": 0.81,
+    "rec": 0.49,
+    "tool": 0.04,
+    "thrash": 0.08
+  },
+  "gates": {
+    "hard": {
+      "energy_conservation": {
+        "pass": true,
+        "reason": "energy drift within acceptable bounds",
+        "residual": 0.0012,
+        "threshold": 0.01
+      }
+    },
+    "soft": {
+      "coherence_soft_gate": {
+        "pass": false,
+        "reason": "coherence residual exceeded soft threshold",
+        "residual": 0.85,
+        "threshold": 0.8
+      }
+    },
+    "decision": "retry"
+  },
+  "actions": [
+    {
+      "rail": "reduce_dt",
+      "bounds": { "min_dt": 0.01, "factor": 0.5 },
+      "before": { "dt": 0.1, "soft_gate": "fail" },
+      "after": { "dt": 0.05, "soft_gate": "pass" }
+    }
+  ],
+  "decision": "accept",
+  "ufe_residual": {
+    "Lphys": 0.001,
+    "Sgeo": 0.002,
+    "G_total": 0.003,
+    "Lphys_norm": 0.0015,
+    "Sgeo_norm": 0.0025,
+    "G_total_norm": 0.0035
+  },
+  "lexicon_terms_used": [
+    "coherence_principle",
+    "residual_map",
+    "debt_functional",
+    "gate_predicate"
+  ],
+  "namespaces": [
+    "ufe_system",
+    "physical_evolution"
+  ],
+  "layer": [
+    "L0",
+    "L1",
+    "L2"
+  ],
+  "code_version": "1.0.0",
+  "seed": 42,
+  "notes": [
+    "Step completed with soft gate correction via dt reduction",
+    "Coherence maintained above threshold after rail application"
+  ]
+}

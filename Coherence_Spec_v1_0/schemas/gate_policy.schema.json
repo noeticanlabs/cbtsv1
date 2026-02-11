@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Gate Policy",
+  "type": "object",
+  "required": ["hard_gates", "soft_gates", "hysteresis", "rails"],
+  "properties": {
+    "hard_gates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "soft_gates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["warn", "fail"],
+        "properties": {
+          "warn": { "type": "number" },
+          "fail": { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "hysteresis": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["enter", "exit"],
+        "properties": {
+          "enter": { "type": "number" },
+          "exit": { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rails": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "bounds"],
+        "properties": {
+          "name": { "type": "string" },
+          "bounds": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

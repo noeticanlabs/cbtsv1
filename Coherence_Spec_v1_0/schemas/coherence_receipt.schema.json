@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coherence Receipt",
+  "type": "object",
+  "required": [
+    "id",
+    "state_summary",
+    "residuals",
+    "debt",
+    "debt_decomposition",
+    "gates",
+    "actions",
+    "decision",
+    "parent_hash",
+    "receipt_hash"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "state_summary": { "type": "object" },
+    "residuals": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "debt": { "type": "number" },
+    "debt_decomposition": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "gates": {
+      "type": "object",
+      "required": ["hard", "soft"],
+      "properties": {
+        "hard": { "type": "string", "enum": ["pass", "fail"] },
+        "soft": { "type": "string", "enum": ["pass", "fail"] },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rail", "bounds"],
+        "properties": {
+          "rail": { "type": "string" },
+          "bounds": { "type": "object" },
+          "before": {},
+          "after": {}
+        }
+      }
+    },
+    "decision": { "type": "string", "enum": ["accept", "retry", "abort"] },
+    "parent_hash": { "type": "string" },
+    "receipt_hash": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "ufe_residual": {
+      "type": "object",
+      "description": "UFE residual by component",
+      "properties": {
+        "Lphys": { "type": "number" },
+        "Sgeo": { "type": "number" },
+        "G_total": { "type": "number" }
+      }
+    },
+    "ufe_threshold": {
+      "type": "object",
+      "description": "UFE threshold by component",
+      "properties": {
+        "Lphys_tau": { "type": "number" },
+        "Sgeo_tau": { "type": "number" },
+        "G_total_tau": { "type": "number" }
+      }
+    },
+    "ufe_dynamical": {
+      "type": "number",
+      "description": "GR dynamical residual: ‖∇_u u‖"
+    },
+    "ufe_clock": {
+      "type": "number",
+      "description": "GR clock residual: |g(u,u) + 1|"
+    },
+    "bridge_cert_id": {
+      "type": "string",
+      "description": "Reference to active BridgeCert"
+    },
+    "step_size": {
+      "type": "number",
+      "description": "Discrete step size Δ"
+    }
+  },
+  "additionalProperties": false
+}

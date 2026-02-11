@@ -1,0 +1,159 @@
+[
+  {
+    "id": "policy-standard",
+    "version": "2.0.0",
+    "description": "Standard gate policy for general computation",
+    "hard_gates": {
+      "nan_free": {
+        "name": "Finite Value Gate",
+        "description": "Ensures no NaN or infinite values in state",
+        "threshold": 0.0,
+        "is_recoverable": false,
+        "action_on_failure": "abort"
+      },
+      "stability": {
+        "name": "Stability Gate",
+        "description": "Verifies Hessian positive definiteness",
+        "threshold": 0.5,
+        "is_recoverable": false,
+        "action_on_failure": "abort"
+      }
+    },
+    "soft_gates": {
+      "phys_rms": {
+        "name": "Physical RMS Gate",
+        "description": "Bounds physical error magnitude",
+        "threshold": 0.5,
+        "is_recoverable": true,
+        "action_on_failure": "retry_with_damping"
+      },
+      "debt_advisory": {
+        "name": "Debt Advisory Gate",
+        "description": "Early warning when debt approaches limit",
+        "threshold": 2.5,
+        "is_recoverable": true,
+        "action_on_failure": "retry_with_safety_increase"
+      }
+    },
+    "retry_limits": {
+      "max_retries": 6,
+      "max_step_reductions": 10
+    }
+  },
+  {
+    "id": "policy-conservative",
+    "version": "2.0.0",
+    "description": "Conservative gate policy for safety-critical computations",
+    "hard_gates": {
+      "nan_free": {
+        "name": "Finite Value Gate",
+        "description": "Ensures no NaN or infinite values in state",
+        "threshold": 0.0,
+        "is_recoverable": false,
+        "action_on_failure": "abort"
+      },
+      "stability": {
+        "name": "Stability Gate",
+        "description": "Verifies Hessian positive definiteness with tight margin",
+        "threshold": 0.2,
+        "is_recoverable": false,
+        "action_on_failure": "abort"
+      },
+      "residual_bound": {
+        "name": "Residual Magnitude Gate",
+        "description": "Hard bounds on residual magnitude",
+        "threshold": 0.3,
+        "is_recoverable": false,
+        "action_on_failure": "abort"
+      }
+    },
+    "soft_gates": {
+      "phys_rms": {
+        "name": "Physical RMS Gate",
+        "description": "Tight bounds on physical error",
+        "threshold": 0.2,
+        "is_recoverable": true,
+        "action_on_failure": "retry_with_aggressive_damping"
+      },
+      "debt_warning": {
+        "name": "Debt Early Warning Gate",
+        "description": "Warns at 60% of budget limit",
+        "threshold": 1.5,
+        "is_recoverable": true,
+        "action_on_failure": "retry_with_projection"
+      }
+    },
+    "retry_limits": {
+      "max_retries": 12,
+      "max_step_reductions": 20
+    }
+  },
+  {
+    "id": "policy-aggressive",
+    "version": "2.0.0",
+    "description": "Aggressive gate policy for performance-critical code",
+    "hard_gates": {
+      "nan_free": {
+        "name": "Finite Value Gate",
+        "description": "Ensures no NaN or infinite values in state",
+        "threshold": 0.0,
+        "is_recoverable": false,
+        "action_on_failure": "abort"
+      }
+    },
+    "soft_gates": {
+      "phys_rms": {
+        "name": "Physical RMS Gate",
+        "description": "Relaxed physical error bound",
+        "threshold": 1.0,
+        "is_recoverable": true,
+        "action_on_failure": "retry_if_necessary"
+      }
+    },
+    "retry_limits": {
+      "max_retries": 3,
+      "max_step_reductions": 5
+    }
+  },
+  {
+    "id": "policy-kuramoto",
+    "version": "2.0.0",
+    "description": "Gate policy for Kuramoto-coupled oscillator systems",
+    "hard_gates": {
+      "nan_free": {
+        "name": "Finite Value Gate",
+        "description": "Ensures no NaN or infinite values in state",
+        "threshold": 0.0,
+        "is_recoverable": false,
+        "action_on_failure": "abort"
+      },
+      "synchronization": {
+        "name": "Synchronization Gate",
+        "description": "Verifies order parameter coherence bounds",
+        "threshold": 0.5,
+        "is_recoverable": false,
+        "action_on_failure": "abort"
+      }
+    },
+    "soft_gates": {
+      "phase_coherence": {
+        "name": "Phase Coherence Gate",
+        "description": "Monitors oscillator phase alignment",
+        "threshold": 0.3,
+        "is_recoverable": true,
+        "action_on_failure": "retry_with_coupling_adjustment"
+      },
+      "frequency_spread": {
+        "name": "Frequency Spread Gate",
+        "description": "Bounds dispersion of oscillator frequencies",
+        "threshold": 0.1,
+        "is_recoverable": true,
+        "action_on_failure": "retry_with_frequency_sync"
+      }
+    },
+    "retry_limits": {
+      "max_retries": 8,
+      "max_step_reductions": 15
+    }
+  }
+]
