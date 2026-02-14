@@ -1,2 +1,6 @@
 numpy
 numba
+pytest
+pytest-cov
+ruff
+mypy

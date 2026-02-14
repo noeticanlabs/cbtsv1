@@ -29,7 +29,7 @@ from nsc.domains.numerical.stencils import NSC_stencils as stencils
 
 # Old: from nsc.exec_vm
 # New: from nsc.models.exec.vm import NSC_VM
-from nsc.models.exec.vm import NSC_VM as exec_vm
+from nsc.models.exec.vm import NSC_VM
 
 # Old: from nsc.quadrature
 # New: from nsc.domains.numerical.quadrature
@@ -75,7 +75,7 @@ def __getattr__(name):
             return NSC_YM
         elif name == 'NSC_Time':
             from nsc.models.ledger import NSC_ledger
-            from nsc.models.exec import NSC_exec
+            from nsc.models.exec.vm import NSC_VM as NSC_exec # Changed import for NSC_exec
             return (NSC_ledger, NSC_exec)
     
     raise AttributeError(f"Module 'nsc.compat' has no attribute '{name}'")

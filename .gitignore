@@ -47,6 +47,16 @@ data/
 *.hdf5
 *.nc
 
+# CBTSV1 cleanup: Generated outputs go to artifacts/
+artifacts/
+*_results.json
+*_report.json
+*_report_new.json
+final_compliance_report.json
+compiled_nir.json
+mms_nir.json
+terminology_registry.json
+
 # Logs
 *.log
 

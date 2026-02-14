@@ -1,9 +1,0 @@
-{
-  "compact4_convergence": "FAIL: Compact4 should achieve ~4th order, got -0.499",
-  "compact4_vs_numpy": "FAIL: Compact4 should be more accurate",
-  "compact4_christoffel": "FAIL: could not broadcast input array from shape (62,64,64,6) into shape (62,)",
-  "central2_christoffel": "PASS",
-  "factory": "PASS",
-  "method_switching": "FAIL: could not broadcast input array from shape (30,32,32,6) into shape (30,)",
-  "ricci_kernel": "FAIL: could not broadcast input array from shape (30,32,32,6) into shape (30,)"
-}
