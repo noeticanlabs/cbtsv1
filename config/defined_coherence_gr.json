@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "description": "Canonical coherence configuration for GR solver",
+  "covariance_model": "diag",
+  "blocks": {
+    "hamiltonian": {
+      "scale": 1.0,
+      "weight": 1.0,
+      "description": "Hamiltonian constraint H = R + K² - K_ij K^ij - 2Λ",
+      "units": "curvature"
+    },
+    "momentum": {
+      "scale": 1.0,
+      "weight": 1.0,
+      "description": "Momentum constraint M^i = D_j(K^ij - γ^ij K)",
+      "units": "curvature/length"
+    }
+  },
+  "tests": {
+    "minkowski_tolerance": 1e-10,
+    "schwarzschild_tolerance": 1e-6,
+    "artificial_residual_tolerance": 1e-10
+  },
+  "notes": {
+    "scale": "Scale factor S applied to residual vector: r̃ = scale * r",
+    "weight": "Weight factor W for quadratic form: contribution = weight * ||r̃||²",
+    "covariance_model": "Currently using diagonal covariance (uncorrelated blocks)"
+  }
+}

@@ -474,7 +474,7 @@ def create_compact_geometry(fields):
     """
     Create GRGeometry with 4th order compact finite differences.
     """
-    from src.core.gr_geometry import GRGeometry, hash_array
+    from cbtsv1.solvers.gr.geometry import GRGeometry, hash_array
     
     class CompactGeometry(GRGeometry):
         """GRGeometry with 4th order compact finite differences."""
@@ -527,7 +527,7 @@ def create_compact_geometry(fields):
                 self._christoffel_cache.move_to_end(gamma_hash)
                 return
             
-            from src.core.gr_geometry_nsc import compute_christoffels_compiled
+            from cbtsv1.solvers.gr.geometry.geometry_nsc import compute_christoffels_compiled
             self.christoffels, self.Gamma = compute_christoffels_compiled(
                 gamma, dgamma_dx, dgamma_dy, dgamma_dz
             )

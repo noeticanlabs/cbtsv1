@@ -1,7 +1,15 @@
+import warnings
 import numpy as np
 import logging
 
 logger = logging.getLogger('gr_solver.coherence')
+
+# Deprecation warning
+warnings.warn(
+    "gr_coherence.py is deprecated. Use coherence_integration.py for canonical coherence.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 class CoherenceOperator:
     def __init__(self, damping_enabled=True, lambda_val=0.0):
