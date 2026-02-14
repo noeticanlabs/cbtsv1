@@ -1,0 +1,333 @@
+{
+  "lexicon_version": "2.0",
+  "canonical": true,
+  "master": true,
+  "scope": [
+    "coherence-framework",
+    "cbtsv1"
+  ],
+  "status": "ACTIVE",
+  "deprecates": [
+    "docs/core/spec/12_Glossary_and_Lexicon.md",
+    "docs/core/glossary.md",
+    "docs/lean/NoeticanLabs/Coherence/Lexicon.lean"
+  ],
+  "definitions": {
+    "state": {
+      "symbol": "x",
+      "type": "mathematical_object",
+      "definition": "A point in declared state space X sufficient to evaluate all residuals.",
+      "required_fields": [],
+      "layers": ["L0"]
+    },
+    "state_space": {
+      "symbol": "X",
+      "type": "set",
+      "definition": "Set of admissible states under declared regularity and discretization assumptions.",
+      "required_fields": [
+        "dimension",
+        "regularity",
+        "discretization"
+      ],
+      "layers": ["L0", "L1"]
+    },
+    "evolution_operator": {
+      "symbol": "Φ",
+      "type": "operator",
+      "definition": "Rule advancing state in time: x_{k+1} = Φ(x_k).",
+      "required_fields": [],
+      "layers": ["L1"]
+    },
+    "residual": {
+      "symbol": "r",
+      "type": "vector_function",
+      "definition": "Vector-valued function r: X → ℝ^m representing structural violation.",
+      "required_fields": [
+        "domain",
+        "codomain"
+      ],
+      "layers": ["L0", "L1"],
+      "domains": ["physics", "constraints", "semantics", "tools", "operations"]
+    },
+    "residual_block": {
+      "type": "structured_object",
+      "definition": "Named component of the residual system.",
+      "required_fields": [
+        "name",
+        "vector",
+        "scale",
+        "weight"
+      ],
+      "constraints": {
+        "scale": "positive_scalar",
+        "weight": "positive_scalar"
+      },
+      "layers": ["L1"]
+    },
+    "residual_system": {
+      "type": "collection",
+      "definition": "Collection of residual blocks R(x) = {r1(x), ..., rk(x)}.",
+      "required_fields": [
+        "blocks"
+      ],
+      "layers": ["L1"]
+    },
+    "scale": {
+      "symbol": "S",
+      "type": "normalization_factor",
+      "definition": "Per-block normalization factor applied to residual: r_tilde = S^{-1} r.",
+      "constraints": {
+        "positive": true
+      },
+      "layers": ["L1"]
+    },
+    "weight": {
+      "symbol": "W",
+      "type": "metric_operator",
+      "definition": "Positive semidefinite operator applied to scaled residual.",
+      "constraints": {
+        "positive_semidefinite": true
+      },
+      "layers": ["L1"]
+    },
+    "coherence_functional": {
+      "symbol": "c(x)",
+      "type": "scalar_function",
+      "definition": "c(x) = <S^{-1}r, W S^{-1}r>.",
+      "required_fields": [
+        "residual_system",
+        "scale",
+        "weight"
+      ],
+      "properties": {
+        "nonnegative": true,
+        "zero_if_all_residuals_zero": true
+      },
+      "layers": ["L0", "L1"],
+      "note": "Also known as debt functional C(x)"
+    },
+    "coherence_value": {
+      "type": "scalar",
+      "definition": "Scalar output of the coherence_functional.",
+      "constraints": {
+        "nonnegative": true
+      },
+      "layers": ["L0", "L1"]
+    },
+    "coherent_state": {
+      "type": "predicate",
+      "definition": "State x such that coherence_value(x) = 0 within tolerance.",
+      "layers": ["L0"]
+    },
+    "coherence_budget": {
+      "type": "scalar",
+      "definition": "Declared upper bound B such that coherence_value(x) ≤ B.",
+      "constraints": {
+        "nonnegative": true
+      },
+      "layers": ["L2"]
+    },
+    "debt": {
+      "type": "accumulated_scalar",
+      "definition": "Accumulated incoherence over time D = Σ c(x_k).",
+      "layers": ["L1", "L2"],
+      "formula": "C(x) := Σᵢ wᵢ‖r̃ᵢ(x)‖² + Σⱼ vⱼpⱼ(x)",
+      "note": "Scalar functional aggregating residuals and penalties into acceptance currency"
+    },
+    "receipt": {
+      "type": "immutable_record",
+      "definition": "Record of state transition including coherence_value and residual summaries.",
+      "required_fields": [
+        "state_hash",
+        "coherence_value",
+        "residual_blocks",
+        "timestamp"
+      ],
+      "layers": ["L2"],
+      "note": "Auditable record of attempt: state, metrics, decisions, actions, hashes, provenance"
+    },
+    "residual_block_summary": {
+      "type": "structured_object",
+      "definition": "Auditable summary of a residual block.",
+      "required_fields": [
+        "dimension",
+        "l2_norm",
+        "linf_norm",
+        "hash",
+        "scale",
+        "weight"
+      ],
+      "layers": ["L2"]
+    },
+    "ledger": {
+      "type": "ordered_sequence",
+      "definition": "Ordered sequence of receipts forming auditable history.",
+      "layers": ["L2"],
+      "note": "Hash-chained and immutable, serving as evidence for coherence verification"
+    },
+    "hamiltonian_residual": {
+      "symbol": "H",
+      "type": "residual_block",
+      "definition": "GR constraint: R + K^2 - K_ij K^ij - 16πρ.",
+      "layers": ["L1"],
+      "physics_domain": "GR_ADM"
+    },
+    "momentum_residual": {
+      "symbol": "M^i",
+      "type": "residual_block",
+      "definition": "GR constraint: ∇_j (K^{ij} - γ^{ij}K) - 8π S^i.",
+      "layers": ["L1"],
+      "physics_domain": "GR_ADM"
+    },
+    "gauge_residual": {
+      "type": "residual_block",
+      "definition": "Violation of declared gauge condition.",
+      "layers": ["L1"]
+    },
+    "trust_region": {
+      "type": "numerical_constraint",
+      "definition": "Step constraint ||δ|| ≤ Δ.",
+      "layers": ["L1"]
+    },
+    "preconditioner": {
+      "type": "numerical_operator",
+      "definition": "Operator approximating inverse system matrix to accelerate convergence.",
+      "layers": ["L1"]
+    },
+    "lipschitz_jacobian": {
+      "type": "regularity_condition",
+      "definition": "Condition ||J(x) - J(y)|| ≤ L ||x - y||.",
+      "layers": ["L1"]
+    },
+    "gate": {
+      "type": "control_primitive",
+      "definition": "Pass/warn/fail rule (with hysteresis) producing accept/reject/abort decisions.",
+      "layers": ["L2"],
+      "variants": ["hard_gate", "soft_gate"]
+    },
+    "hard_gate": {
+      "type": "control_primitive",
+      "definition": "Invariant that must never fail on accepted states; violation triggers rollback or abort.",
+      "layers": ["L2"],
+      "examples": ["NaN/Inf checks", "positivity constraints", "domain bounds"]
+    },
+    "soft_gate": {
+      "type": "control_primitive",
+      "definition": "Quality threshold that triggers bounded repair via rails plus retry, not abort.",
+      "layers": ["L2"],
+      "note": "Allows reconfigurable system behavior within safety margins"
+    },
+    "rails": {
+      "type": "control_primitive",
+      "definition": "Bounded corrective actions applied during repair.",
+      "layers": ["L2"],
+      "actions": ["dt_deflation", "rollback", "projection", "gain_adjustment"],
+      "note": "R1: dt deflation, R2: rollback, R3: projection to constraint manifold, R4: bounded gain adjustment"
+    },
+    "hash_chain": {
+      "type": "security_primitive",
+      "definition": "Tamper-evident linking of receipts via cryptographic hashing.",
+      "layers": ["L2"],
+      "note": "Prevents falsification of execution traces and ensures accountability"
+    },
+    "acceptance_set": {
+      "symbol": "𝒜",
+      "type": "set",
+      "definition": "The set of states satisfying all hard gate invariants and soft gate thresholds: 𝒜 := {x ∈ X : I_hard(x) = true ∧ qₗ(x) ≤ τₗ ∀ℓ}.",
+      "layers": ["L1"],
+      "note": "Partitions state space into acceptance, warning, and failure regions"
+    },
+    "certificate": {
+      "type": "proof_object",
+      "definition": "Summary of run, maxima, hashes, and pass/fail status.",
+      "layers": ["L2", "L3"]
+    },
+    "bridge_cert": {
+      "type": "proof_object",
+      "definition": "Bridge certificate connecting physics and discrete systems; certifies that discrete residuals imply analytic bounds.",
+      "layers": ["L1"],
+      "note": "The only architectural location where numerical analysis is permitted"
+    },
+    "transport": {
+      "type": "BRIDGE",
+      "definition": "Optional flow representation of coherence change.",
+      "layers": ["L2", "L3"],
+      "status": "UNVERIFIED"
+    },
+    "dissipation": {
+      "type": "BRIDGE",
+      "definition": "Reduction of debt via correction.",
+      "layers": ["L2", "L3"],
+      "status": "UNVERIFIED"
+    },
+    "reconstruction": {
+      "type": "CANON",
+      "definition": "Error between predicted and observed/checked state.",
+      "layers": ["L1"]
+    },
+    "contradiction": {
+      "type": "CANON",
+      "definition": "Logical or empirical inconsistency detected as residual.",
+      "layers": ["L1"]
+    },
+    "hysteresis": {
+      "type": "CANON",
+      "definition": "Separate enter/exit thresholds to avoid chatter.",
+      "layers": ["L2"]
+    },
+    "replay": {
+      "type": "CANON",
+      "definition": "Re-running with same inputs/config/seed reproduces decisions and hashes.",
+      "layers": ["L2"]
+    },
+    "kuramoto_order_parameter": {
+      "type": "order_parameter",
+      "definition": "Measure of phase synchronization in oscillatory systems.",
+      "layers": ["L1", "L2"]
+    },
+    "level_of_consistency": {
+      "type": "metric",
+      "definition": "Quantified measure of system coherence at a given layer.",
+      "layers": ["L1"]
+    },
+    "normalization_scale": {
+      "type": "scaling_factor",
+      "definition": "Factor used to normalize residual components for fair comparison.",
+      "layers": ["L1"]
+    }
+  },
+  "axioms": {
+    "c1_state_legibility": {
+      "statement": "A system must have a well-defined state representation",
+      "layer": "L0",
+      "note": "State Legibility - C1"
+    },
+    "c2_constraint_primacy": {
+      "statement": "Constraints are prior; violations must be tracked",
+      "layer": "L0",
+      "note": "Constraint Primacy - C2"
+    },
+    "c3_conservation_of_debt": {
+      "statement": "Violations propagate, accumulate, dissipate, or terminate",
+      "layer": "L1",
+      "note": "Conservation of Coherence Debt - C3"
+    },
+    "c4_temporal_accountability": {
+      "statement": "Coherence is not pointwise",
+      "layer": "L2",
+      "note": "Temporal Accountability - C4"
+    },
+    "c5_irreversibility_of_failure": {
+      "statement": "Once incoherence exceeds bounds, rollback not guaranteed",
+      "layer": "L2",
+      "note": "Irreversibility of Failure - C5"
+    }
+  },
+  "prohibited_terms": [
+    "meaning_score",
+    "semantic_coherence",
+    "resonance_magnitude",
+    "vibes"
+  ],
+  "drift_rule": "Any divergence of this lexicon between repositories is a structural error."
+}

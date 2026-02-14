@@ -86,7 +86,7 @@ fn enforce_constraints(fields) {
 }
 
 fn check_coherence(residuals) {
-    // Compute coherence metric: C_o = <ω_o> / σ(ω_o)
+    // Compute coherence_value: C_o = <ω_o> / σ(ω_o)
     // Demonstrates coherence enforcement
     let coherence = call P:LOOM.compute_coherence(residuals);
     return coherence > global_config["coherence_threshold"];

@@ -4,7 +4,7 @@ This document describes how cbtsv1 aligns with the **Defined Coherence** canon f
 
 ## Canonical Definition
 
-The coherence functional is defined as:
+The coherence_functional is defined as:
 
 $$\mathfrak c(x) = \langle \tilde r(x), W \tilde r(x) \rangle, \quad \tilde r = S^{-1} r$$
 

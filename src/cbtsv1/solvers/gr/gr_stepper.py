@@ -55,6 +55,10 @@ from .theorem_validators import TheoremValidator
 from .gate_policy import GatePolicy
 from .hard_invariants import HardInvariantChecker
 
+# Import canonical coherence computation (Defined Coherence alignment)
+# This is the SINGLE ENTRY POINT for coherence in cbtsv1
+from .coherence_integration import compute_gr_coherence
+
 logger = logging.getLogger('gr_solver.stepper')
 
 
@@ -145,6 +149,32 @@ class GRStepper(StepperContract):
         self.invariant_checker = HardInvariantChecker(
             tolerance=hi_config.get('tolerance', 1e-14)
         )
+        
+        # ========================================================================
+        # DEFINED COHERENCE CONFIGURATION
+        # ========================================================================
+        # Load canonical coherence configuration for Defined Coherence alignment.
+        # This enables the single entry point for coherence computation:
+        #     c = compute_gr_coherence(fields, constraints, coherence_config)
+        # See: config/defined_coherence_gr.json
+        import json
+        import os
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'config', 'defined_coherence_gr.json')
+        try:
+            with open(config_path, 'r') as f:
+                self.coherence_config = json.load(f)
+            logger.info(f"Loaded Defined Coherence config from {config_path}")
+        except FileNotFoundError:
+            # Fallback to default config if file not found
+            self.coherence_config = {
+                "version": "1.0.0",
+                "covariance_model": "diag",
+                "blocks": {
+                    "hamiltonian": {"scale": 1.0, "weight": 1.0},
+                    "momentum": {"scale": 1.0, "weight": 1.0}
+                }
+            }
+            logger.warning("Defined Coherence config not found, using defaults")
         
         # Track debt across steps for contraction validation
         self.last_accepted_debt = 0.0
@@ -432,6 +462,8 @@ class GRStepper(StepperContract):
             # Compute initial RHS at time t using state u0
             self.check_tensor_layout_compliance()
             self.rhs_computer.compute_rhs(t, slow_update)
+            # DIAGNOSTIC ONLY: These RHS norms are for logging/debugging only.
+            # They are NOT used for coherence computation - see Defined Coherence below.
             rhs_norms = {
                 'gamma': np.linalg.norm(self.rhs_computer.rhs_gamma_sym6),
                 'K': np.linalg.norm(self.rhs_computer.rhs_K_sym6),
@@ -497,6 +529,7 @@ class GRStepper(StepperContract):
             self.constraints.eps_clk = max(self.constraints.eps_clk, stage_diff)
             self.check_tensor_layout_compliance()
             self.rhs_computer.compute_rhs(t + dt/2, slow_update)
+            # DIAGNOSTIC ONLY: RHS norms for logging - NOT for coherence
             rhs_norms = {
                 'gamma': np.linalg.norm(self.rhs_computer.rhs_gamma_sym6),
                 'K': np.linalg.norm(self.rhs_computer.rhs_K_sym6),
@@ -546,6 +579,7 @@ class GRStepper(StepperContract):
             self.constraints.eps_clk = max(self.constraints.eps_clk, stage_diff)
             self.check_tensor_layout_compliance()
             self.rhs_computer.compute_rhs(t + dt/2, slow_update)
+            # DIAGNOSTIC ONLY: RHS norms for logging - NOT for coherence
             rhs_norms = {
                 'gamma': np.linalg.norm(self.rhs_computer.rhs_gamma_sym6),
                 'K': np.linalg.norm(self.rhs_computer.rhs_K_sym6),
@@ -595,6 +629,7 @@ class GRStepper(StepperContract):
             self.constraints.eps_clk = max(self.constraints.eps_clk, stage_diff)
             self.check_tensor_layout_compliance()
             self.rhs_computer.compute_rhs(t + dt, slow_update)
+            # DIAGNOSTIC ONLY: RHS norms for logging - NOT for coherence
             rhs_norms = {
                 'gamma': np.linalg.norm(self.rhs_computer.rhs_gamma_sym6),
                 'K': np.linalg.norm(self.rhs_computer.rhs_K_sym6),
@@ -745,6 +780,30 @@ class GRStepper(StepperContract):
             stage_eps_H['Delta_eps_H_cons'] = stage_eps_H['eps_H_post_cons'] - stage_eps_H['eps_H_pre']
             stage_eps_H['Delta_eps_H_filter'] = stage_eps_H['eps_H_post_filter'] - stage_eps_H['eps_H_pre']
 
+            # ========================================================================
+            # DEFINED COHERENCE COMPUTATION
+            # ========================================================================
+            # Compute canonical coherence functional:
+            #     c = <r~, W r~> where r~ = S^(-1) * r
+            # This is the SINGLE ENTRY POINT for coherence in cbtsv1.
+            # See: src/cbtsv1/solvers/gr/coherence_integration.py
+            coherence_result = compute_gr_coherence(
+                self.fields,
+                self.constraints,
+                self.coherence_config
+            )
+            coherence_value = coherence_result['coherence_value']
+            coherence_blocks = coherence_result['blocks']
+            
+            # Log canonical coherence for audit trail
+            logger.debug("Computed canonical coherence", extra={
+                "extra_data": {
+                    "coherence_value": coherence_value,
+                    "hamiltonian_l2": coherence_blocks["hamiltonian"]["l2"],
+                    "momentum_l2": coherence_blocks["momentum"]["l2"]
+                }
+            })
+
             # Emit LEDGER_EVAL receipt
             final_ledgers = {
                 'eps_H': float(self.constraints.eps_H),
@@ -754,6 +813,9 @@ class GRStepper(StepperContract):
                 'eps_H_norm': float(self.constraints.eps_H_norm),
                 'eps_M_norm': float(self.constraints.eps_M_norm),
                 'eps_proj_norm': float(self.constraints.eps_proj_norm),
+                # Defined Coherence: canonical coherence value and block metadata
+                'coherence_value': float(coherence_value),
+                'coherence_blocks': coherence_blocks,
                 'spikes': {
                     'alpha_max_grad': float(np.max(np.abs(np.gradient(self.fields.alpha)))),
                     'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
@@ -832,6 +894,9 @@ class GRStepper(StepperContract):
                 'eps_H_norm': float(self.constraints.eps_H_norm),
                 'eps_M_norm': float(self.constraints.eps_M_norm),
                 'eps_proj_norm': float(self.constraints.eps_proj_norm),
+                # Defined Coherence: canonical coherence value and block metadata
+                'coherence_value': float(coherence_value),
+                'coherence_blocks': coherence_blocks,
                 'spikes': {
                     'alpha_max_grad': float(np.max(np.abs(np.gradient(self.fields.alpha)))),
                     'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
@@ -985,6 +1050,16 @@ class GRStepper(StepperContract):
             # It handles: clock decision, RHS, update, gauge (at end), gates, receipts
             success, _, dt_new, reason, stage_eps_H = self.step_ufe(dt, t_n, rails_policy)
 
+            # Compute canonical coherence for step() method ledgers
+            # This ensures consistency between step_ufe and step() receipts
+            step_coherence_result = compute_gr_coherence(
+                self.fields,
+                self.constraints,
+                self.coherence_config
+            )
+            step_coherence_value = step_coherence_result['coherence_value']
+            step_coherence_blocks = step_coherence_result['blocks']
+
             # Prepare final ledgers for step receipt (copied from step_ufe for consistency)
             ledgers_for_receipt = {
                 'eps_H': float(self.constraints.eps_H),
@@ -994,6 +1069,9 @@ class GRStepper(StepperContract):
                 'eps_H_norm': float(self.constraints.eps_H_norm),
                 'eps_M_norm': float(self.constraints.eps_M_norm),
                 'eps_proj_norm': float(self.constraints.eps_proj_norm),
+                # Defined Coherence: canonical coherence value and block metadata
+                'coherence_value': float(step_coherence_value),
+                'coherence_blocks': step_coherence_blocks,
                 'spikes': {
                     'alpha_max_grad': float(np.max(np.abs(np.gradient(self.fields.alpha)))),
                     'K_max_grad': float(np.max(np.abs(np.gradient(self.fields.K_sym6))))
