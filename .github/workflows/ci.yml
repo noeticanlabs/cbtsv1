@@ -28,6 +28,10 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov ruff
 
+      - name: Run smoke test (install & imports)
+        run: |
+          pytest tests/test_000_install_and_imports.py -v
+
       - name: Lint with ruff
         run: |
           ruff check src/ tests/
