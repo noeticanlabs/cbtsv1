@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 
 # Type imports from nsc.types
-from nsc.types import Tensor, Field, Scalar, Vector
+from src.nsc.types import Tensor, Field, Scalar, Vector
 
 
 # =============================================================================

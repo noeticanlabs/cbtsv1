@@ -2,7 +2,7 @@ import numpy as np
 import logging
 from typing import Tuple, Dict, Any, Optional
 from enum import Enum
-from cbtsv1.framework.gate_policy import GatePolicy
+from cbtsv1.solvers.gr.gate_policy import GatePolicy
 
 logger = logging.getLogger('gr_solver.gates')
 

@@ -50,8 +50,8 @@ LEXICON_SYMBOLS = {
 }
 
 import numpy as np
-from .gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6
-from .gr_constraints import GRConstraints
+from .geometry.core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6
+from .constraints.constraints import GRConstraints
 
 class GRLoC:
     """

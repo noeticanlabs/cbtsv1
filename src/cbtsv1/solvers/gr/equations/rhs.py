@@ -31,8 +31,8 @@
 import logging
 import numpy as np
 from numba import jit, prange
-from .logging_config import Timer
-from .gr_core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6
+from ..logging_config import Timer
+from ..geometry.core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6
 
 logger = logging.getLogger('gr_solver.rhs')
 

@@ -12,8 +12,8 @@ try:
     from numba import jit
 except ImportError:
     jit = lambda f=None, **kwargs: f if f else (lambda g: g)
-from .gr_core_fields import inv_sym6, sym6_to_mat33, mat33_to_sym6
-from .gr_geometry_nsc import compute_christoffels_compiled, compute_ricci_compiled, second_covariant_derivative_scalar_compiled, lie_derivative_gamma_compiled, lie_derivative_K_compiled
+from .core_fields import inv_sym6, sym6_to_mat33, mat33_to_sym6
+from .geometry_nsc import compute_christoffels_compiled, compute_ricci_compiled, second_covariant_derivative_scalar_compiled, lie_derivative_gamma_compiled, lie_derivative_K_compiled
 
 
 # ============================================================================

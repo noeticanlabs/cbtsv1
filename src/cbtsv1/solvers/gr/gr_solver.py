@@ -13,21 +13,21 @@ import numpy as np
 import logging
 from dataclasses import dataclass
 from .logging_config import setup_logging, Timer, array_stats
-from .gr_core_fields import GRCoreFields, SYM6_IDX, inv_sym6, trace_sym6
-from .gr_geometry import GRGeometry, ricci_tensor_kernel
+from .geometry.core_fields import GRCoreFields, SYM6_IDX, inv_sym6, trace_sym6
+from .geometry.geometry import GRGeometry, ricci_tensor_kernel
 from .constraints.constraints import GRConstraints, compute_constraints_kernel
 from .gauge.gauge import GRGauge
-from .scheduler import GRScheduler
-from .stepper import GRStepper
-from .ledger import GRLedger
-from cbtsv1.framework.phaseloom_gr_orchestrator import GRPhaseLoomOrchestrator
-from cbtsv1.framework.aeonic_memory_bank import AeonicMemoryBank
-from cbtsv1.framework.aeonic_memory_contract import AeonicMemoryContract
-from cbtsv1.framework.aeonic_clocks import AeonicClockPack
-from cbtsv1.framework.aeonic_receipts import AeonicReceipts
-from cbtsv1.framework.phaseloom_27 import PhaseLoom27
+from .gr_scheduler import GRScheduler
+from .gr_stepper import GRStepper
+from .gr_ledger import GRLedger
+from src.cbtsv1.framework.phaseloom_gr_orchestrator import GRPhaseLoomOrchestrator
+from src.cbtsv1.framework.aeonic_memory_bank import AeonicMemoryBank
+from src.cbtsv1.framework.aeonic_memory_contract import AeonicMemoryContract
+from src.cbtsv1.framework.aeonic_clocks import AeonicClockPack
+from src.cbtsv1.framework.aeonic_receipts import AeonicReceipts
+from src.cbtsv1.framework.phaseloom_27 import PhaseLoom27
 
-from cbtsv1.numerics.spectral.cache import SpectralCache
+from src.cbtsv1.numerics.spectral.cache import SpectralCache
 
 @dataclass
 class Damping:

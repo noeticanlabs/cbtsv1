@@ -24,7 +24,7 @@ import numpy as np
 from typing import Dict, Any, Optional
 
 # Import canonical ResidualBlock from vendor
-from cbtsv1.vendor.coherence_framework.coherence.core import ResidualBlock
+from src.cbtsv1.vendor.coherence_framework.coherence.core import ResidualBlock
 
 
 def build_residual_blocks(

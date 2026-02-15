@@ -372,7 +372,7 @@ def create_test_grid(dim: int = 2, shape: Tuple[int, ...] = None) -> Grid:
     if shape is None:
         shape = tuple(50 for _ in range(dim))
     spacing = tuple(0.1 for _ in range(dim))
-    return Grid(shape=shape, spacing=spacing)
+    return Grid(dim=dim, shape=shape, spacing=spacing)
 
 
 def create_test_quadrature(degree: int = 2) -> QuadratureRule:

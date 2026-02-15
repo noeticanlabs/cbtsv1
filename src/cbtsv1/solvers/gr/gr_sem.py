@@ -13,7 +13,7 @@ LEXICON_SYMBOLS = {
 
 import numpy as np
 import logging
-from cbtsv1.framework.receipt_schemas import SEMFailure, Kappa
+from src.cbtsv1.framework.receipt_schemas import SEMFailure, Kappa
 from .geometry.core_fields import det_sym6, eigenvalues_sym6
 
 logger = logging.getLogger('gr_solver.sem')
@@ -111,7 +111,7 @@ class SemanticBarriers:
 
         # More complete check: alpha^2 > beta_i beta^i
         if gamma_inv_sym6 is not None:
-            from .gr_core_fields import sym6_to_mat33
+            from .geometry.core_fields import sym6_to_mat33
             gamma_inv_full = sym6_to_mat33(gamma_inv_sym6)
             beta_u = np.einsum('...ij,...j->...i', gamma_inv_full, beta)
             beta_sq = np.einsum('...i,...i', beta, beta_u)
@@ -128,7 +128,7 @@ class SemanticBarriers:
 
     def audit_step(self, fields, geometry):
         """Full semantic audit for a step."""
-        from .gr_core_fields import inv_sym6
+        from .geometry.core_fields import inv_sym6
         self.check_det_gamma(fields.gamma_sym6)
         gamma_inv = inv_sym6(fields.gamma_sym6)
         self.check_causality(fields.alpha, fields.beta, gamma_inv)

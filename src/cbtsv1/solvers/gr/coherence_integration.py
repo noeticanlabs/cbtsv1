@@ -24,7 +24,7 @@ import logging
 from typing import Dict, Any, Optional
 
 # Import canonical compute_coherence from vendor
-from cbtsv1.vendor.coherence_framework.coherence.core import compute_coherence
+from src.cbtsv1.vendor.coherence_framework.coherence.core import compute_coherence
 
 # Import the GR block adapter
 from .defined_coherence_blocks import build_residual_blocks, summarize_blocks

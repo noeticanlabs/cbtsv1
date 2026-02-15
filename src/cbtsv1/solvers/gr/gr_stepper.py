@@ -43,9 +43,9 @@ except ImportError:
     jit = lambda f=None, **kwargs: f if f else (lambda g: g)
 from .logging_config import Timer, array_stats
 from .geometry.core_fields import inv_sym6, trace_sym6, sym6_to_mat33, mat33_to_sym6
-from cbtsv1.framework.stepper_contract import StepperContract
-from .loc import GRLoC
-from .gr_rhs import GRRhs
+from src.cbtsv1.framework.stepper_contract import StepperContract
+from .gr_loc import GRLoC
+from .equations.rhs import GRRhs
 from .gr_ledger import GRLedger
 from .gr_scheduler import GRScheduler
 from .gr_gates import GateChecker

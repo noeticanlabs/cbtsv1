@@ -19,7 +19,7 @@ from typing import Optional, Dict, Any
 import numpy as np
 
 # Type imports from nsc.types
-from nsc.types import Tensor, Field, Scalar, Vector
+from src.nsc.types import Tensor, Field, Scalar, Vector
 
 
 # =============================================================================
