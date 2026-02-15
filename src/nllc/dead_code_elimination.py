@@ -15,7 +15,7 @@ Usage:
 
 from dataclasses import dataclass, field
 from typing import Set, List, Dict, Optional, Tuple
-from src.nllc.nir import (
+from nllc.nir import (
     Module, Function, BasicBlock, Instruction,
     ConstInst, BinOpInst, CallInst, IntrinsicCallInst,
     LoadInst, StoreInst, AllocInst, GetElementInst,

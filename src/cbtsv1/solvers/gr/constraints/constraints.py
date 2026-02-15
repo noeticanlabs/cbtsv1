@@ -54,8 +54,8 @@ import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 from typing import Callable, Optional, Tuple, Dict, Any
 from ..logging_config import array_stats, Timer
-from src.cbtsv1.solvers.gr.geometry.core_fields import inv_sym6, trace_sym6, norm2_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6
-from src.cbtsv1.numerics.elliptic.solver import MultigridSolver, KrylovSolver, EllipticSolver
+from cbtsv1.solvers.gr.geometry.core_fields import inv_sym6, trace_sym6, norm2_sym6, sym6_to_mat33, mat33_to_sym6, det_sym6
+from cbtsv1.numerics.elliptic.solver import MultigridSolver, KrylovSolver, EllipticSolver
 from config.gr_constraints_nsc import compute_hamiltonian_compiled, compute_momentum_compiled, discrete_L2_norm_compiled
 
 logger = logging.getLogger('gr_solver.constraints')

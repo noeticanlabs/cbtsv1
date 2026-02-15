@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Tuple
-from src.nllc.ast import *
-from src.nllc.nir import *
-from src.nllc.nir import ObjectType, VectorType, SymmetricTensorType, AntiSymmetricTensorType, DivergenceFreeType
+from nllc.ast import *
+from nllc.nir import *
+from nllc.nir import ObjectType, VectorType, SymmetricTensorType, AntiSymmetricTensorType, DivergenceFreeType
 
 class Lowerer:
     def __init__(self, file: str):

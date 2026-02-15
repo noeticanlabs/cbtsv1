@@ -2,9 +2,9 @@ import hashlib
 import json
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Any, Optional
-from src.nllc.vm import VM
-from src.nllc.nir import *
-from src.receipts.receipt_schemas import OmegaReceipt
+from nllc.vm import VM
+from nllc.nir import *
+from cbtsv1.framework.receipt_schemas import OmegaReceipt
 
 @dataclass
 class ThreadBlock:

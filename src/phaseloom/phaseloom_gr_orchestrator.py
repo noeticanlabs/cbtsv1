@@ -37,14 +37,14 @@ from .phaseloom_render_gr import GRPhaseLoomRender
 from .phaseloom_gr_adapter import GRPhaseLoomAdapter
 from .phaseloom_octaves import PhaseLoomOctaves
 from .phaseloom_gr_controller import GRPhaseLoomController
-from src.core.gr_scheduler import GRScheduler
-from src.core.gr_sem import SEMDomain
+from cbtsv1.solvers.gr.scheduler import GRScheduler
+from cbtsv1.solvers.gr.sem import SEMDomain
 from .phaseloom_memory import PhaseLoomMemory
-from src.core.gr_ttl_calculator import TTLCalculator
-from src.receipts.receipt_schemas import Kappa
-from src.receipts.orchestrator_contract_memory import OrchestratorContractWithMemory
-from src.nllc.vm import VM
-from src.nllc.nir import Module, Function, BasicBlock, ConstInst, BinOpInst, CallInst, BrInst, RetInst, Value, Type, Trace, Span
+from cbtsv1.solvers.gr.ttl_calculator import TTLCalculator
+from cbtsv1.framework.receipt_schemas import Kappa
+from cbtsv1.framework.orchestrator_contract_memory import OrchestratorContractWithMemory
+from nllc.vm import VM
+from nllc.nir import Module, Function, BasicBlock, ConstInst, BinOpInst, CallInst, BrInst, RetInst, Value, Type, Trace, Span
 
 logger = logging.getLogger('gr_solver.orchestrator')
 
@@ -89,7 +89,7 @@ def load_module_from_json(path):
                     result = Value(i_data['result']['name'], Type())
                     array = Value(i_data['array']['name'], Type())
                     index = Value(i_data['index']['name'], Type())
-                    from src.nllc.nir import GetElementInst
+                    from nllc.nir import GetElementInst
                     inst = GetElementInst(trace, result, array, index)
                 else:
                     inst = None  # skip unknown

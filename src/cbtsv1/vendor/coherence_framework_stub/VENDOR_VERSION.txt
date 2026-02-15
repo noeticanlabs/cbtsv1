@@ -1,0 +1,11 @@
+# Coherence Framework Vendor Stub
+# This is a stub implementation - replace with real package when available
+
+Status: STUB
+Created: 2026-02-15
+Notes: Placeholder for coherence-framework package. Provides ResidualBlock, CoherenceResult, compute_coherence interfaces.
+
+To replace:
+1. Install coherence-framework package: pip install coherence-framework
+2. Remove this vendor directory
+3. Update imports from cbtsv1.vendor.coherence_framework_stub to coherence

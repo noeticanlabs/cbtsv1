@@ -272,6 +272,176 @@ class GRGeometry:
         self.compute_ricci()
         self.compute_scalar_curvature()
 
+    def lie_derivative_gamma(self, gamma_sym6, beta):
+        """
+        Compute Lie derivative of the metric tensor gamma_ij.
+        
+        L_β γ_ij = β^k ∂_k γ_ij + γ_ik ∂_j β^k + γ_jk ∂_i β^k
+        
+        Args:
+            gamma_sym6: Metric tensor in symmetry-6 format (Nx, Ny, Nz, 6)
+            beta: Shift vector (Nx, Ny, Nz, 3)
+            
+        Returns:
+            Lie derivative in symmetry-6 format (Nx, Ny, Nz, 6)
+        """
+        dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
+        return lie_derivative_gamma_compiled(gamma_sym6, beta, dx, dy, dz)
+
+    def lie_derivative_K(self, K_sym6, beta):
+        """
+        Compute Lie derivative of the extrinsic curvature K_ij.
+        
+        L_β K_ij = β^k ∂_k K_ij + K_ik ∂_j β^k + K_jk ∂_i β^k
+        
+        Args:
+            K_sym6: Extrinsic curvature in symmetry-6 format (Nx, Ny, Nz, 6)
+            beta: Shift vector (Nx, Ny, Nz, 3)
+            
+        Returns:
+            Lie derivative in symmetry-6 format (Nx, Ny, Nz, 6)
+        """
+        dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
+        return lie_derivative_K_compiled(K_sym6, beta, dx, dy, dz)
+
+    def second_covariant_derivative_scalar(self, scalar_field):
+        """
+        Compute second covariant derivative of a scalar field.
+        
+        ∇_i ∇_j f = ∂_i ∂_j f - Γ^k_ij ∂_k f
+        
+        Args:
+            scalar_field: Scalar field (Nx, Ny, Nz)
+            
+        Returns:
+            Second covariant derivative tensor (Nx, Ny, Nz, 3, 3)
+        """
+        # Ensure Christoffel symbols are computed
+        self.compute_christoffels()
+        
+        dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
+        return second_covariant_derivative_scalar_compiled(
+            scalar_field, self.christoffels, dx, dy, dz
+        )
+
+    def compute_christoffels_for_metric(self, metric_sym6, christoffels_output):
+        """
+        Compute Christoffel symbols for a given metric (not stored in self.fields).
+        
+        Args:
+            metric_sym6: Metric tensor in symmetry-6 format (Nx, Ny, Nz, 6)
+            christoffels_output: Preallocated array for output (Nx, Ny, Nz, 3, 3, 3)
+        """
+        dx, dy, dz = self.fields.dx, self.fields.dy, self.fields.dz
+        
+        # Compute derivatives of the given metric
+        if self.fd_method == 'central2':
+            dmetric_dx = _fd_derivative_periodic(metric_sym6, dx, 0)
+            dmetric_dy = _fd_derivative_periodic(metric_sym6, dy, 1)
+            dmetric_dz = _fd_derivative_periodic(metric_sym6, dz, 2)
+        else:
+            raise NotImplementedError(
+                f"compute_christoffels_for_metric not implemented for fd_method={self.fd_method}"
+            )
+        
+        # Compute Christoffel symbols using the compiled function
+        christoffels, _ = compute_christoffels_compiled(
+            metric_sym6, dmetric_dx, dmetric_dy, dmetric_dz
+        )
+        christoffels_output[:] = christoffels
+
+    def enforce_det_gamma_tilde(self):
+        """
+        Enforce det(gamma_tilde) = 1 constraint on the conformal metric.
+        
+        This ensures the conformal metric remains in the proper gauge.
+        Uses Wilsonian renormalization approach.
+        """
+        if not hasattr(self.fields, 'gamma_tilde_sym6'):
+            return  # Nothing to enforce
+            
+        gamma_tilde = self.fields.gamma_tilde_sym6
+        
+        # Compute current determinant
+        xx = gamma_tilde[..., 0]
+        yy = gamma_tilde[..., 3]
+        zz = gamma_tilde[..., 5]
+        xy = gamma_tilde[..., 1]
+        xz = gamma_tilde[..., 2]
+        yz = gamma_tilde[..., 4]
+        
+        det = xx * (yy * zz - yz * yz) - xy * (xy * zz - yz * xz) + xz * (xy * yz - yy * xz)
+        
+        # Wilsonian renormalization: scale to enforce det = 1
+        # gamma_tilde_new = gamma_tilde * (1/det)^(1/3)
+        factor = np.power(det, -1.0 / 3.0)
+        
+        # Handle NaN/Inf
+        factor = np.where(np.isfinite(factor), factor, 1.0)
+        
+        self.fields.gamma_tilde_sym6[..., 0] = xx * factor
+        self.fields.gamma_tilde_sym6[..., 1] = xy * factor
+        self.fields.gamma_tilde_sym6[..., 2] = xz * factor
+        self.fields.gamma_tilde_sym6[..., 3] = yy * factor
+        self.fields.gamma_tilde_sym6[..., 4] = yz * factor
+        self.fields.gamma_tilde_sym6[..., 5] = zz * factor
+
+    def enforce_traceless_A(self):
+        """
+        Enforce tr(A) = 0 constraint on the traceless extrinsic curvature.
+        
+        This ensures A_ij remains traceless: A^k_k = 0
+        """
+        if not hasattr(self.fields, 'A_sym6'):
+            return  # Nothing to enforce
+            
+        if not hasattr(self.fields, 'gamma_sym6'):
+            return  # Need metric to compute trace
+            
+        A = self.fields.A_sym6
+        gamma = self.fields.gamma_sym6
+        
+        # Compute gamma inverse
+        gamma_inv = inv_sym6(gamma)
+        
+        # Compute trace: A^k_k = gamma^{ij} A_ij
+        # Convert to full 3x3 and compute trace
+        A_full = np.zeros(gamma.shape[:-1] + (3, 3), dtype=A.dtype)
+        A_full[..., 0, 0] = A[..., 0]
+        A_full[..., 0, 1] = A[..., 1]
+        A_full[..., 0, 2] = A[..., 2]
+        A_full[..., 1, 0] = A[..., 1]
+        A_full[..., 1, 1] = A[..., 3]
+        A_full[..., 1, 2] = A[..., 4]
+        A_full[..., 2, 0] = A[..., 2]
+        A_full[..., 2, 1] = A[..., 4]
+        A_full[..., 2, 2] = A[..., 5]
+        
+        gamma_inv_full = np.zeros(gamma.shape[:-1] + (3, 3), dtype=gamma.dtype)
+        gamma_inv_full[..., 0, 0] = gamma[..., 0]
+        gamma_inv_full[..., 0, 1] = gamma[..., 1]
+        gamma_inv_full[..., 0, 2] = gamma[..., 2]
+        gamma_inv_full[..., 1, 0] = gamma[..., 1]
+        gamma_inv_full[..., 1, 1] = gamma[..., 3]
+        gamma_inv_full[..., 1, 2] = gamma[..., 4]
+        gamma_inv_full[..., 2, 0] = gamma[..., 2]
+        gamma_inv_full[..., 2, 1] = gamma[..., 4]
+        gamma_inv_full[..., 2, 2] = gamma[..., 5]
+        
+        # Compute trace
+        trace_A = np.einsum('...ij,...ij->...', A_full, gamma_inv_full)
+        
+        # Subtract trace/3 from diagonal to make traceless
+        # (A_ij - (1/3) gamma_ij A^k_k) in 3D
+        trace_part = trace_A / 3.0
+        
+        self.fields.A_sym6[..., 0] = A[..., 0] - trace_part * gamma[..., 0]
+        self.fields.A_sym6[..., 1] = A[..., 1] - trace_part * gamma[..., 1]
+        self.fields.A_sym6[..., 2] = A[..., 2] - trace_part * gamma[..., 2]
+        self.fields.A_sym6[..., 3] = A[..., 3] - trace_part * gamma[..., 3]
+        self.fields.A_sym6[..., 4] = A[..., 4] - trace_part * gamma[..., 4]
+        self.fields.A_sym6[..., 5] = A[..., 5] - trace_part * gamma[..., 5]
+
 
 # ============================================================================
 # FACTORY FUNCTION

@@ -8,7 +8,7 @@ can be converted from stack allocations to direct SSA values.
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Any
-from src.nllc.nir import (
+from nllc.nir import (
     Module, Function, BasicBlock, Instruction,
     AllocInst, StoreInst, LoadInst, ConstInst, BinOpInst,
     CallInst, IntrinsicCallInst, GetElementInst, BrInst, RetInst,

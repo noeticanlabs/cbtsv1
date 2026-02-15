@@ -94,7 +94,7 @@ class GateChecker:
 
         if np.isnan(eps_H) or np.isinf(eps_H) or np.isnan(eps_M) or np.isinf(eps_M) or np.isnan(eps_proj) or np.isinf(eps_proj) or np.isnan(eps_clk) or np.isinf(eps_clk):
             logger.error("Hard fail: NaN or infinite residuals in gates")
-            return False, True, float('inf'), ["NaN/inf residuals"], {}, {}, {}, {}
+            return False, True, float('inf'), ["NaN/inf residuals"], {}, {}, {}
 
         accepted = True
         hard_fail = False

@@ -632,8 +632,15 @@ class GRStepper(StepperContract):
             # Pre-update invariants check
             pre_violations = self._check_invariants_pre()
             if pre_violations:
-                logger.error("Pre-update invariants violated", extra={"extra_data": {"violations": pre_violations}})
-                # Continue anyway - let the step fail naturally if needed
+                logger.error("Pre-update invariants violated - rejecting step", extra={"extra_data": {"violations": pre_violations}})
+                # Reject the step due to pre-update invariant violation
+                self.fields.gamma_sym6 = u0_gamma
+                self.fields.K_sym6 = u0_K
+                rejection_reason = f"Pre-update invariants violated: {pre_violations}"
+                self.ledger.emit_step_receipt(self.current_step, t, self.current_dt, self.fields,
+                                             accepted=False, ledgers={}, gates={},
+                                             rejection_reason=rejection_reason, stage_eps_H=None)
+                return False, None, self.current_dt * 0.5, rejection_reason, stage_eps_H
             
             # Final update using fused evolution kernel
             norm_dgamma, norm_dK = fused_evolution_kernel(
@@ -661,13 +668,21 @@ class GRStepper(StepperContract):
             # Post-update invariants check
             post_violations = self._check_invariants_post(norm_dgamma, norm_dK)
             if post_violations:
-                logger.error("Post-update invariants violated", extra={
+                logger.error("Post-update invariants violated - rejecting step", extra={
                     "extra_data": {
                         "violations": post_violations,
                         "norm_dgamma": norm_dgamma,
                         "norm_dK": norm_dK
                     }
                 })
+                # Rollback and reject the step due to post-update invariant violation
+                self.fields.gamma_sym6 = u0_gamma
+                self.fields.K_sym6 = u0_K
+                rejection_reason = f"Post-update invariants violated: {post_violations}"
+                self.ledger.emit_step_receipt(self.current_step, t + dt, dt, self.fields,
+                                             accepted=False, ledgers={}, gates={},
+                                             rejection_reason=rejection_reason, stage_eps_H=None)
+                return False, None, dt * 0.5, rejection_reason, stage_eps_H
             
             # Log update norms
             logger.debug("Fused evolution completed", extra={

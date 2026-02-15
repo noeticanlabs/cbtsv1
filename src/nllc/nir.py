@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Any, Union
-from src.nllc.ast import Span
+from nllc.ast import Span
 
 # Types
 @dataclass

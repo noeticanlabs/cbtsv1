@@ -1,6 +1,6 @@
 from typing import Dict, List, Any, Tuple, Optional
-from src.cbtsv1.framework.aeonic_memory_bank import AeonicMemoryBank
-from src.cbtsv1.framework.receipt_schemas import Kappa, MSolveReceipt, MStepReceipt, MOrchReceipt
+from cbtsv1.framework.aeonic_memory_bank import AeonicMemoryBank
+from cbtsv1.framework.receipt_schemas import Kappa, MSolveReceipt, MStepReceipt, MOrchReceipt
 from cbtsv1.solvers.gr.gr_ttl_calculator import TTLCalculator, AdaptiveTTLs, TimeUnit, TTLValue
 from cbtsv1.solvers.gr.gr_gates import should_hard_fail, GateKind
 import hashlib

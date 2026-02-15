@@ -3,7 +3,7 @@ import json
 import inspect
 from datetime import datetime
 import numpy as np
-from src.cbtsv1.solvers.gr.gr_receipts import compute_debt_from_residuals
+from cbtsv1.solvers.gr.gr_receipts import compute_debt_from_residuals
 
 class GRLedger:
     def __init__(self, receipts_file="aeonic_receipts.jsonl"):

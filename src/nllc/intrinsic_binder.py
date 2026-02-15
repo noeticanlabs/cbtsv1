@@ -13,7 +13,7 @@ Usage:
 """
 
 from typing import Callable, Dict, Any, Optional
-from src.nllc.jit_kernel import KERNEL_REGISTRY, get_kernel
+from nllc.jit_kernel import KERNEL_REGISTRY, get_kernel
 
 
 class IntrinsicBinder:

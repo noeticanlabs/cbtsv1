@@ -17,7 +17,7 @@ Usage:
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple, Any
-from src.nllc.nir import (
+from nllc.nir import (
     Type, IntType, FloatType, BoolType, StrType, ArrayType, ObjectType,
     TensorType, FieldType, MetricType, ClockType,
     VectorType, SymmetricTensorType, AntiSymmetricTensorType, DivergenceFreeType,
