@@ -27,22 +27,22 @@ from cbtsv1.framework.aeonic_receipts import AeonicReceipts
 from cbtsv1.framework.aeonic_memory_contract import AeonicMemoryContract
 from cbtsv1.solvers.gr.logging_config import Timer, array_stats
 from .phaseloom_threads_gr import GRPhaseLoomThreads, compute_omega_current
-from cbtsv1.solvers.gr.phases import (
+from core.phases import (
     PhaseState, SensePhase, ProposePhase, DecidePhase, PredictPhase,
     CommitPhase, VerifyPhase, RailEnforcePhase, ReceiptPhase, RenderPhase
 )
-from .phaseloom_rails_gr import GRPhaseLoomRails
-from .phaseloom_receipts_gr import GRPhaseLoomReceipts
-from .phaseloom_render_gr import GRPhaseLoomRender
-from .phaseloom_gr_adapter import GRPhaseLoomAdapter
-from .phaseloom_octaves import PhaseLoomOctaves
-from .phaseloom_gr_controller import GRPhaseLoomController
-from cbtsv1.solvers.gr.scheduler import GRScheduler
-from cbtsv1.solvers.gr.sem import SEMDomain
-from .phaseloom_memory import PhaseLoomMemory
-from cbtsv1.solvers.gr.ttl_calculator import TTLCalculator
+from phaseloom.phaseloom_rails_gr import GRPhaseLoomRails
+from phaseloom.phaseloom_receipts_gr import GRPhaseLoomReceipts
+from phaseloom.phaseloom_render_gr import GRPhaseLoomRender
+from phaseloom.phaseloom_gr_adapter import GRPhaseLoomAdapter
+from phaseloom.phaseloom_octaves import PhaseLoomOctaves
+from phaseloom.phaseloom_gr_controller import GRPhaseLoomController
+from cbtsv1.solvers.gr.gr_scheduler import GRScheduler
+from cbtsv1.solvers.gr.gr_sem import SEMDomain
+from phaseloom.phaseloom_memory import PhaseLoomMemory
+from cbtsv1.solvers.gr.gr_ttl_calculator import TTLCalculator
 from cbtsv1.framework.receipt_schemas import Kappa
-from cbtsv1.framework.orchestrator_contract_memory import OrchestratorContractWithMemory
+from receipts.orchestrator_contract_memory import OrchestratorContractWithMemory
 from nllc.vm import VM
 from nllc.nir import Module, Function, BasicBlock, ConstInst, BinOpInst, CallInst, BrInst, RetInst, Value, Type, Trace, Span
 

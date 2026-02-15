@@ -1,5 +1,5 @@
 import json
-from ..solver.pir import PIRProgram, Operator
+from solver.pir import PIRProgram, Operator
 from .assembler import HadamardAssembler
 
 class HadamardCompiler:

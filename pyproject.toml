@@ -55,3 +55,4 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["cbtsv1*", "nsc*", "nllc*", "hadamard*", "common*", "phaseloom*", "receipts*", "solver*", "tgs*", "triaxis*", "aml*", "aeonic*", "contracts*", "module*", "elliptic*", "spectral*", "core*"]
